@@ -179,6 +179,7 @@ typedef struct GFX_Fonts {
 } GFX_Fonts;
 extern GFX_Fonts font;
 extern GFX_Fonts font_ar; // secondary Arabic font (MiSans Arabic), same sizes
+extern GFX_Fonts font_th; // Thai font (BrickOS Thai, res/font1-thai.ttf), same sizes; also covers Latin
 
 // The Arabic-font counterpart of a primary size-font (NULL if unavailable).
 TTF_Font* GFX_fallbackFontFor(TTF_Font* primary);
@@ -187,6 +188,9 @@ TTF_Font* GFX_fallbackFontFor(TTF_Font* primary);
 void GFX_setFallbackFontResolver(TTF_Font* (*resolver)(TTF_Font* primary));
 // The Arabic UI font file (RES_PATH/font1-arabic.ttf), shared by the system fonts and ui_font.c.
 const char* GFX_getArabicFontPath(void);
+// The Thai UI font file, and the Thai counterpart of a primary size-font (NULL if missing or unknown).
+const char* GFX_getThaiFontPath(void);
+TTF_Font* GFX_thaiFontFor(TTF_Font* primary);
 
 enum {
 	SHARPNESS_SHARP,
