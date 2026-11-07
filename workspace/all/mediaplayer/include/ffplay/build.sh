@@ -38,7 +38,7 @@ FC_FCPRIVATE_H_SHA256=2d0b07968f4d7d09318d0f284dde0388f0c97f50f67bddd490a6ae5272
 
 # fetch URL DEST SHA256: download, then refuse anything that doesn't match
 fetch() {
-    wget -q "$1" -O "$2"
+    wget -q --tries=5 --timeout=30 --waitretry=5 "$1" -O "$2"
     if ! echo "$3  $2" | sha256sum -c --quiet -; then
         echo "sha256 mismatch for $1" >&2
         rm -f "$2"

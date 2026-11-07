@@ -46,7 +46,7 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-wget -q "$RSYNC_URL" -O rsync.tar.gz
+wget -q --tries=5 --timeout=30 --waitretry=5 "$RSYNC_URL" -O rsync.tar.gz
 echo "$RSYNC_SHA256  rsync.tar.gz" | sha256sum -c --quiet -
 tar xzf rsync.tar.gz
 cd "rsync-${RSYNC_VERSION}"
