@@ -524,7 +524,7 @@ static int layoutLabels(TTF_Font* f, int xs[MENU_TAB_COUNT], int ws[MENU_TAB_COU
 		int x = 0;
 		for (int i = 0; i < tab_count; i++) {
 			int w = 0;
-			TTF_SizeUTF8(f, rowLabel(tabs[i]), &w, NULL);
+			GFX_measureText(f, rowLabel(tabs[i]), &w, NULL); // Brick OS: translated + Thai width
 			label_layout.xs[i] = x;
 			label_layout.ws[i] = w;
 			x += w + (i + 1 < tab_count ? TAB_LABEL_GAP : 0);

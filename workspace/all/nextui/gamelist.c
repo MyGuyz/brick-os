@@ -2987,7 +2987,7 @@ void GameList_render(SDL_Surface* screen, int lastScreen,
 				bool tag_over = row_tag_w > 0 && pill_y >= 0 && abs(pill_y - y) * 2 < row_h;
 				if (row_tag_w > 0) { // after the name as drawn: its width, or its room's end when it is cut or scrolls
 					int name_w = 0;
-					TTF_SizeUTF8(list_font, display_text, &name_w, NULL);
+					GFX_measureText(list_font, display_text, &name_w, NULL); // Brick OS: Thai names
 					if (name_w > text_width)
 						name_w = text_width;
 					Home_listDrawTag(screen, pos.text_x + name_w, pos.text_y, TTF_FontHeight(list_font), tag_over,

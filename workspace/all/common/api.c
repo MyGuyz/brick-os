@@ -141,6 +141,12 @@ const char* GFX_getThaiFontPath(void) {
 	return path;
 }
 
+static TTF_Font* (*thai_resolver)(TTF_Font* primary) = NULL;
+
+void GFX_setThaiFontResolver(TTF_Font* (*resolver)(TTF_Font* primary)) {
+	thai_resolver = resolver;
+}
+
 TTF_Font* GFX_thaiFontFor(TTF_Font* primary) {
 	if (primary == font.xlarge)
 		return font_th.xlarge;
@@ -156,7 +162,7 @@ TTF_Font* GFX_thaiFontFor(TTF_Font* primary) {
 		return font_th.tiny;
 	if (primary == font.micro)
 		return font_th.micro;
-	return NULL;
+	return thai_resolver ? thai_resolver(primary) : NULL;
 }
 
 // Thai text: marks swapped for pre-positioned glyphs (text_thai.h), drawn with the Thai font, which

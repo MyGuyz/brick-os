@@ -18,6 +18,8 @@ typedef struct {
 	TTF_Font* f;
 	TTF_Font* ar;  // Arabic counterpart (font1-arabic.ttf, same px + style), opened on first Arabic text
 	bool ar_tried; // the Arabic open was attempted (don't retry a missing file every frame)
+	TTF_Font* th;  // Brick OS: Thai counterpart (font1-thai.ttf, same px), opened on first Thai text
+	bool th_tried;
 	unsigned lru;  // last use, for eviction
 } UIFontEntry;
 
@@ -50,8 +52,10 @@ static void closeFont(TTF_Font* f) {
 static void closeEntry(UIFontEntry* e) {
 	closeFont(e->f);
 	closeFont(e->ar);
+	closeFont(e->th);
 	e->f = NULL;
 	e->ar = NULL;
+	e->th = NULL;
 }
 
 void UIFont_quit(void) {
@@ -85,6 +89,25 @@ static TTF_Font* arabicFor(TTF_Font* primary) {
 	return NULL;
 }
 
+// GFX_thaiFontFor resolver: the Thai face for one of our fonts, like arabicFor.
+static TTF_Font* thaiFor(TTF_Font* primary) {
+	for (int i = 0; i < cache_count; i++) {
+		UIFontEntry* e = &cache[i];
+		if (e->f != primary)
+			continue;
+		if (!e->th && !e->th_tried) {
+			e->th_tried = true;
+			const char* path = GFX_getThaiFontPath();
+			e->th = TTF_OpenFont(path, e->px);
+			countOpen(e->px);
+			if (!e->th)
+				LOG_warn("UIFont: can't open %s at %dpx: %s\n", path, e->px, TTF_GetError());
+		}
+		return e->th;
+	}
+	return NULL;
+}
+
 TTF_Font* UIFont_get(float sp, bool bold) {
 	return UIFont_getPx(NX_SP(sp), bold);
 }
@@ -113,6 +136,7 @@ TTF_Font* UIFont_getPx(int px, bool bold) {
 	// give our fonts their Arabic counterparts in GFX_renderText/GFX_measureText/GFX_getCachedText.
 	GFX_setFontReloadHook(UIFont_quit);
 	GFX_setFallbackFontResolver(arabicFor);
+	GFX_setThaiFontResolver(thaiFor);
 	const char* path = GFX_getSystemFontPath();
 	TTF_Font* f = TTF_OpenFont(path, px);
 	countOpen(px);
@@ -122,7 +146,7 @@ TTF_Font* UIFont_getPx(int px, bool bold) {
 	}
 	// `bold` is kept in the key but draws the regular face: the UI font ships one weight, and TTF_STYLE_BOLD's
 	// synthetic emboldening reads heavy with rough edges
-	cache[cache_count++] = (UIFontEntry){px, bold, f, NULL, false, ++cache_tick};
+	cache[cache_count++] = (UIFontEntry){px, bold, f, NULL, false, NULL, false, ++cache_tick};
 	return f;
 }
 
