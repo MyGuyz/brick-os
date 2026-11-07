@@ -1,5 +1,8 @@
 # Brick OS Thai UI. English<TAB>Thai, one per line (common/i18n.h).
 Home	หน้าแรก
+HOME	หน้าแรก
+CONSOLES	เกม
+COLLECTIONS	คอลเลกชัน
 Consoles	เกม
 Collections	คอลเลกชัน
 Tools	เครื่องมือ
@@ -122,6 +125,8 @@ Top bar	แถบบน
 Bottom bar	แถบล่าง
 Default view	มุมมองเริ่มต้น
 Full screen	เต็มจอ
+Language	ภาษา
+Menu language	ภาษาของเมนู
 Appearance	หน้าตา
 Display	หน้าจอ
 Audio	เสียง
@@ -193,6 +198,7 @@ Debug logging	บันทึก log ดีบัก
 Enable SSH / SFTP	เปิด SSH / SFTP
 Start SSH / SFTP on boot	เปิด SSH / SFTP ตอนบูต
 Keep awake over USB	ไม่พักเครื่องเมื่อต่อ USB
+Brick OS version	เวอร์ชัน Brick OS
 Release date	วันที่ออก
 Platform	รุ่นเครื่อง
 Firmware version	เวอร์ชันเฟิร์มแวร์
