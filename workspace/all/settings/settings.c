@@ -13,6 +13,7 @@
 #include "config.h"
 #include "rgba.h"
 #include "utils.h"
+#include "i18n.h"
 #include "settings_menu.h"
 #include "settings_wifi.h"
 #include "settings_bt.h"
@@ -1083,6 +1084,34 @@ static void reset_show_clock(void) {
 	CFG_setShowClock(CFG_DEFAULT_SHOWCLOCK);
 }
 
+// Brick OS: UI language (common/i18n.h). Written to SHARED_USERDATA_PATH/lang; apps pick it up on their next
+// launch, Settings right away.
+#define LANG_SETTING_PATH SHARED_USERDATA_PATH "/lang"
+static const char* lang_labels[] = {"ไทย", "English"};
+static int lang_values[] = {0, 1};
+static int get_lang(void) {
+	char lang[16] = "th";
+	FILE* f = fopen(LANG_SETTING_PATH, "r");
+	if (f) {
+		if (fscanf(f, "%15s", lang) != 1)
+			strcpy(lang, "th");
+		fclose(f);
+	}
+	return strcmp(lang, "en") == 0 ? 1 : 0;
+}
+static void set_lang(int v) {
+	FILE* f = fopen(LANG_SETTING_PATH, "w");
+	if (f) {
+		fputs(v == 1 ? "en\n" : "th\n", f);
+		fclose(f);
+	}
+	I18N_reload();
+	GFX_loadSystemFont(GFX_getSystemFontPath()); // drops cached text drawn in the old language
+}
+static void reset_lang(void) {
+	set_lang(0);
+}
+
 static int get_ntp(void) {
 	return TIME_getNetworkTimeSync() ? 1 : 0;
 }
@@ -1400,7 +1429,7 @@ static void init_about_info(void) {
 // Menu item arrays (static allocation)
 // ============================================
 
-#define MAX_APPEARANCE_ITEMS 28
+#define MAX_APPEARANCE_ITEMS 29 // Brick OS: + Language
 #define MAX_LAYOUTS_ITEMS 28
 #define MAX_DISPLAY_ITEMS 8
 #define MAX_SYSTEM_ITEMS 24
@@ -2088,6 +2117,9 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	// ============================
 	idx = 0;
 	// Font selection removed — the UI always uses the MiSans-based font.
+	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Language", "Menu language",
+		lang_labels, 2, lang_values, get_lang, set_lang, reset_lang);
 	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
 		"Main color", "The color used to render main UI elements.",
 		color_labels, COLOR_COUNT, (int*)color_values, get_color1, set_color1, reset_color1);
