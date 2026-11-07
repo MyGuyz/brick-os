@@ -7,6 +7,7 @@
 #include "module_menu.h"
 #include "ui_main.h"
 #include "ui_listview.h"
+#include "bos_feature.h"
 
 // Toast message state
 static char menu_toast_message[128] = "";
@@ -35,7 +36,7 @@ int MenuModule_run(SDL_Surface* screen) {
 	// starts at row 0. render_menu supplies the
 	// real items pointer as list_id on the first frame.
 	ListView* v = MediaMainMenu_view();
-	UI_listViewReset(v, MENU_ITEM_COUNT, NULL);
+	UI_listViewReset(v, BOS_hasFeature(BOS_FEATURE_IPTV) ? MENU_ITEM_COUNT : 1, NULL); // Brick OS: IPTV row only when installed
 
 	while (1) {
 		GFX_startFrame();

@@ -6,6 +6,7 @@
 #include "module_common.h"
 #include "ui_toast.h"
 #include "module_menu.h"
+#include "bos_feature.h"
 #include "ui_listview.h"
 #include "ui_main.h"
 #include "resume.h"
@@ -48,7 +49,7 @@ int MenuModule_run(SDL_Surface* screen) {
 	// starts at row 0. render_menu supplies the
 	// real items pointer as list_id on the first frame.
 	ListView* v = MusicMainMenu_view();
-	int entry_count = (Background_isPlaying() || Resume_isAvailable()) ? 5 : 4;
+	int entry_count = (BOS_hasFeature(BOS_FEATURE_RADIO) ? 4 : 2) + ((Background_isPlaying() || Resume_isAvailable()) ? 1 : 0);
 	UI_listViewReset(v, entry_count, NULL);
 	int prev_first_item_mode = -1;
 
@@ -74,7 +75,7 @@ int MenuModule_run(SDL_Surface* screen) {
 		// meaning. Rebuild the view and force a redraw so the displayed list
 		// matches has_first — otherwise A on the stale list opens the wrong page.
 		if (first_item_mode != prev_first_item_mode) {
-			UI_listViewReset(v, has_first ? 5 : 4, NULL);
+			UI_listViewReset(v, (BOS_hasFeature(BOS_FEATURE_RADIO) ? 4 : 2) + (has_first ? 1 : 0), NULL);
 			prev_first_item_mode = first_item_mode;
 			dirty = 1;
 		}
@@ -119,6 +120,8 @@ int MenuModule_run(SDL_Surface* screen) {
 			int selection = act.index;
 			if (!has_first)
 				selection += 1; // Skip first-item slot
+			if (!BOS_hasFeature(BOS_FEATURE_RADIO) && selection == MENU_RADIO)
+				selection = MENU_SETTINGS; // Brick OS: the lite menu is Library, Settings
 			return selection;
 		}
 		case LISTVIEW_BACK:

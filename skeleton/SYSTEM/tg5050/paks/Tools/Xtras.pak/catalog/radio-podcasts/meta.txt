@@ -1,0 +1,8 @@
+name=Online Radio & Podcasts
+category=TOOL
+platforms=tg5040 tg5050
+version_source=internal
+version=2026-11-08
+desc=Adds Online Radio and Podcasts to the Music Player: internet radio stations by country, podcast search, subscriptions and downloads. Needs Wi-Fi. Removing it hides them again; your stations, subscriptions and downloads are kept.
+size_mb=0
+done_msg=Installed. Open Music Player.

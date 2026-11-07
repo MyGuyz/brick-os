@@ -8,6 +8,7 @@
 // Base menu items (always present)
 static const char* base_menu_items[] = {"Library", "Online TV"};
 #define BASE_MENU_ITEM_COUNT 2
+#include "bos_feature.h"
 
 // Main menu ListView (full mode: the widget owns selection and input;
 // MenuModule_run drives it through MediaMainMenu_view()).
@@ -32,7 +33,7 @@ void render_menu(SDL_Surface* screen, IndicatorType show_setting,
 	ListView* v = &main_menu_view;
 	v->title = "Media Player";
 	v->font = font.large;
-	v->count = BASE_MENU_ITEM_COUNT;
+	v->count = BOS_hasFeature(BOS_FEATURE_IPTV) ? BASE_MENU_ITEM_COUNT : 1; // Brick OS: Online TV is an Optional Pak
 	v->get_row = main_menu_get_row;
 	v->ctx = (void*)base_menu_items;
 	v->list_id = (const void*)base_menu_items;

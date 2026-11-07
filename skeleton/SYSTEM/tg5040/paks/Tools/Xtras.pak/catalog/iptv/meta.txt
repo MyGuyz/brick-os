@@ -1,0 +1,8 @@
+name=Online TV
+category=TOOL
+platforms=tg5040 tg5050
+version_source=internal
+version=2026-11-08
+desc=Adds Online TV (IPTV) to the Media Player: free channels from iptv-org by country, plus your own m3u playlists. Needs Wi-Fi. Removing it hides Online TV again; your saved channels are kept.
+size_mb=0
+done_msg=Installed. Open Media Player.

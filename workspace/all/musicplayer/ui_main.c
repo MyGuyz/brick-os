@@ -9,10 +9,14 @@
 #include "module_menu.h"
 #include "resume.h"
 #include "background.h"
+#include "bos_feature.h"
 
 // Menu items variants (first entry is mutable for Resume/Now Playing swap)
 static const char* menu_items_with_first[] = {"Resume", "Library", "Online Radio", "Podcasts", "Settings"};
 static const char* menu_items_no_first[] = {"Library", "Online Radio", "Podcasts", "Settings"};
+// Brick OS: without the radio-podcasts Optional Pak (bos_feature.h)
+static const char* menu_items_with_first_lite[] = {"Resume", "Library", "Settings"};
+static const char* menu_items_no_first_lite[] = {"Library", "Settings"};
 
 // Cached first_item_mode for callbacks
 static int current_first_item_mode = MENU_FIRST_NONE;
@@ -80,14 +84,14 @@ void render_menu(SDL_Surface* screen, IndicatorType show_setting,
 	bool has_first = (first_item_mode != MENU_FIRST_NONE);
 
 	// Update the first item label based on mode
-	if (first_item_mode == MENU_FIRST_NOW_PLAYING) {
-		menu_items_with_first[0] = "Now Playing";
-	} else {
-		menu_items_with_first[0] = "Resume";
-	}
+	const char* first_label = first_item_mode == MENU_FIRST_NOW_PLAYING ? "Now Playing" : "Resume";
+	menu_items_with_first[0] = first_label;
+	menu_items_with_first_lite[0] = first_label;
 
-	const char** items = has_first ? menu_items_with_first : menu_items_no_first;
-	int count = has_first ? 5 : 4;
+	bool radio = BOS_hasFeature(BOS_FEATURE_RADIO);
+	const char** items = radio ? (has_first ? menu_items_with_first : menu_items_no_first)
+							   : (has_first ? menu_items_with_first_lite : menu_items_no_first_lite);
+	int count = (radio ? 4 : 2) + (has_first ? 1 : 0);
 
 	GFX_clear(screen);
 	ListView* v = &main_menu_view;
