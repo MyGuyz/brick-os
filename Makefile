@@ -177,6 +177,7 @@ ifneq (,$(filter $(PLATFORM),tg5040 tg5050))
 	# Xtras catalog pak
 	cp ./workspace/all/extras/build/$(PLATFORM)/extras.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Xtras.pak/
 	cp ./workspace/all/cheatdb/build/$(PLATFORM)/cheatdb.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Xtras.pak/catalog/cheatdb/pak/
+	cp ./workspace/all/youtube/build/$(PLATFORM)/youtube.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/YouTube.pak/
 
 	# Netplay pre-launch wizard (run bare off PATH by netplay-prelaunch.sh and the
 	# DC/N64 netplay helpers);
