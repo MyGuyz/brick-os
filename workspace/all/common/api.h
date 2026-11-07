@@ -191,6 +191,8 @@ const char* GFX_getArabicFontPath(void);
 // The Thai UI font file, and the Thai counterpart of a primary size-font (NULL if missing or unknown).
 const char* GFX_getThaiFontPath(void);
 TTF_Font* GFX_thaiFontFor(TTF_Font* primary);
+// Register a resolver GFX_thaiFontFor consults for fonts outside `font` (common/ui/ui_font.c registers one).
+void GFX_setThaiFontResolver(TTF_Font* (*resolver)(TTF_Font* primary));
 
 enum {
 	SHARPNESS_SHARP,
