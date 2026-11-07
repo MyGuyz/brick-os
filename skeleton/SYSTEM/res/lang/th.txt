@@ -449,3 +449,10 @@ Press SELECT + A to wake screen	กด SELECT + A เพื่อเปิดห
 Forward 30s	ไปข้างหน้า 30 วิ
 Rewind 10s	ย้อนกลับ 10 วิ
 Seek	เลื่อนตำแหน่ง
+Online TV	ทีวีออนไลน์
+Online Radio	วิทยุออนไลน์
+Podcasts	พอดแคสต์
+Radio	วิทยุ
+Online Radio & Podcasts	วิทยุออนไลน์และพอดแคสต์
+Installed. Open Media Player.	ติดตั้งแล้ว เปิดได้ในแอปวิดีโอ
+Installed. Open Music Player.	ติดตั้งแล้ว เปิดได้ในแอปเพลง
