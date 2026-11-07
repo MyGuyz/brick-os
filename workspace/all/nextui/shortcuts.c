@@ -94,6 +94,24 @@ static int loadShortcuts(void) {
 	bool removed_any = false;
 
 	FILE* file = fopen(SHORTCUTS_PATH, "r");
+	if (!file && !exists(SHORTCUTS_PATH)) {
+		// Brick OS: a fresh card starts with Home's tool squares set (YouTube, music, video, settings); once the
+		// file exists the user's pins rule, an empty list included.
+		static const char* defaults[][2] = {
+			{"/.system/paks/Tools/YouTube.pak", "YouTube"},
+			{"/.system/paks/Tools/Music Player.pak", "Music Player"},
+			{"/.system/paks/Tools/Media Player.pak", "Media Player"},
+			{"/.system/paks/Tools/Settings.pak", "Settings"},
+		};
+		for (size_t i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++) {
+			char sd_path[MAX_PATH];
+			snprintf(sd_path, sizeof(sd_path), "%s%s", SDCARD_PATH, defaults[i][0]);
+			if (exists(sd_path))
+				ShortcutArray_push(shortcuts, Shortcut_new((char*)defaults[i][0], (char*)defaults[i][1]));
+		}
+		saveShortcuts();
+		return shortcuts->count > 0;
+	}
 	if (file) {
 		char line[MAX_PATH * 2]; // "path\tname": each up to a path's length
 		char *path, *name;
