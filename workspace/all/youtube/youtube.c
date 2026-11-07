@@ -65,7 +65,7 @@ static bool ensure_engine(void) {
 	if (Yt_engineInstalled())
 		return true;
 	if (!UI_confirmModal(screen, "Install YouTube engine?",
-						 "Downloads yt-dlp (about 40 MB) over Wi-Fi.", NULL, true, true))
+						 "Downloads yt-dlp and Node.js (about 70 MB) over Wi-Fi.", NULL, true, true))
 		return false;
 	Yt_updateAsync(&op);
 	if (!wait_op("Downloading..."))
@@ -85,33 +85,38 @@ static void update_engine(void) {
 }
 
 // ---- actions --------------------------------------------------------------
+// yt-dlp streams into a FIFO and ffplay plays it. False if ffplay couldn't open it.
+static bool play_stream(const YtVideo* v) {
+	const char* fifo = Yt_streamStart();
+	if (!fifo)
+		return false;
+	FfplayConfig cfg;
+	memset(&cfg, 0, sizeof(cfg));
+	snprintf(cfg.path, sizeof(cfg.path), "%s", fifo);
+	snprintf(cfg.title, sizeof(cfg.title), "%s", v->title);
+	// The FIFO is opened like a local file: the engine's stream mode adds HTTP options that ffplay
+	// refuses for a pipe. A pipe can't seek, so there is no resume position.
+	cfg.is_stream = false;
+	cfg.screen_width = screen->w;
+	PWR_disableAutosleep();
+	FfplayEngine_play(&cfg);
+	PWR_enableAutosleep();
+	Yt_streamStop();
+	return !FfplayEngine_lastFailed();
+}
+
 static void play(const YtVideo* v) {
 	if (!ensure_engine())
 		return;
 	Yt_resolveAsync(&op, v->id);
-	if (!wait_op("Loading..."))
+	if (!wait_op("Starting video (about 30 s)..."))
 		return;
 	if (op.state != YT_DONE) {
 		UI_showMessage(screen, op.error, 3000);
 		return;
 	}
-	FfplayConfig cfg;
-	memset(&cfg, 0, sizeof(cfg));
-	snprintf(cfg.path, sizeof(cfg.path), "%s", op.url);
-	snprintf(cfg.title, sizeof(cfg.title), "%s", v->title);
-	cfg.is_stream = true;
-	cfg.start_position_sec = Yt_position(v->id);
-	cfg.screen_width = screen->w;
-
 	Yt_addHistory(v);
-	PWR_disableAutosleep();
-	FfplayEngine_play(&cfg);
-	PWR_enableAutosleep();
-
-	int pos = 0, dur = 0;
-	if (FfplayEngine_getLastPosition(&pos, &dur))
-		Yt_setPosition(v->id, (pos < RESUME_MIN_SEC || (dur > 0 && pos >= dur - RESUME_MIN_SEC)) ? 0 : pos);
-	if (FfplayEngine_lastFailed())
+	if (!play_stream(v))
 		UI_showMessage(screen, "Failed to play", 2500);
 	Yt_history(&lists[TAB_HISTORY]);
 }
@@ -181,9 +186,10 @@ static void draw(int tab) {
 		UI_renderEmptyState(screen, msg, sub, NULL);
 	} else {
 		ListLayout layout = UI_calcListLayout(screen);
-		UI_adjustListScroll(sel[tab], &scroll_pos[tab], layout.items_per_page);
+		int per_page = layout.items_per_page > 2 ? layout.items_per_page - 1 : layout.items_per_page; // room for the info line
+		UI_adjustListScroll(sel[tab], &scroll_pos[tab], per_page);
 		char trunc[ROW_TEXT_MAX];
-		for (int i = scroll_pos[tab]; i < l->count && i < scroll_pos[tab] + layout.items_per_page; i++) {
+		for (int i = scroll_pos[tab]; i < l->count && i < scroll_pos[tab] + per_page; i++) {
 			bool s = (i == sel[tab]);
 			MenuItemPos pos = UI_renderMenuItemPill(screen, &layout, l->items[i].title, trunc, i - scroll_pos[tab], s, 0);
 			UI_renderListItemText(screen, NULL, trunc, font.large, pos.text_x, pos.text_y, layout.max_width, s);

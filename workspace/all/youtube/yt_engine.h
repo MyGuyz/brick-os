@@ -49,8 +49,16 @@ typedef struct {
 // Paths: the pak folder (for bin/) and the data folder are set once at start.
 void Yt_init(const char* pak_dir);
 bool Yt_engineInstalled(void);
-// Install or update yt-dlp + QuickJS (blocking; run from a YtOp thread via Yt_updateAsync).
+// Install or update yt-dlp + Node.js on a worker thread.
 void Yt_updateAsync(YtOp* op);
+
+// Playback, in two steps: Yt_resolveAsync has yt-dlp solve and save the video's
+// info (slow; behind a loading screen), then Yt_streamStart has yt-dlp download
+// from that info into a FIFO that ffplay reads (YouTube refuses a stream URL
+// fetched by another client). Yt_streamStart returns the FIFO path to hand to
+// ffplay; Yt_streamStop ends the download.
+const char* Yt_streamStart(void);
+void Yt_streamStop(void);
 
 void Yt_searchAsync(YtOp* op, const char* query);
 void Yt_resolveAsync(YtOp* op, const char* video_id);

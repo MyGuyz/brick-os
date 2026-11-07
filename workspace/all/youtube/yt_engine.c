@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -25,18 +26,20 @@
 #define SEARCH_COUNT 20
 
 static char ytdlp[512]; // <pak>/bin/yt-dlp/yt-dlp_linux_aarch64
-static char qjs[512];	// <pak>/bin/qjs
+static char node[512];	// <pak>/bin/node: solves YouTube's JavaScript challenge (QuickJS took ~77 s here, Node ~25 s)
 static char updater[512];
 
 void Yt_init(const char* pak_dir) {
 	snprintf(ytdlp, sizeof(ytdlp), "%s/bin/yt-dlp/yt-dlp_linux_aarch64", pak_dir);
-	snprintf(qjs, sizeof(qjs), "%s/bin/qjs", pak_dir);
+	snprintf(node, sizeof(node), "%s/bin/node", pak_dir);
 	snprintf(updater, sizeof(updater), "%s/update-ytdlp.sh", pak_dir);
 	mkdir(DATA_DIR, 0755);
+	// yt-dlp keeps the player code it fetched between runs
+	setenv("XDG_CACHE_HOME", DATA_DIR "/cache", 1);
 }
 
 bool Yt_engineInstalled(void) {
-	return access(ytdlp, X_OK) == 0 && access(qjs, X_OK) == 0;
+	return access(ytdlp, X_OK) == 0 && access(node, X_OK) == 0;
 }
 
 void Yt_formatDuration(int sec, char* out, int n) {
@@ -153,36 +156,28 @@ static void* search_thread(void* arg) {
 
 // ---- stream URL -----------------------------------------------------------
 
-static bool resolve_with(const char* video_id, const char* client_args, char* url, int n) {
+#define INFO_JSON "/tmp/yt_info.json"
+
+// The slow part of starting a video (YouTube's JavaScript challenge, ~25 s here) runs once, behind the
+// loading screen: yt-dlp writes the video's info, solved URLs included, for Yt_streamStart to reuse.
+static bool resolve_info(const char* video_id) {
+	unlink(INFO_JSON);
 	char cmd[1536];
 	snprintf(cmd, sizeof(cmd),
-			 "'%s' --no-cache-dir --no-warnings --socket-timeout 15 %s"
-			 " -f '18/best[height<=480][vcodec!=none][acodec!=none]' -g"
-			 " 'https://www.youtube.com/watch?v=%s' > " TMP_OUT " 2> " TMP_ERR,
-			 ytdlp, client_args, video_id);
+			 "'%s' --no-warnings --socket-timeout 15 --js-runtimes 'node:%s'"
+			 " -f '18/best[height<=480][vcodec!=none][acodec!=none]' -j"
+			 " 'https://www.youtube.com/watch?v=%s' > " INFO_JSON " 2> " TMP_ERR,
+			 ytdlp, node, video_id);
 	system(cmd);
-	url[0] = '\0';
-	FILE* f = fopen(TMP_OUT, "r");
-	if (f) {
-		if (fgets(url, n, f))
-			url[strcspn(url, "\n")] = '\0';
-		fclose(f);
-	}
-	return strncmp(url, "http", 4) == 0;
+	struct stat st;
+	return stat(INFO_JSON, &st) == 0 && st.st_size > 100;
 }
 
 static void* resolve_thread(void* arg) {
 	YtOp* op = arg;
 	char id[YT_ID];
 	shell_clean(op->arg, id, sizeof(id));
-	// The android_vr client answers without the JavaScript challenge (fast on this CPU);
-	// the web client with QuickJS solving it is the fallback.
-	bool ok = resolve_with(id, "--js-runtimes none --extractor-args youtube:player_client=android_vr", op->url, sizeof(op->url));
-	if (!ok && !op->cancel) {
-		char js[640];
-		snprintf(js, sizeof(js), "--js-runtimes 'quickjs:%s'", qjs);
-		ok = resolve_with(id, js, op->url, sizeof(op->url));
-	}
+	bool ok = resolve_info(id);
 	if (op->cancel)
 		op->state = YT_IDLE;
 	else if (ok)
@@ -192,6 +187,41 @@ static void* resolve_thread(void* arg) {
 		op->state = YT_ERROR;
 	}
 	return NULL;
+}
+
+// ---- streaming into ffplay ------------------------------------------------
+
+#define STREAM_FIFO "/tmp/yt_stream.fifo"
+#define STREAM_PID "/tmp/yt_stream.pid"
+
+void Yt_streamStop(void) {
+	FILE* f = fopen(STREAM_PID, "r");
+	if (f) {
+		int pid = 0;
+		if (fscanf(f, "%d", &pid) == 1 && pid > 1)
+			kill(pid, SIGTERM);
+		fclose(f);
+		unlink(STREAM_PID);
+	}
+	system("killall yt-dlp_linux_aarch64 node 2>/dev/null");
+	unlink(STREAM_FIFO);
+}
+
+const char* Yt_streamStart(void) {
+	Yt_streamStop();
+	if (mkfifo(STREAM_FIFO, 0600) != 0)
+		return NULL;
+	// In the background: the shell opens the FIFO for writing (ffplay opens it for reading) and yt-dlp fills it
+	// from the info Yt_resolveAsync saved, so nothing is solved twice. Format 18 is the one stream with both
+	// picture and sound (360p); yt-dlp can't merge two into a pipe without ffmpeg.
+	char cmd[2048];
+	snprintf(cmd, sizeof(cmd),
+			 "'%s' --no-warnings --no-part --socket-timeout 15 --load-info-json " INFO_JSON
+			 " -f '18/best[height<=480][vcodec!=none][acodec!=none]' -o -"
+			 " > " STREAM_FIFO " 2> " TMP_ERR " & echo $! > " STREAM_PID,
+			 ytdlp);
+	system(cmd);
+	return STREAM_FIFO;
 }
 
 // ---- channel feeds (RSS, no yt-dlp) ---------------------------------------
@@ -352,7 +382,7 @@ void Yt_cancel(YtOp* op) {
 	if (op->state != YT_RUNNING)
 		return;
 	op->cancel = true;
-	system("killall yt-dlp_linux_aarch64 qjs 2>/dev/null");
+	system("killall yt-dlp_linux_aarch64 node 2>/dev/null");
 	pthread_join(op->thread, NULL);
 	op->state = YT_IDLE;
 	op->cancel = false;
