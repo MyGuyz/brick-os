@@ -1,9 +1,10 @@
 #!/bin/sh
 # Brick OS YouTube: install or update yt-dlp (aarch64, onedir) and Node.js (which
-# solves YouTube's JavaScript challenge) into this pak's bin/. Run by youtube.elf
-# (first use, and MENU > Update yt-dlp).
+# solves YouTube's JavaScript challenge). Run by youtube.elf (first use, and MENU >
+# Update yt-dlp). They go under .userdata, not this pak: a system update replaces
+# .system/ and would delete them.
 set -eu
-PAK=$(cd "$(dirname "$0")" && pwd)
+PAK=/mnt/SDCARD/.userdata/shared/youtube
 SHARED=/mnt/SDCARD/.system/shared
 WGET=$SHARED/bin/wget
 UNZIP=$SHARED/bin/7zzs.aarch64

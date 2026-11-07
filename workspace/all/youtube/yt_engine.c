@@ -29,9 +29,12 @@ static char ytdlp[512]; // <pak>/bin/yt-dlp/yt-dlp_linux_aarch64
 static char node[512];	// <pak>/bin/node: solves YouTube's JavaScript challenge (QuickJS took ~77 s here, Node ~25 s)
 static char updater[512];
 
+// The engine lives with the user's data, not in the pak: a system update replaces .system/ wholesale.
+#define ENGINE_DIR DATA_DIR "/bin"
+
 void Yt_init(const char* pak_dir) {
-	snprintf(ytdlp, sizeof(ytdlp), "%s/bin/yt-dlp/yt-dlp_linux_aarch64", pak_dir);
-	snprintf(node, sizeof(node), "%s/bin/node", pak_dir);
+	snprintf(ytdlp, sizeof(ytdlp), "%s/yt-dlp/yt-dlp_linux_aarch64", ENGINE_DIR);
+	snprintf(node, sizeof(node), "%s/node", ENGINE_DIR);
 	snprintf(updater, sizeof(updater), "%s/update-ytdlp.sh", pak_dir);
 	mkdir(DATA_DIR, 0755);
 	// yt-dlp keeps the player code it fetched between runs
