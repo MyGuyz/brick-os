@@ -236,4 +236,216 @@ Extraction failed	แตกไฟล์ไม่สำเร็จ
 Not Enough Space	พื้นที่ไม่พอ
 Failed to check for updates	ตรวจหาอัปเดตไม่สำเร็จ
 Space	เว้นวรรค
-Brick OS version	เวอร์ชัน Brick OS
+Options	ตัวเลือก
+Save Changes	บันทึกการเปลี่ยนแปลง
+Achievements	ความสำเร็จ
+Resume	เล่นต่อ
+Save	บันทึก
+Load	โหลด
+Reset	รีเซ็ต
+Quit	ออก
+SAVE & QUIT	บันทึกแล้วออก
+Empty Slot	ช่องว่าง
+Core Options	ตัวเลือกคอร์
+Cheats	สูตรโกง
+Shaders	เชดเดอร์
+Controls	การควบคุม
+Shortcuts	ทางลัด
+Frontend	ทั่วไป
+Emulator Settings	ตั้งค่าอีมูเลเตอร์
+Shader Settings	ตั้งค่าเชดเดอร์
+Screen Scaling	การขยายภาพ
+Screen Effect	เอฟเฟกต์หน้าจอ
+Screen Sharpness	ความคมของภาพ
+Native	ขนาดจริง
+Fullscreen	เต็มจอ
+Cropped	ครอบภาพ
+Sharp	คม
+Crisp	คมชัด
+Soft	นุ่ม
+Rewind	ย้อนเวลา
+Rewind audio	เสียงตอนย้อนเวลา
+Fast forward audio	เสียงตอนเร่งความเร็ว
+Max FF Speed	ความเร็วเร่งสูงสุด
+Netplay	เล่นออนไลน์
+Host Game	สร้างห้อง
+Join Game	เข้าร่วมห้อง
+Leave netplay?	ออกจากการเล่นออนไลน์?
+Leaving ends the netplay session.	ถ้าออก การเล่นออนไลน์จะจบลง
+Waiting for player...	รอผู้เล่น...
+Waiting for the other player.	รอผู้เล่นอีกคน
+Waiting for a host...	รอผู้สร้างห้อง...
+Waiting for the host...	รอผู้สร้างห้อง...
+Searching for hosts...	กำลังหาห้อง...
+Scanning for hosts...	กำลังหาห้อง...
+Connecting to host...	กำลังเชื่อมต่อห้อง...
+Player connected	ผู้เล่นเชื่อมต่อแล้ว
+Netplay failed	เล่นออนไลน์ไม่สำเร็จ
+Netplay ended	จบการเล่นออนไลน์
+Netplay connection failed.	เชื่อมต่อเล่นออนไลน์ไม่สำเร็จ
+Hotspot	ฮอตสปอต
+USB Cable	สาย USB
+Other device must be on the same WiFi	อีกเครื่องต้องอยู่ WiFi เดียวกัน
+Starting hotspot...	กำลังเปิดฮอตสปอต...
+Starting USB link...	กำลังเชื่อมผ่าน USB...
+Get ready...	เตรียมตัว...
+Let's go!	ไปกันเลย!
+Screenshot saved	บันทึกภาพหน้าจอแล้ว
+Failed to capture screenshot	จับภาพหน้าจอไม่สำเร็จ
+Saved for game.	บันทึกสำหรับเกมนี้แล้ว
+Saved for console.	บันทึกสำหรับเครื่องนี้แล้ว
+Save for game	บันทึกสำหรับเกมนี้
+Save for console	บันทึกสำหรับเครื่องนี้
+Using game config.	ใช้ค่าของเกมนี้
+Using console config.	ใช้ค่าของเครื่องนี้
+Using defaults.	ใช้ค่าเริ่มต้น
+Restore defaults	คืนค่าเริ่มต้น
+Restored defaults.	คืนค่าเริ่มต้นแล้ว
+Load State Undone	ยกเลิกการโหลดแล้ว
+Nothing To Undo	ไม่มีอะไรให้ยกเลิก
+Load Failed - Wrong Disc	โหลดไม่ได้ แผ่นไม่ตรง
+Game Mastered!	เก็บครบทุกความสำเร็จ!
+No achievements yet	ยังไม่มีความสำเร็จ
+This game has no achievements yet	เกมนี้ยังไม่มีความสำเร็จ
+Unknown Game	ไม่ทราบชื่อเกม
+Game Time	เวลาเล่น
+Game Tracker	สถิติการเล่น
+Play some games to track your time	เล่นเกมก่อนแล้วจะเห็นเวลาเล่นที่นี่
+No play activity	ยังไม่มีการเล่น
+Loading...	กำลังโหลด...
+Connecting...	กำลังเชื่อมต่อ...
+Starting...	กำลังเริ่ม...
+Searching...	กำลังค้นหา...
+Saving...	กำลังบันทึก...
+Resuming...	กำลังเล่นต่อ...
+Downloading...	กำลังดาวน์โหลด...
+Installing...	กำลังติดตั้ง...
+Refreshing...	กำลังรีเฟรช...
+Rebooting...	กำลังรีบูต...
+Rebooting	กำลังรีบูต
+Powering off	กำลังปิดเครื่อง
+Power off now	ปิดเครื่องตอนนี้
+Please do not power off...	อย่าปิดเครื่องระหว่างนี้...
+Yes	ใช่
+Start	เริ่ม
+Select	เลือก
+Today	วันนี้
+Yesterday	เมื่อวาน
+Last week	สัปดาห์ที่แล้ว
+Last month	เดือนที่แล้ว
+Last year	ปีที่แล้ว
+New	ใหม่
+Low	ต่ำ
+Medium	กลาง
+High	สูง
+Max	สูงสุด
+Fast	เร็ว
+Standard	มาตรฐาน
+General	ทั่วไป
+Files	ไฟล์
+Size	ขนาด
+Already exists	มีอยู่แล้ว
+Invalid name	ชื่อไม่ถูกต้อง
+The name can't be empty.	ชื่อต้องไม่ว่าง
+The name is too long.	ชื่อยาวเกินไป
+Out of memory.	หน่วยความจำไม่พอ
+Not enough free space on SD card	พื้นที่ใน SD ไม่พอ
+Internet connection required	ต้องเชื่อมต่ออินเทอร์เน็ต
+No network connection	ไม่มีการเชื่อมต่อเครือข่าย
+No network - connect WiFi first	ไม่มีเน็ต เชื่อม WiFi ก่อน
+Scanning for networks...	กำลังหาเครือข่าย...
+No networks found	ไม่พบเครือข่าย
+Getting IP address...	กำลังขอ IP...
+Enabling WiFi...	กำลังเปิด WiFi...
+Disabling WiFi...	กำลังปิด WiFi...
+Enabling Bluetooth...	กำลังเปิด Bluetooth...
+Disabling Bluetooth...	กำลังปิด Bluetooth...
+Scanning for devices...	กำลังหาอุปกรณ์...
+Pairing...	กำลังจับคู่...
+Disconnecting...	กำลังตัดการเชื่อมต่อ...
+Remove saved network credentials	ลบรหัส WiFi ที่บันทึกไว้
+Remove pairing with this device	เลิกจับคู่กับอุปกรณ์นี้
+You already have latest version	คุณใช้เวอร์ชันล่าสุดแล้ว
+Checking for update..	กำลังตรวจหาอัปเดต..
+Fetching release info...	กำลังดึงข้อมูลเวอร์ชัน...
+Press any button to close	กดปุ่มใดก็ได้เพื่อปิด
+Your settings are automatically saved	การตั้งค่าบันทึกอัตโนมัติ
+Exit Settings?	ออกจากการตั้งค่า?
+Reset to defaults?	คืนค่าเริ่มต้น?
+Wrong PIN. Try again.	PIN ไม่ถูก ลองใหม่
+PINs did not match. Try again.	PIN ไม่ตรงกัน ลองใหม่
+Rename Rom	เปลี่ยนชื่อเกม
+Delete ROM?	ลบเกมนี้?
+Delete Rom	ลบเกม
+Rename Folder	เปลี่ยนชื่อโฟลเดอร์
+Rename File	เปลี่ยนชื่อไฟล์
+Delete Folder	ลบโฟลเดอร์
+Delete Folder?	ลบโฟลเดอร์นี้?
+Delete File	ลบไฟล์
+Delete File?	ลบไฟล์นี้?
+File renamed	เปลี่ยนชื่อไฟล์แล้ว
+File deleted	ลบไฟล์แล้ว
+Folder renamed	เปลี่ยนชื่อโฟลเดอร์แล้ว
+Folder deleted	ลบโฟลเดอร์แล้ว
+Rename failed	เปลี่ยนชื่อไม่สำเร็จ
+Delete failed	ลบไม่สำเร็จ
+New Collection...	คอลเลกชันใหม่...
+Couldn't rename the collection	เปลี่ยนชื่อคอลเลกชันไม่สำเร็จ
+Couldn't delete the collection	ลบคอลเลกชันไม่สำเร็จ
+The games stay in your library.	เกมยังอยู่ในคลังของคุณ
+Extracting game...	กำลังแตกไฟล์เกม...
+Game too big to unzip	เกมใหญ่เกินจะแตกไฟล์
+Refresh List	รีเฟรชรายการ
+Artwork Manager	จัดการภาพปก
+Image Viewer	ดูรูปภาพ
+Device Sync	ซิงก์ระหว่างเครื่อง
+Downloads	ดาวน์โหลด
+Music Player	เพลง
+Media Player	วิดีโอ
+Music	เพลง
+Videos	วิดีโอ
+Library	คลังเพลง
+Playlists	เพลย์ลิสต์
+Now Playing	กำลังเล่น
+Play All	เล่นทั้งหมด
+Play from Start	เล่นตั้งแต่ต้น
+Play in Background	เล่นเบื้องหลัง
+Continue playback in background?	เล่นต่อเบื้องหลังไหม?
+Continue Listening	ฟังต่อ
+Playback Controls	ปุ่มควบคุมการเล่น
+Playback Speed	ความเร็วการเล่น
+Next Track	เพลงถัดไป
+Prev Track	เพลงก่อนหน้า
+Toggle Shuffle	สลับเล่นแบบสุ่ม
+Toggle Repeat	สลับเล่นซ้ำ
+Toggle Lyrics	แสดง/ซ่อนเนื้อเพลง
+Toggle Visualizer	แสดง/ซ่อนภาพเคลื่อนไหว
+Add to Playlist	เพิ่มในเพลย์ลิสต์
+Remove from Playlist	นำออกจากเพลย์ลิสต์
+New Playlist	เพลย์ลิสต์ใหม่
+Rename Playlist	เปลี่ยนชื่อเพลย์ลิสต์
+Delete Playlist	ลบเพลย์ลิสต์
+Delete Playlist?	ลบเพลย์ลิสต์นี้?
+Playlist name	ชื่อเพลย์ลิสต์
+Playlist created	สร้างเพลย์ลิสต์แล้ว
+Playlist renamed	เปลี่ยนชื่อเพลย์ลิสต์แล้ว
+Playlist deleted	ลบเพลย์ลิสต์แล้ว
+No music files found	ไม่พบไฟล์เพลง
+Add music to /Music on your SD card	ใส่เพลงไว้ในโฟลเดอร์ /Music บนการ์ด SD
+No tracks in playlist	ไม่มีเพลงในเพลย์ลิสต์
+No playlists saved	ยังไม่มีเพลย์ลิสต์
+Press A to create a playlist	กด A เพื่อสร้างเพลย์ลิสต์
+No videos found	ไม่พบวิดีโอ
+Unknown Artist	ไม่ทราบศิลปิน
+Unknown Title	ไม่ทราบชื่อ
+Failed to play	เล่นไม่สำเร็จ
+Stop Playback	หยุดเล่น
+Quit Media Player?	ออกจากวิดีโอ?
+Subtitles off	ปิดคำบรรยาย
+Turn off screen while music is playing	ปิดหน้าจอขณะเล่นเพลง
+Screen Off	ปิดหน้าจอ
+Wake Screen	เปิดหน้าจอ
+Press SELECT + A to wake screen	กด SELECT + A เพื่อเปิดหน้าจอ
+Forward 30s	ไปข้างหน้า 30 วิ
+Rewind 10s	ย้อนกลับ 10 วิ
+Seek	เลื่อนตำแหน่ง
