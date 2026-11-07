@@ -20,6 +20,7 @@
 // cur_row value for the input line itself: UP from the top key row (or DOWN
 // from the bottom one) lands there, and LEFT/RIGHT then move the caret
 #define KB_INPUT_ROW -1
+#define KB_LANG_KEY "\u0E01/A" // Brick OS: switches English / Thai
 
 // Stock binary layout: number row, three QWERTY rows, symbols row,
 // then the wide Space / Confirm row.
@@ -29,7 +30,7 @@ static const char* kb_lower[KB_ROWS][KB_COLS] = {
 	{"a", "s", "d", "f", "g", "h", "j", "k", "l", ";"},
 	{"z", "x", "c", "v", "b", "n", "m", ",", ".", "/"},
 	{"`", "'", "-", "=", "[", "]", "\\", NULL, NULL, NULL},
-	{"Space", "Confirm", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
 
 static const char* kb_upper[KB_ROWS][KB_COLS] = {
 	{"!", "@", "#", "$", "%", "^", "&", "*", "(", ")"},
@@ -37,7 +38,46 @@ static const char* kb_upper[KB_ROWS][KB_COLS] = {
 	{"A", "S", "D", "F", "G", "H", "J", "K", "L", ":"},
 	{"Z", "X", "C", "V", "B", "N", "M", "<", ">", "?"},
 	{"~", "\"", "_", "+", "{", "}", "|", NULL, NULL, NULL},
-	{"Space", "Confirm", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+
+// Brick OS: Thai layouts (the common letters first, the rare ones and digits on SHIFT).
+// The language key on the bottom row switches between English and Thai.
+static const char* kb_thai_lower[KB_ROWS][KB_COLS] = {
+	{"ๆ", "ไ", "ำ", "พ", "ะ", "ั", "ี", "ร", "น", "ย"},
+	{"บ", "ล", "ฟ", "ห", "ก", "ด", "เ", "้", "่", "า"},
+	{"ส", "ว", "ง", "ผ", "ป", "แ", "อ", "ิ", "ื", "ท"},
+	{"ม", "ใ", "ฝ", "ภ", "ถ", "ุ", "ึ", "ค", "ต", "จ"},
+	{"ข", "ช", "โ", "็", "ู", "์", "๊", "๋", "ฯ", "."},
+	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+
+static const char* kb_thai_upper[KB_ROWS][KB_COLS] = {
+	{"๑", "๒", "๓", "๔", "๕", "๖", "๗", "๘", "๙", "๐"},
+	{"ฎ", "ฑ", "ธ", "ณ", "ญ", "ฐ", "ฤ", "ฆ", "ฏ", "ฌ"},
+	{"ษ", "ศ", "ซ", "ฉ", "ฮ", "ฒ", "ฬ", "ฦ", "ฅ", "ฃ"},
+	{"ํ", "ฺ", "฿", "(", ")", "\"", ",", "?", "!", "-"},
+	{"ๅ", "/", ":", ";", "+", "=", "_", "'", "*", "@"},
+	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+
+typedef const char* KbLayout[KB_ROWS][KB_COLS];
+static KbLayout* kb_layout(int thai, int shift) {
+	if (thai)
+		return shift ? &kb_thai_upper : &kb_thai_lower;
+	return shift ? &kb_upper : &kb_lower;
+}
+static int kb_thai_mode = 0; // the last language used, kept for the next keyboard this run
+
+// A Thai mark alone on a key is drawn on a dotted circle so it sits where it will in a word.
+static const char* kb_label(const char* key) {
+	static char buf[16];
+	const unsigned char* k = (const unsigned char*)key;
+	if (k[0] == 0xE0 && k[1] == 0xB8 && (k[2] == 0xB1 || (k[2] >= 0xB4 && k[2] <= 0xBA)))
+		snprintf(buf, sizeof(buf), "\u25CC%s", key);
+	else if (k[0] == 0xE0 && k[1] == 0xB9 && k[2] >= 0x87 && k[2] <= 0x8E)
+		snprintf(buf, sizeof(buf), "\u25CC%s", key);
+	else
+		return key;
+	return buf;
+}
 
 static int kb_row_len(const char* layout[KB_ROWS][KB_COLS], int row) {
 	int n = 0;
@@ -48,7 +88,7 @@ static int kb_row_len(const char* layout[KB_ROWS][KB_COLS], int row) {
 
 static void kb_draw(SDL_Surface* screen, const char* title, const char* input,
 					int caret, int cur_row, int cur_col, int shift) {
-	const char*(*layout)[KB_COLS] = shift ? kb_upper : kb_lower;
+	const char*(*layout)[KB_COLS] = *kb_layout(kb_thai_mode, shift);
 
 	SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
 
@@ -146,7 +186,7 @@ static void kb_draw(SDL_Surface* screen, const char* title, const char* input,
 			// Space / Confirm: one wide key centered in each half.
 			for (int col = 0; col < len; col++) {
 				const char* key = layout[row][col];
-				int cx = kb_left + (col == 0 ? kb_w / 4 : (kb_w * 3) / 4);
+				int cx = kb_left + (2 * col + 1) * kb_w / (2 * len);
 				bool focused = (row == cur_row && col == cur_col);
 				text = GFX_renderText(font.large, key,
 									  focused ? focused_color : COLOR_WHITE);
@@ -179,7 +219,7 @@ static void kb_draw(SDL_Surface* screen, const char* title, const char* input,
 					UI_fillRoundedRect(screen, cx - d / 2, cy - d / 2,
 									   d, d, d / 2, THEME_COLOR1);
 				}
-				text = GFX_renderText(font.large, key,
+				text = GFX_renderText(font.large, kb_label(key),
 									  focused ? focused_color : COLOR_WHITE);
 				if (text) {
 					SDL_BlitSurface(text, NULL, screen,
@@ -218,6 +258,18 @@ static bool kb_insert(char* input, int* len, int* caret, char c) {
 	return true;
 }
 
+// Insert a key's whole UTF-8 text (Thai keys are 3 bytes); false when it doesn't fit.
+static bool kb_insert_str(char* input, int* len, int* caret, const char* key) {
+	int n = (int)strlen(key);
+	if (*len + n > KB_MAX_INPUT)
+		return false;
+	memmove(input + *caret + n, input + *caret, *len - *caret + 1);
+	memcpy(input + *caret, key, n);
+	*len += n;
+	*caret += n;
+	return true;
+}
+
 char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 	SDL_Surface* screen = GFX_getScreen();
 	if (!screen) {
@@ -250,7 +302,7 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 		GFX_startFrame();
 		PAD_poll();
 
-		const char*(*layout)[KB_COLS] = shift ? kb_upper : kb_lower;
+		const char*(*layout)[KB_COLS] = *kb_layout(kb_thai_mode, shift);
 
 		// START cancel is a tap (release within 250 ms, no volume key in
 		// between): START + volume is the color-temp combo that PWR_update
@@ -341,8 +393,12 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 				if (len == 0)
 					return NULL; // empty input = cancel (matches old wrapper)
 				return strdup(input);
+			} else if (strcmp(key, KB_LANG_KEY) == 0) {
+				kb_thai_mode = !kb_thai_mode;
+				shift = 0;
+				dirty = true;
 			} else {
-				if (kb_insert(input, &len, &caret, key[0]))
+				if (kb_insert_str(input, &len, &caret, key))
 					dirty = true;
 			}
 		}
