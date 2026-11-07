@@ -230,3 +230,4 @@ Extraction failed	แตกไฟล์ไม่สำเร็จ
 Not Enough Space	พื้นที่ไม่พอ
 Failed to check for updates	ตรวจหาอัปเดตไม่สำเร็จ
 Space	เว้นวรรค
+Brick OS version	เวอร์ชัน Brick OS
