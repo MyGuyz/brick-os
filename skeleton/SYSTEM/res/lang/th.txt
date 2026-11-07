@@ -456,7 +456,8 @@ Search YouTube, then A to play	ค้นหาคลิป แล้วกด A 
 No subscriptions yet	ยังไม่ได้ติดตามช่องไหน
 Press X on a video to follow its channel	กด X ที่คลิปเพื่อติดตามช่องนั้น
 Install YouTube engine?	ติดตั้งตัวเล่น YouTube?
-Downloads yt-dlp (about 40 MB) over Wi-Fi.	จะดาวน์โหลด yt-dlp (ประมาณ 40 MB) ผ่าน Wi-Fi
+Downloads yt-dlp and Node.js (about 70 MB) over Wi-Fi.	จะดาวน์โหลด yt-dlp และ Node.js (ประมาณ 70 MB) ผ่าน Wi-Fi
+Starting video (about 30 s)...	กำลังเริ่มคลิป (ประมาณ 30 วินาที)...
 Update yt-dlp?	อัปเดต yt-dlp?
 Use this when videos stop playing.	ใช้เมื่อคลิปเล่นไม่ได้
 Done	เสร็จแล้ว
