@@ -205,3 +205,5 @@ cc -std=gnu99 -Wall -Werror -fsanitize=address -g -I.. -o /tmp/nx_test_str_trim 
 /tmp/nx_test_str_trim
 cc -std=gnu99 -Wall -Werror -fsanitize=address -g -o /tmp/nx_test_text_thai ../text_thai.c test_text_thai.c
 /tmp/nx_test_text_thai
+cc -std=gnu99 -Wall -Werror -fsanitize=address -g -DI18N_NO_DEFINES -o /tmp/nx_test_i18n ../i18n.c test_i18n.c
+/tmp/nx_test_i18n

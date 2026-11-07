@@ -1,0 +1,232 @@
+# Brick OS Thai UI. English<TAB>Thai, one per line (common/i18n.h).
+Home	หน้าแรก
+Consoles	เกม
+Collections	คอลเลกชัน
+Tools	เครื่องมือ
+Settings	ตั้งค่า
+Recents	ล่าสุด
+Recent	ล่าสุด
+Continue	เล่นต่อ
+Pick a game	เลือกเกม
+Search	ค้นหา
+Game Switcher	สลับเกม
+Nothing played yet	ยังไม่ได้เล่นเกมไหน
+Suspend a game to see it here	พักเกมไว้แล้วจะขึ้นที่นี่
+No Resumable Games	ไม่มีเกมให้เล่นต่อ
+Nothing here yet	ยังไม่มีอะไรที่นี่
+Empty folder	โฟลเดอร์ว่าง
+No results	ไม่พบผลลัพธ์
+Most played	เล่นบ่อยที่สุด
+All recent games	เกมล่าสุดทั้งหมด
+Resumable only	เฉพาะที่เล่นต่อได้
+Today	วันนี้
+This month	เดือนนี้
+Xtras	ร้านเสริม
+Xtra Games	เกมเสริม
+Add to Collection	เพิ่มในคอลเลกชัน
+Rename	เปลี่ยนชื่อ
+Rename collection	เปลี่ยนชื่อคอลเลกชัน
+New collection name	ชื่อคอลเลกชันใหม่
+Can't use that name	ใช้ชื่อนี้ไม่ได้
+Delete	ลบ
+Pin Item	ปักหมุด
+Unpin Item	เลิกปักหมุด
+Pin Tool	ปักหมุดเครื่องมือ
+Unpin Tool	เลิกปักหมุดเครื่องมือ
+Clear History	ล้างประวัติ
+Launch Options	ตัวเลือกการเปิด
+Fetch Artwork	ดึงภาพปก
+Artwork added	เพิ่มภาพปกแล้ว
+No art found	ไม่พบภาพปก
+Connect to WiFi to fetch art	เชื่อม WiFi เพื่อดึงภาพปก
+Art fetch failed	ดึงภาพปกไม่สำเร็จ
+Art fetch timed out	ดึงภาพปกนานเกินไป
+Quit App	ออกจากแอป
+BACK	กลับ
+CANCEL	ยกเลิก
+OPEN	เปิด
+SET	ตั้ง
+RESUME	เล่นต่อ
+EXIT	ออก
+CHANGE	เปลี่ยน
+TOOL	เครื่องมือ
+RECENT	ล่าสุด
+SEARCH	ค้นหา
+REMOVE	นำออก
+QUIT	ออก
+OPTIONS	ตัวเลือก
+NETPLAY	เล่นออนไลน์
+INSTALL	ติดตั้ง
+UNINSTALL	ถอนการติดตั้ง
+UPDATE	อัปเดต
+REINSTALL	ติดตั้งใหม่
+DELETE	ลบ
+CLOSE	ปิด
+CLEAR	ล้าง
+CONFIRM	ยืนยัน
+DETAILS	รายละเอียด
+EDIT	แก้ไข
+MORE	เพิ่มเติม
+PLAY	เล่น
+RETRY	ลองใหม่
+SCROLL	เลื่อน
+YES	ใช่
+NO	ไม่
+OK	ตกลง
+GAME	เกม
+GAMES	เกม
+TOOLS	เครื่องมือ
+PORTS	พอร์ต
+On	เปิด
+Off	ปิด
+Auto	อัตโนมัติ
+None	ไม่มี
+Never	ไม่ใช้
+Normal	ปกติ
+Show	แสดง
+Hide	ซ่อน
+Left	ซ้าย
+Right	ขวา
+Horizontal	แนวนอน
+Vertical	แนวตั้ง
+Error	ผิดพลาด
+Unknown	ไม่ทราบ
+Confirm	ยืนยัน
+Cancelled	ยกเลิกแล้ว
+Available	พร้อมใช้
+Not available	ใช้ไม่ได้
+Installed	ติดตั้งแล้ว
+Not installed	ยังไม่ติดตั้ง
+Install	ติดตั้ง
+Uninstall	ถอนการติดตั้ง
+Uninstalled	ถอนการติดตั้งแล้ว
+Install failed	ติดตั้งไม่สำเร็จ
+Uninstall failed	ถอนการติดตั้งไม่สำเร็จ
+Update Available	มีอัปเดต
+Update available	มีอัปเดต
+Muted	ปิดเสียง
+Press B to cancel	กด B เพื่อยกเลิก
+List	รายการ
+Grid	ตาราง
+Carousel	ภาพหมุน
+Minimal	มินิมอล
+Wheel	วงล้อ
+Backdrop	ภาพพื้นหลัง
+Layouts	รูปแบบหน้าจอ
+Home layout	รูปแบบหน้าแรก
+Home tab	แท็บหน้าแรก
+Consoles tab	แท็บเกม
+Collections tab	แท็บคอลเลกชัน
+Tools tab	แท็บเครื่องมือ
+Top bar	แถบบน
+Bottom bar	แถบล่าง
+Default view	มุมมองเริ่มต้น
+Full screen	เต็มจอ
+Appearance	หน้าตา
+Display	หน้าจอ
+Audio	เสียง
+Controller	ปุ่มควบคุม
+Network	เครือข่าย
+WiFi	WiFi
+Bluetooth	Bluetooth
+System	ระบบ
+About	เกี่ยวกับ
+Developer	นักพัฒนา
+Developer & debugging tools	เครื่องมือนักพัฒนาและดีบัก
+Simple Mode	โหมดง่าย
+Simplified menu for children	เมนูแบบง่ายสำหรับเด็ก
+Set Settings PIN	ตั้ง PIN การตั้งค่า
+Enter Settings PIN	ใส่ PIN การตั้งค่า
+Confirm Settings PIN	ยืนยัน PIN การตั้งค่า
+Brightness	ความสว่าง
+Volume	ระดับเสียง
+Speaker volume	เสียงลำโพง
+Color temperature	อุณหภูมิสี
+Contrast	คอนทราสต์
+Saturation	ความอิ่มสี
+Exposure	แสง
+Screen timeout	ปิดหน้าจอหลัง
+Suspend timeout	พักเครื่องหลัง
+Disable sleep	ปิดการพักเครื่อง
+Haptic feedback	การสั่น
+Vibration strength	ความแรงการสั่น
+Button layout	รูปแบบปุ่ม
+Joysticks	จอยสติก
+Input Tester	ทดสอบปุ่ม
+Emulator Shortcuts	ทางลัดอีมูเลเตอร์
+Emulator Options	ตัวเลือกอีมูเลเตอร์
+Save states	บันทึกสถานะ
+Load states	โหลดสถานะ
+Save format	รูปแบบเซฟ
+Save state format	รูปแบบบันทึกสถานะ
+Save state notifications	แจ้งเตือนบันทึกสถานะ
+In-game Notifications	แจ้งเตือนในเกม
+Screenshots	ภาพหน้าจอ
+Screenshot	ภาพหน้าจอ
+Show clock	แสดงนาฬิกา
+Show battery percentage	แสดงเปอร์เซ็นต์แบต
+Show menu animations	แสดงแอนิเมชันเมนู
+Show menu transitions	แสดงการเปลี่ยนหน้า
+Animation speed	ความเร็วแอนิเมชัน
+Time zone	เขตเวลา
+Your time zone	เขตเวลาของคุณ
+Set time and date manually	ตั้งวันเวลาเอง
+Font	ฟอนต์
+Color	สี
+Main color	สีหลัก
+Primary accent color	สีเน้นหลัก
+Secondary accent color	สีเน้นรอง
+Background	พื้นหลัง
+Bootlogo	โลโก้ตอนเปิดเครื่อง
+LED Control	ไฟ LED
+LED color	สี LED
+LED brightness level	ความสว่าง LED
+Fan Speed	ความเร็วพัดลม
+Performance	ประสิทธิภาพ
+Safe poweroff	ปิดเครื่องอย่างปลอดภัย
+Refresh Roms	รีเฟรชรายชื่อเกม
+Refresh emulator/roms list	รีเฟรชรายชื่ออีมูเลเตอร์และเกม
+Clean dot files	ล้างไฟล์ซ่อน
+Restore stock files	คืนค่าไฟล์เดิม
+Reset to defaults	คืนค่าเริ่มต้น
+Debug logging	บันทึก log ดีบัก
+Enable SSH / SFTP	เปิด SSH / SFTP
+Start SSH / SFTP on boot	เปิด SSH / SFTP ตอนบูต
+Keep awake over USB	ไม่พักเครื่องเมื่อต่อ USB
+Release date	วันที่ออก
+Platform	รุ่นเครื่อง
+Firmware version	เวอร์ชันเฟิร์มแวร์
+Updater	อัปเดตระบบ
+Enable or disable WiFi	เปิดหรือปิด WiFi
+Enable or disable Bluetooth	เปิดหรือปิด Bluetooth
+Connect	เชื่อมต่อ
+Disconnect	ตัดการเชื่อมต่อ
+Connected	เชื่อมต่อแล้ว
+Connection failed	เชื่อมต่อไม่สำเร็จ
+Forget	ลืมเครือข่ายนี้
+Pair	จับคู่
+Paired	จับคู่แล้ว
+Unpair	เลิกจับคู่
+Pair with this device	จับคู่กับอุปกรณ์นี้
+Connect to this paired device	เชื่อมกับอุปกรณ์ที่จับคู่ไว้
+Disconnect from this device	ตัดการเชื่อมกับอุปกรณ์นี้
+Disconnect from this network	ตัดการเชื่อมเครือข่ายนี้
+Connect to open network	เชื่อมเครือข่ายเปิด
+Enter WiFi Password	ใส่รหัส WiFi
+Enter password and connect	ใส่รหัสแล้วเชื่อมต่อ
+Incorrect password	รหัสไม่ถูกต้อง
+No internet connection	ไม่มีอินเทอร์เน็ต
+WiFi diagnostics	ตรวจสอบ WiFi
+Bluetooth diagnostics	ตรวจสอบ Bluetooth
+Install Update	ติดตั้งอัปเดต
+Downloading Update	กำลังดาวน์โหลดอัปเดต
+Verifying Update	กำลังตรวจสอบอัปเดต
+Installing Update	กำลังติดตั้งอัปเดต
+Update Complete	อัปเดตเสร็จแล้ว
+Update Error	อัปเดตผิดพลาด
+Download failed	ดาวน์โหลดไม่สำเร็จ
+Download corrupted	ไฟล์ดาวน์โหลดเสียหาย
+Extraction failed	แตกไฟล์ไม่สำเร็จ
+Not Enough Space	พื้นที่ไม่พอ
+Failed to check for updates	ตรวจหาอัปเดตไม่สำเร็จ
+Space	เว้นวรรค

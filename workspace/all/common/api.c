@@ -23,6 +23,7 @@
 #include "audio_manager.h"
 #include "text_shape.h"
 #include "text_thai.h"
+#include "i18n.h"
 #include "text_wrap.h"
 #include "rgba.h"
 
@@ -181,6 +182,7 @@ static SDL_Surface* apply_text_alpha(SDL_Surface* surf, Uint8 a) {
 }
 
 static SDL_Surface* render_text_internal(TTF_Font* primary, const char* text, SDL_Color color) {
+	text = I18N_text(text);
 	if (!primary || !text || !text[0])
 		return NULL;
 	Uint8 alpha = color.a ? color.a : 255; // an alpha-less SDL_Color literal means opaque
@@ -204,6 +206,7 @@ SDL_Surface* GFX_renderText(TTF_Font* primary, const char* utf8, SDL_Color color
 }
 
 void GFX_measureText(TTF_Font* primary, const char* utf8, int* w, int* h) {
+	utf8 = I18N_text(utf8);
 	if (w)
 		*w = 0;
 	if (h)
@@ -231,6 +234,7 @@ void GFX_measureText(TTF_Font* primary, const char* utf8, int* w, int* h) {
 
 SDL_Surface* GFX_renderTextWrapped(TTF_Font* primary, const char* utf8, SDL_Color color,
 								   uint32_t wrap_w) {
+	utf8 = I18N_text(utf8);
 	if (!primary || !utf8 || !utf8[0])
 		return NULL;
 	Uint8 alpha = color.a ? color.a : 255; // an alpha-less SDL_Color literal means opaque
