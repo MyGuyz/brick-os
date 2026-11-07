@@ -37,8 +37,8 @@
 // Configuration
 // ============================================
 
-#define UPDATER_REPO_OWNER "nx-redux"
-#define UPDATER_REPO_NAME "nx-handheld"
+#define UPDATER_REPO_OWNER "MyGuyz"
+#define UPDATER_REPO_NAME "brick-os"
 // Web endpoint that 302-redirects to /releases/tag/<TAG>; unlike
 // api.github.com it is not subject to the 60 req/hour per-IP rate limit.
 #define UPDATER_WEB_LATEST_URL \
@@ -67,7 +67,7 @@ static const char* get_device_name(void) {
 	return "smartpro";
 }
 
-// Release-asset filename suffix after "NXRedux-<tag>-": one zip per device.
+// Release-asset filename suffix after "BrickOS-<tag>-": one zip per device.
 static const char* get_asset_suffix(void) {
 	static char suffix[80];
 	snprintf(suffix, sizeof(suffix), "%s.zip", get_device_name());

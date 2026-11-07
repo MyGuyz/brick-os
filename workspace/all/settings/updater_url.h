@@ -3,6 +3,9 @@
 
 #include <stddef.h>
 
+// Release assets are named <prefix>-<tag>-<device>.zip
+#define UPDATER_ASSET_PREFIX "BrickOS"
+
 /**
  * Pure string helpers for the rate-limit-free update check
  * (github.com web endpoints instead of api.github.com).
@@ -30,7 +33,7 @@ int updater_parse_location_header(const char* headers_text, char* out, size_t ou
 
 /**
  * Build the predictable release-asset download URL
- * "https://github.com/<owner>/<repo>/releases/download/<tag>/NXRedux-<tag>-<device>.zip".
+ * "https://github.com/<owner>/<repo>/releases/download/<tag>/BrickOS-<tag>-<device>.zip".
  * Only valid for releases whose assets use tag-based names (v1.9.0+).
  *
  * @return 0 on success, -1 if any piece is missing or the URL does not fit.

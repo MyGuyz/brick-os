@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include "brand.h"
 #include <signal.h>
 #if defined(PLATFORM_TG5050)
 #include "../../tg5050/platform/platform.h"
@@ -97,7 +98,7 @@ static bool wait_for_music_service(void) {
 		}
 		if (slow) {
 			const char* lines[] = {"Taking longer than expected. Press B to go back.",
-								   "If this keeps happening, reinstall or update NX Redux."};
+								   "If this keeps happening, reinstall or update " BRAND_NAME "."};
 			for (size_t i = 0; i < sizeof(lines) / sizeof(lines[0]); i++) {
 				text = GFX_renderText(font.small, lines[i], COLOR_GRAY);
 				if (!text)

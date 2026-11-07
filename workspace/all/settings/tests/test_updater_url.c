@@ -95,12 +95,12 @@ int main(void) {
 	assert(updater_build_fallback_url("nx-redux", "nx-handheld", "v1.9.0", "brick",
 									  out, sizeof(out)) == 0);
 	assert(strcmp(out, "https://github.com/nx-redux/nx-handheld/releases/download/"
-					   "v1.9.0/NXRedux-v1.9.0-brick.zip") == 0);
+					   "v1.9.0/BrickOS-v1.9.0-brick.zip") == 0);
 
 	assert(updater_build_fallback_url("nx-redux", "nx-handheld", "v1.9.0", "smartpros",
 									  out, sizeof(out)) == 0);
 	assert(strcmp(out, "https://github.com/nx-redux/nx-handheld/releases/download/"
-					   "v1.9.0/NXRedux-v1.9.0-smartpros.zip") == 0);
+					   "v1.9.0/BrickOS-v1.9.0-smartpros.zip") == 0);
 
 	// Truncation must fail, not return a partial URL
 	assert(updater_build_fallback_url("nx-redux", "nx-handheld", "v1.9.0", "brick",
@@ -115,35 +115,35 @@ int main(void) {
 	// GitHub's asset object order: name, uploader{...}, digest, then browser_download_url.
 	static const char rel[] =
 		"{\"tag_name\":\"v2.3.0\",\"assets\":["
-		"{\"name\":\"NXRedux-v2.3.0-brickpro.zip\",\"uploader\":{\"id\":1},"
+		"{\"name\":\"BrickOS-v2.3.0-brickpro.zip\",\"uploader\":{\"id\":1},"
 		"\"digest\":\"sha256:AAAA1111\",\"browser_download_url\": "
-		"\"https://x/NXRedux-v2.3.0-brickpro.zip\"},"
-		"{\"name\":\"NXRedux-v2.3.0-brick.zip\",\"uploader\":{\"id\":1},"
-		"\"digest\":\"sha256:BBBB2222\",\"browser_download_url\":\"https://x/NXRedux-v2.3.0-brick.zip\"},"
-		"{\"name\":\"NXRedux-v2.3.0-smartpros.zip\",\"uploader\":{\"id\":1},"
-		"\"browser_download_url\":\"https://x/NXRedux-v2.3.0-smartpros.zip\"},"
-		"{\"name\":\"NXRedux-v2.3.0-smartpro.zip\",\"uploader\":{\"id\":1},"
-		"\"browser_download_url\":\"https://x/NXRedux-v2.3.0-smartpro.zip\"}"
+		"\"https://x/BrickOS-v2.3.0-brickpro.zip\"},"
+		"{\"name\":\"BrickOS-v2.3.0-brick.zip\",\"uploader\":{\"id\":1},"
+		"\"digest\":\"sha256:BBBB2222\",\"browser_download_url\":\"https://x/BrickOS-v2.3.0-brick.zip\"},"
+		"{\"name\":\"BrickOS-v2.3.0-smartpros.zip\",\"uploader\":{\"id\":1},"
+		"\"browser_download_url\":\"https://x/BrickOS-v2.3.0-smartpros.zip\"},"
+		"{\"name\":\"BrickOS-v2.3.0-smartpro.zip\",\"uploader\":{\"id\":1},"
+		"\"browser_download_url\":\"https://x/BrickOS-v2.3.0-smartpro.zip\"}"
 		"]}";
 	char digest[80];
 
 	// "-brick.zip" must not match the earlier "-brickpro.zip"; digest comes from the same asset.
 	assert(updater_find_zip_asset_url(rel, "brick.zip", out, sizeof(out), digest, sizeof(digest)) == out);
-	assert(strcmp(out, "https://x/NXRedux-v2.3.0-brick.zip") == 0);
+	assert(strcmp(out, "https://x/BrickOS-v2.3.0-brick.zip") == 0);
 	assert(strcmp(digest, "bbbb2222") == 0);
 
 	// A space after the colon is accepted.
 	assert(updater_find_zip_asset_url(rel, "brickpro.zip", out, sizeof(out), digest, sizeof(digest)) == out);
-	assert(strcmp(out, "https://x/NXRedux-v2.3.0-brickpro.zip") == 0);
+	assert(strcmp(out, "https://x/BrickOS-v2.3.0-brickpro.zip") == 0);
 	assert(strcmp(digest, "aaaa1111") == 0);
 
 	// "-smartpro.zip" is not a suffix of "-smartpros.zip"; neither asset has a digest, and the
 	// backward scan stops at the '}' closing the previous asset instead of taking its digest.
 	assert(updater_find_zip_asset_url(rel, "smartpro.zip", out, sizeof(out), digest, sizeof(digest)) == out);
-	assert(strcmp(out, "https://x/NXRedux-v2.3.0-smartpro.zip") == 0);
+	assert(strcmp(out, "https://x/BrickOS-v2.3.0-smartpro.zip") == 0);
 	assert(strcmp(digest, "") == 0);
 	assert(updater_find_zip_asset_url(rel, "smartpros.zip", out, sizeof(out), digest, sizeof(digest)) == out);
-	assert(strcmp(out, "https://x/NXRedux-v2.3.0-smartpros.zip") == 0);
+	assert(strcmp(out, "https://x/BrickOS-v2.3.0-smartpros.zip") == 0);
 	assert(strcmp(digest, "") == 0);
 
 	// The digest is cut to digest_size; the URL to out_size.

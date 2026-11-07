@@ -66,7 +66,7 @@ int updater_build_fallback_url(const char* owner, const char* repo,
 		return -1;
 
 	int n = snprintf(out, out_size,
-					 "https://github.com/%s/%s/releases/download/%s/NXRedux-%s-%s.zip",
+					 "https://github.com/%s/%s/releases/download/%s/" UPDATER_ASSET_PREFIX "-%s-%s.zip",
 					 owner, repo, tag, tag, device);
 	if (n < 0 || (size_t)n >= out_size) {
 		out[0] = '\0';

@@ -1,4 +1,4 @@
-# NXRedux
+# Brick OS (based on NX Redux)
 # NOTE: this runs on the host system (eg. macOS) not in a docker image
 # it has to, otherwise we'd be running a docker in a docker and oof
 
@@ -28,7 +28,7 @@ DRASTIC_COMMIT=2b87c96a805758a249127ac979e0b33a64dd7199# 2026-01-21
 ###########################################################
 
 BUILD_HASH:=$(shell git rev-parse --short HEAD)
-BUILD_TAG:=$(shell git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
+BUILD_TAG:=$(shell git describe --tags --match "bos-v*" --abbrev=0 2>/dev/null || echo "untagged")
 # Commit date of HEAD (GMT, YYYYMMDD): the About page shows this as the release
 # date so tag-named release builds and date-named dev builds read the same.
 BUILD_COMMIT_DATE:=$(shell TZ=GMT git log -1 --format=%cd --date=format-local:%Y%m%d 2>/dev/null || TZ=GMT date +%Y%m%d)
@@ -40,7 +40,7 @@ else
   RELEASE_BETA := -$(BUILD_BRANCH)
 endif
 TOOLCHAIN_FILE := Makefile.toolchain
-RELEASE_NAME ?= NXRedux-$(RELEASE_TIME)$(RELEASE_BETA)
+RELEASE_NAME ?= BrickOS-$(RELEASE_TIME)$(RELEASE_BETA)
 
 # Extra paks to ship
 VENDOR_DEST := ./build/VENDOR/Tools

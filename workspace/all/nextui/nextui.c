@@ -6,6 +6,7 @@
 #include "ui_menubar.h"
 #include "ui_buttonhintbar.h"
 #include "utils.h"
+#include "brand.h"
 #include <assert.h>
 #include <msettings.h>
 #include <stdio.h>
@@ -529,7 +530,7 @@ int main(int argc, char* argv[]) {
 			else if (stack->count > 1)
 				menu_title = listTitle(list_title, sizeof(list_title));
 			else if (MenuTabs_count() <= 1)
-				menu_title = "NX Redux"; // a lone tab draws no row (MenuTabs_renderRow): the bar shows the name instead
+				menu_title = BRAND_NAME; // a lone tab draws no row (MenuTabs_renderRow): the bar shows the name instead
 			else
 				menu_title = NULL; // the root: the tab row is in the bottom bar, the top keeps the status icons
 			int ow;

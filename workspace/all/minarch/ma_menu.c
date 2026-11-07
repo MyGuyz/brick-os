@@ -2,6 +2,7 @@
 #include "ma_emutime.h"
 #include "netplay.h"
 #include "utils.h"
+#include "brand.h"
 #include "arcade_names.h"
 #include "core_netplay.h"
 #include "gbalink.h"
@@ -911,7 +912,7 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 
 // Frontend hint: the release tag ("NX Redux (v1.8.0)") when version.txt has
 // one, otherwise the compiled-in date+hash that identifies dev builds.
-static char frontend_version_desc[64] = "NX Redux (" BUILD_DATE " " BUILD_HASH ")";
+static char frontend_version_desc[64] = BRAND_NAME " (" BUILD_DATE " " BUILD_HASH ")";
 static void initFrontendVersionDesc(void) {
 	char version_path[MAX_PATH];
 	snprintf(version_path, sizeof(version_path), "%sversion.txt", ROOT_SYSTEM_PATH);
@@ -932,7 +933,7 @@ static void initFrontendVersionDesc(void) {
 	}
 	fclose(f);
 	if (tag[0] && strcmp(tag, "untagged") != 0)
-		snprintf(frontend_version_desc, sizeof(frontend_version_desc), "NX Redux (%s)", tag);
+		snprintf(frontend_version_desc, sizeof(frontend_version_desc), BRAND_NAME " (%s)", tag);
 }
 
 // options_menu index of Achievements (Save Changes follows it, or takes its
