@@ -22,6 +22,7 @@
 #include "config.h"
 #include "audio_manager.h"
 #include "text_shape.h"
+#include "text_thai.h"
 #include "text_wrap.h"
 #include "rgba.h"
 
@@ -96,6 +97,7 @@ static SDL_Rect asset_rects[ASSET_COUNT];
 static uint32_t asset_rgbs[ASSET_COLORS];
 GFX_Fonts font;
 GFX_Fonts font_ar; // secondary Arabic font (MiSans Arabic), same sizes as `font`
+GFX_Fonts font_th; // Thai font (BrickOS Thai), same sizes as `font`
 
 // Resolver for fonts outside `font` (common/ui/ui_font.c's runtime cache registers one).
 static TTF_Font* (*fallback_resolver)(TTF_Font* primary) = NULL;
@@ -131,6 +133,40 @@ TTF_Font* GFX_fallbackFontFor(TTF_Font* primary) {
 	return fallback_resolver ? fallback_resolver(primary) : NULL;
 }
 
+const char* GFX_getThaiFontPath(void) {
+	static char path[MAX_PATH];
+	if (!path[0])
+		snprintf(path, sizeof(path), "%s/font1-thai.ttf", RES_PATH);
+	return path;
+}
+
+TTF_Font* GFX_thaiFontFor(TTF_Font* primary) {
+	if (primary == font.xlarge)
+		return font_th.xlarge;
+	if (primary == font.title)
+		return font_th.title;
+	if (primary == font.large)
+		return font_th.large;
+	if (primary == font.medium)
+		return font_th.medium;
+	if (primary == font.small)
+		return font_th.small;
+	if (primary == font.tiny)
+		return font_th.tiny;
+	if (primary == font.micro)
+		return font_th.micro;
+	return NULL;
+}
+
+// Thai text: marks swapped for pre-positioned glyphs (text_thai.h), drawn with the Thai font, which
+// covers Latin too. Returns false (out untouched) when the text has no Thai or the font is missing.
+static bool thai_glyphs(TTF_Font* primary, const char* text, TTF_Font** th, char* out, int out_sz) {
+	if (!TextThai_has(text))
+		return false;
+	*th = GFX_thaiFontFor(primary);
+	return *th && TextThai_toGlyphs(text, out, out_sz) > 0;
+}
+
 // Render UTF-8 to a NEW surface (caller frees). Non-Arabic text takes the exact
 // legacy path. Arabic text is shaped + BiDi-reordered (TextShape_toVisual) and
 // drawn with the Arabic font, which also covers Latin/digits — so a mixed
@@ -149,6 +185,10 @@ static SDL_Surface* render_text_internal(TTF_Font* primary, const char* text, SD
 		return NULL;
 	Uint8 alpha = color.a ? color.a : 255; // an alpha-less SDL_Color literal means opaque
 	color.a = 255;
+	char thai[1024];
+	TTF_Font* th;
+	if (thai_glyphs(primary, text, &th, thai, sizeof(thai)))
+		return apply_text_alpha(TTF_RenderUTF8_Blended(th, thai, color), alpha);
 	if (!TextShape_hasArabic(text))
 		return apply_text_alpha(TTF_RenderUTF8_Blended(primary, text, color), alpha);
 
@@ -170,6 +210,12 @@ void GFX_measureText(TTF_Font* primary, const char* utf8, int* w, int* h) {
 		*h = 0;
 	if (!primary || !utf8 || !utf8[0])
 		return;
+	char thai[1024];
+	TTF_Font* th;
+	if (thai_glyphs(primary, utf8, &th, thai, sizeof(thai))) {
+		TTF_SizeUTF8(th, thai, w, h);
+		return;
+	}
 	if (!TextShape_hasArabic(utf8)) {
 		TTF_SizeUTF8(primary, utf8, w, h);
 		return;
@@ -189,6 +235,10 @@ SDL_Surface* GFX_renderTextWrapped(TTF_Font* primary, const char* utf8, SDL_Colo
 		return NULL;
 	Uint8 alpha = color.a ? color.a : 255; // an alpha-less SDL_Color literal means opaque
 	color.a = 255;
+	char thai[1024];
+	TTF_Font* th;
+	if (thai_glyphs(primary, utf8, &th, thai, sizeof(thai)))
+		return apply_text_alpha(TTF_RenderUTF8_Blended_Wrapped(th, thai, color, wrap_w), alpha);
 	if (!TextShape_hasArabic(utf8))
 		return apply_text_alpha(TTF_RenderUTF8_Blended_Wrapped(primary, utf8, color, wrap_w), alpha);
 	char visual[1024];
@@ -551,6 +601,23 @@ int GFX_loadSystemFont(const char* fontPath) {
 	font_ar.tiny = TTF_OpenFont(arPath, SCALE1(FONT_TINY));
 	font_ar.micro = TTF_OpenFont(arPath, SCALE1(FONT_MICRO));
 
+	// Thai font (fixed path). Missing file => NULL => Thai text falls back to the primary font.
+	const char* thPath = GFX_getThaiFontPath();
+	TTF_CloseFont(font_th.xlarge);
+	TTF_CloseFont(font_th.title);
+	TTF_CloseFont(font_th.large);
+	TTF_CloseFont(font_th.medium);
+	TTF_CloseFont(font_th.small);
+	TTF_CloseFont(font_th.tiny);
+	TTF_CloseFont(font_th.micro);
+	font_th.xlarge = TTF_OpenFont(thPath, SCALE1(FONT_XLARGE));
+	font_th.title = TTF_OpenFont(thPath, SCALE1(FONT_TITLE));
+	font_th.large = TTF_OpenFont(thPath, SCALE1(FONT_LARGE));
+	font_th.medium = TTF_OpenFont(thPath, SCALE1(FONT_MEDIUM));
+	font_th.small = TTF_OpenFont(thPath, SCALE1(FONT_SMALL));
+	font_th.tiny = TTF_OpenFont(thPath, SCALE1(FONT_TINY));
+	font_th.micro = TTF_OpenFont(thPath, SCALE1(FONT_MICRO));
+
 	return 0;
 }
 
@@ -888,6 +955,14 @@ void GFX_quit(void) {
 	TTF_CloseFont(font_ar.tiny);
 	TTF_CloseFont(font_ar.micro);
 	memset(&font_ar, 0, sizeof(font_ar));
+	TTF_CloseFont(font_th.xlarge);
+	TTF_CloseFont(font_th.title);
+	TTF_CloseFont(font_th.large);
+	TTF_CloseFont(font_th.medium);
+	TTF_CloseFont(font_th.small);
+	TTF_CloseFont(font_th.tiny);
+	TTF_CloseFont(font_th.micro);
+	memset(&font_th, 0, sizeof(font_th));
 
 	SDL_FreeSurface(gfx.assets);
 	gfx.assets = NULL;

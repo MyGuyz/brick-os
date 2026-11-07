@@ -423,3 +423,6 @@ int TextShape_toVisual(const char* utf8_logical, char* out_visual, int out_sz) {
 	out_visual[len] = '\0';
 	return len;
 }
+
+// Brick OS: Thai mark placement, compiled here so no app Makefile has to list it.
+#include "text_thai.c"
