@@ -491,3 +491,12 @@ Following %d channels	ติดตาม %d ช่อง
 %d files	%d ไฟล์
 %d PC games	เกม PC %d เกม
 Playing · %s	กำลังเล่น · %s
+Saved · %s	เกมนี้บันทึกแล้ว · %s
+Play this game	เล่นเกมนี้
+Back to game	กลับเข้าเกม
+Close game	ปิดเกม
+Hold MENU to open	กด MENU ค้างเพื่อเปิด
+Played %s	เล่นไป %s
+%d hr %d min	%d ชม. %d นาที
+%d min	%d นาที
+Playing	กำลังเล่น
