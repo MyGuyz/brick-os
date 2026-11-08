@@ -45,6 +45,7 @@
 #include "rowview.h"
 #include "stackview.h"
 #include "home.h"
+#include "home_bos.h"
 #include "infoband.h"
 #include "launcher.h"
 #include "list_window.h"
@@ -1966,7 +1967,35 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 	// Home owns the D-pad, A and MENU (Y is its netplay launch, below); SELECT, START, the F keys and L1/R1 fall
 	// through to the root's handlers below, and the list's own row actions (X, Y, A, the row moves) stay off.
 	bool home = Home_active();
-	if (home) {
+	if (home && HomeBos_active()) {
+		unsigned gen = MenuTabs_generation();
+		HomeBosInput r = HomeBos_handleInput(now, dirty, tap_menu);
+		if (r == HOMEBOS_SWITCHER) {
+			result.screen = SCREEN_GAMESWITCHER;
+			GameSwitcher_resetSelection();
+			result.animdir = SLIDE_UP;
+			*dirty = true;
+			return result;
+		}
+		if (r == HOMEBOS_SEARCH) {
+			if (Search_open()) {
+				result.animdir = SLIDE_LEFT;
+				result.folderbgchanged = true;
+				if (top->entries->count > 0)
+					readyResume(top->entries->items[top->selected]);
+			}
+			*dirty = true;
+			return result;
+		}
+		if (r == HOMEBOS_HANDLED) {
+			if (MenuTabs_generation() != gen)
+				result.folderbgchanged = true; // เกม opened the Consoles tab
+			else if (stack->count > 1 && !startgame)
+				result.animdir = SLIDE_LEFT; // Ports opened as a list
+			return result;
+		}
+		tap_menu = false; // spent above
+	} else if (home) {
 		unsigned gen = MenuTabs_generation();
 		if (Home_handleInput(now, dirty)) {
 			if (MenuTabs_generation() != gen)

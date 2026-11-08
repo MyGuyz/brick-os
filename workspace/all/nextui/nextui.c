@@ -32,6 +32,7 @@
 #include "menuart.h"
 #include "controller_art.h"
 #include "menutabs.h"
+#include "home_bos.h"
 #include "ui_font.h"
 #include "tiles.h"
 #include "ui_contextmenu.h"
@@ -560,7 +561,10 @@ int main(int argc, char* argv[]) {
 				int title_x = currentScreen != SCREEN_GAMELIST ? -1
 							  : GameList_listShown()		   ? GameList_textX()
 															   : NX_DP(NX_MENU_GUTTER_DP);
-				ow = UI_renderMenuBarAt(screen, menu_title, NULL, title_x, false, over_art);
+				if (drawScreen == SCREEN_GAMELIST && !startgame && HomeBos_active())
+					ow = 0; // Brick OS Home: its own status bar
+				else
+					ow = UI_renderMenuBarAt(screen, menu_title, NULL, title_x, false, over_art);
 			} else {
 				ow = UI_renderMenuBar(screen, menu_title);
 			}
@@ -584,7 +588,7 @@ int main(int argc, char* argv[]) {
 			} else {
 				GameSwitcher_readyList(); // the switcher's List: its selection's resume state (a no-op otherwise)
 				GameList_render(screen, lastScreen, show_setting, blackBG);
-				if (stack->count == 1)
+				if (stack->count == 1 && !HomeBos_active())
 					MenuTabs_renderRow(screen, ow); // the root's tab row in the bottom bar (Layouts > Bottom bar)
 				RowView_renderExit(screen);			// B's fade out of a Backdrop game list: the whole frame toward black
 				lastScreen = SCREEN_GAMELIST;

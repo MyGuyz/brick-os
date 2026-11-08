@@ -19,6 +19,7 @@
 // for a crossfade lerped, by UI_blitOpaque; the hint bar is cached whole and the fades use UI_blitFade.
 
 #include "home.h"
+#include "home_bos.h"
 #include "gameswitcher.h"
 
 #include <ctype.h>
@@ -811,9 +812,11 @@ static void ensureBuilt(void) {
 
 void Home_reset(void) {
 	need_rebuild = true;
+	HomeBos_reset();
 }
 
 void Home_quit(void) {
+	HomeBos_quit();
 	minFree();
 	for (int i = 0; i < 2; i++) {
 		GFX_freeSurfaceAndTexture(min_tags[i]);
@@ -2366,6 +2369,10 @@ void Home_render(SDL_Surface* dst, int lastScreen) {
 	(void)lastScreen;
 	if (!dst || !Home_active())
 		return;
+	if (HomeBos_active()) { // Brick OS: the mockup's Home, drawn whole (status bar to hint bar)
+		HomeBos_render(dst);
+		return;
+	}
 	ensureBuilt();
 	if (listMode()) // gamelist.c draws the List (Home_isList)
 		return;
@@ -2538,6 +2545,8 @@ void Home_listDrawTag(SDL_Surface* dst, int x, int text_y, int text_h, bool lit,
 }
 
 bool Home_animating(void) {
+	if (HomeBos_active())
+		return HomeBos_animating();
 	if (!Home_active()) {
 		scroll_tw.active = sel_tw.active = slide_tw.active = false;
 		scroll_from = scroll_to;
