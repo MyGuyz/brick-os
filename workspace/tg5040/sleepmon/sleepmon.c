@@ -114,9 +114,34 @@ static void do_suspend(void) {
 static int screen_off = 0;
 static uint32_t media_idle_since = 0; // screen off and no media since, 0 while it plays
 
+#define CPU_MAX_PATH "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"
+#define LISTEN_CPU_MAX 1008000
+static int saved_cpu_max = 0;
+static void cap_cpu(int on) {
+	FILE* f;
+	if (on) {
+		if ((f = fopen(CPU_MAX_PATH, "r"))) {
+			if (fscanf(f, "%d", &saved_cpu_max) != 1)
+				saved_cpu_max = 0;
+			fclose(f);
+		}
+		if (saved_cpu_max > LISTEN_CPU_MAX && (f = fopen(CPU_MAX_PATH, "w"))) {
+			fprintf(f, "%d\n", LISTEN_CPU_MAX);
+			fclose(f);
+		}
+	} else if (saved_cpu_max > 0) {
+		if ((f = fopen(CPU_MAX_PATH, "w"))) {
+			fprintf(f, "%d\n", saved_cpu_max);
+			fclose(f);
+		}
+		saved_cpu_max = 0;
+	}
+}
+
 static void set_screen_off(int off) {
 	screen_off = off;
 	media_idle_since = 0;
+	cap_cpu(off);
 	if (off) {
 		SetRawBrightness(0);
 		FILE* f = fopen(SCREEN_OFF_FLAG, "w");

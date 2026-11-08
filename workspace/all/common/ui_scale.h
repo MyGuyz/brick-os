@@ -34,7 +34,7 @@ static inline UIDevice UIScale_deviceIndex(const char* device) {
 	if (device && strcmp(device, "brick") == 0)
 		return UI_DEVICE_BRICK;
 	if (device && strcmp(device, "brickpro") == 0)
-		return UI_DEVICE_BRICKPRO;
+		return UI_DEVICE_BRICK; // Brick OS: the Brick's tuned sizes (same 1024x768 panel) for bigger text
 	return UI_DEVICE_SMARTPRO;
 }
 
@@ -44,7 +44,7 @@ static inline float UIScale_forDevice(const char* device) {
 	if (device && strcmp(device, "brick") == 0)
 		return 3.0f; // 3.2" 1024x768, 400 ppi
 	if (device && strcmp(device, "brickpro") == 0)
-		return 2.5f; // 3.95" 1024x768, 324 ppi (2.4375 by density; 2.5 for rounder sizes, 2026-10-07)
+		return 3.0f; // 3.95" 1024x768: Brick OS uses the Brick's 3.0 (same panel resolution) for bigger, easier text
 	return 2.25f;	 // 4.96" 1280x720, 296 ppi (the Smart Pro family)
 }
 
