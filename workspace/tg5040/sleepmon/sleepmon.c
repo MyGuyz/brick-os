@@ -1,7 +1,8 @@
 // sleepmon - lightweight power button sleep/poweroff service
 //
 // Monitors input devices for the power button (KEY_POWER = 116).
-// Short press: suspend (backlight off → /bin/suspend → backlight on)
+// Short press: suspend (backlight off → /bin/suspend → backlight on), or, while an app
+//   flags media playback (MEDIA_FLAG), screen off with the audio still playing
 // Long press (1s+): poweroff
 //
 // Usage: sleepmon.elf &
@@ -23,6 +24,12 @@
 #include <msettings.h>
 
 #define KEY_POWER 116
+// Brick OS: an app keeps MEDIA_FLAG while it plays audio/video (YTC: YTC_MEDIA_FLAG);
+// SCREEN_OFF_FLAG exists while the screen is off, so the app can ignore input and
+// stop decoding video. Playback stopped this long with the screen off: sleep.
+#define MEDIA_FLAG "/tmp/bos_media_playing"
+#define SCREEN_OFF_FLAG "/tmp/bos_screen_off"
+#define SCREEN_OFF_IDLE_SLEEP_MS 5000
 #define POWEROFF_HOLD_MS 1000
 
 #define MAX_INPUT_DEVICES 16
@@ -102,6 +109,23 @@ static void do_suspend(void) {
 	(void)system("musicplayerctl.elf wake >/dev/null 2>&1");
 	SetBrightness(GetBrightness());
 	SetVolume(GetVolume());
+}
+
+static int screen_off = 0;
+static uint32_t media_idle_since = 0; // screen off and no media since, 0 while it plays
+
+static void set_screen_off(int off) {
+	screen_off = off;
+	media_idle_since = 0;
+	if (off) {
+		SetRawBrightness(0);
+		FILE* f = fopen(SCREEN_OFF_FLAG, "w");
+		if (f)
+			fclose(f);
+	} else {
+		unlink(SCREEN_OFF_FLAG);
+		SetBrightness(GetBrightness());
+	}
 }
 
 static void do_poweroff(void) {
@@ -214,6 +238,10 @@ int main(int argc, char* argv[]) {
 				} else if (input_ev.value == 0) {
 					// Release
 					if (power_held && power_pressed_at &&
+						now - power_pressed_at < POWEROFF_HOLD_MS &&
+						(screen_off || access(MEDIA_FLAG, F_OK) == 0)) {
+						set_screen_off(!screen_off); // tap toggles the screen while media plays
+					} else if (power_held && power_pressed_at &&
 						now - power_pressed_at < POWEROFF_HOLD_MS) {
 						do_suspend();
 						// Drain all pending input after wake
@@ -233,6 +261,20 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
+		// Screen off and the media stopped: sleep, as the tap would have without it.
+		if (screen_off) {
+			if (access(MEDIA_FLAG, F_OK) == 0)
+				media_idle_since = 0;
+			else if (!media_idle_since)
+				media_idle_since = now;
+			else if (now - media_idle_since >= SCREEN_OFF_IDLE_SLEEP_MS) {
+				set_screen_off(0);
+				do_suspend();
+				resume_at = then = now_ms();
+				continue;
+			}
+		}
+
 		// Check for long press → poweroff
 		if (power_held && power_pressed_at &&
 			now - power_pressed_at >= POWEROFF_HOLD_MS) {
@@ -243,6 +285,9 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	if (screen_off)
+		set_screen_off(0);
+	unlink(MEDIA_FLAG);
 	for (int i = 0; i < input_count; i++)
 		close_input_device(i);
 	close(inotify_fd);
