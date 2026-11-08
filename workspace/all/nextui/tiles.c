@@ -1113,7 +1113,8 @@ const char* Tiles_toolIcon(const char* pak_name) {
 		{"Emulator Settings", "menu_icon_emulator.png"},
 		{"Files", "menu_icon_files.png"},
 		{"Image Viewer", "menu_icon_images.png"},
-		{"Media Player", "menu_icon_media.png"},
+		{"Media Player", "menu_icon_video.png"}, // Brick OS: the film strip; the play box went to YouTube
+		{"YouTube", "menu_icon_media.png"},
 		{"Music Player", "menu_icon_music.png"},
 		{"Xtras", "menu_icon_xtras.png"},
 		{"PortMaster", "menu_icon_portmaster.png"},

@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <string.h>
 
+// Brick OS: the UI language table (common/i18n.c); the host tests link no table, so this weak one passes English.
+__attribute__((weak)) const char* I18N_text(const char* s) {
+	return s;
+}
+
 static void clearText(char* out, size_t size) {
 	if (size)
 		out[0] = '\0';
@@ -16,23 +21,23 @@ void GameInfo_whenText(time_t now, time_t then, char* out, size_t size) {
 	if (d < 0)
 		d = 0;
 	if (d == 0)
-		snprintf(out, size, "Today");
+		snprintf(out, size, "%s", I18N_text("Today"));
 	else if (d == 1)
-		snprintf(out, size, "Yesterday");
+		snprintf(out, size, "%s", I18N_text("Yesterday"));
 	else if (d < 7)
-		snprintf(out, size, "%ld days ago", d);
+		snprintf(out, size, I18N_text("%ld days ago"), d);
 	else if (d < 14)
-		snprintf(out, size, "Last week");
+		snprintf(out, size, "%s", I18N_text("Last week"));
 	else if (d < 30)
-		snprintf(out, size, "%ld weeks ago", d / 7);
+		snprintf(out, size, I18N_text("%ld weeks ago"), d / 7);
 	else if (d < 60)
-		snprintf(out, size, "Last month");
+		snprintf(out, size, "%s", I18N_text("Last month"));
 	else if (d < 365)
-		snprintf(out, size, "%ld months ago", d / 30);
+		snprintf(out, size, I18N_text("%ld months ago"), d / 30);
 	else if (d < 730)
-		snprintf(out, size, "Last year");
+		snprintf(out, size, "%s", I18N_text("Last year"));
 	else
-		snprintf(out, size, "%ld years ago", d / 365);
+		snprintf(out, size, I18N_text("%ld years ago"), d / 365);
 }
 
 void GameInfo_durationText(int seconds, char* out, size_t size) {
