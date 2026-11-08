@@ -500,3 +500,8 @@ Played %s	เล่นไป %s
 %d hr %d min	%d ชม. %d นาที
 %d min	%d นาที
 Playing	กำลังเล่น
+Favorites	รายการโปรด
+Play	เล่น
+Back	กลับ
+Sorted A-Z	เรียง A–Z
+Last played %s	เล่นล่าสุด %s
