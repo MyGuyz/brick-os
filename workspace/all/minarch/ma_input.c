@@ -148,8 +148,10 @@ void input_poll_callback(void) {
 	PWR_update(NULL, &show_setting, Menu_beforeSleep, Menu_afterSleep);
 
 	// I _think_ this can stay as is...
+	static uint32_t menu_down_ms = 0; // Brick OS: MENU held alone opens the Game Switcher (DESIGN.md 6.2)
 	if (PAD_justPressed(BTN_MENU)) {
 		ignore_menu = 0;
+		menu_down_ms = SDL_GetTicks();
 	}
 	if (PAD_isPressed(BTN_MENU) && (PAD_isPressed(BTN_PLUS) || PAD_isPressed(BTN_MINUS))) {
 		ignore_menu = 1;
@@ -307,6 +309,11 @@ void input_poll_callback(void) {
 		}
 	}
 
+	if (!ignore_menu && menu_down_ms && PAD_isPressed(BTN_MENU) && SDL_GetTicks() - menu_down_ms >= 800) {
+		ignore_menu = 1; // released later: no menu
+		menu_down_ms = 0;
+		deferred_shortcut = DEFERRED_MENU_SELECT;
+	}
 	if (!ignore_menu && PAD_justReleased(BTN_MENU)) {
 		show_menu = 1;
 	}

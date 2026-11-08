@@ -561,8 +561,9 @@ int main(int argc, char* argv[]) {
 				int title_x = currentScreen != SCREEN_GAMELIST ? -1
 							  : GameList_listShown()		   ? GameList_textX()
 															   : NX_DP(NX_MENU_GUTTER_DP);
-				if (drawScreen == SCREEN_GAMELIST && !startgame && HomeBos_active())
-					ow = 0; // Brick OS Home: its own status bar
+				if ((drawScreen == SCREEN_GAMELIST && !startgame && HomeBos_active()) ||
+					(drawScreen == SCREEN_GAMESWITCHER && GameSwitcher_isBos()))
+					ow = 0; // Brick OS Home and Game Switcher: their own status bar
 				else
 					ow = UI_renderMenuBarAt(screen, menu_title, NULL, title_x, false, over_art);
 			} else {

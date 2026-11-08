@@ -148,6 +148,12 @@ Weights in use: 400, 500, 600, 700.
 - Under the focused card: name 30/700, then "SNES · เล่นไป 3 ชม. 12 นาที" 19 `text-2`.
 - Page dots, gap 12, 20 above the hint bar: inactive 10×10 `#48484A`, current 28×10 `text`.
 - Hint bar: **A** เล่นเกมนี้ · **B** กลับเข้าเกม · **X** ปิดเกม · note "กด MENU ค้างเพื่อเปิด".
+- **Decisions where the mockup says nothing** (2026-11-09):
+  - Opened from a game (MENU held 0.8 s, or MENU+SELECT): B resumes that game, and "กำลังเล่น" marks it.
+  - Opened from Home (MENU): B goes back to Home and no card is marked.
+  - X removes the game from the switcher (its save stays).
+  - The header's time is when the game's resume state was saved.
+  - With two games there is one side card; with one game, none.
 
 ### 6.3 เกม
 - Status bar, then two columns (gap 24, padding 8 32 0).

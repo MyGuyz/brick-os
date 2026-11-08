@@ -21,4 +21,17 @@ bool HomeBos_animating(void);
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu);
 void HomeBos_quit(void);
 
+
+
+// Game Switcher (DESIGN.md 6.2)
+#include <time.h>
+typedef struct {
+	char path[512];	   // the ROM
+	char name[256];
+	char preview[512]; // its resume frame, "" for none
+	int seconds;	   // play time, 0 unknown
+} BosSwitchCard;
+void BosSwitcher_render(SDL_Surface* screen, const BosSwitchCard* prev, const BosSwitchCard* cur,
+						const BosSwitchCard* next, int sel, int count, bool playing, time_t saved_at);
+bool BosSwitcher_pending(void);
 #endif

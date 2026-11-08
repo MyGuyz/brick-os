@@ -592,3 +592,112 @@ void HomeBos_quit(void) {
 		}
 	built = false;
 }
+
+// ---- Game Switcher (DESIGN.md 6.2) ----
+#define C_BG_SWITCHER 0x0B0B0D
+#define C_DOT_OFF 0x48484A
+
+static void durationText(int seconds, char* out, size_t size) { // "3 ชม. 12 นาที"
+	int h = seconds / 3600, m = seconds % 3600 / 60;
+	if (h > 0)
+		snprintf(out, size, I18N_text("%d hr %d min"), h, m);
+	else
+		snprintf(out, size, I18N_text("%d min"), m);
+}
+
+static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, int x, int y, int w, int h, int r, float a) {
+	SDL_Surface* pic = NULL;
+	HomeArtState st = HomeArt_continue(c->path, c->preview[0] ? c->preview : NULL, w, h, r, &pic);
+	if (st == HOMEART_LOADING)
+		pending = true;
+	if (st == HOMEART_READY && pic) {
+		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a));
+		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
+		SDL_SetSurfaceAlphaMod(pic, 255);
+	} else
+		rrect(s, x, y, w, h, r, C_SURFACE1, a);
+}
+
+void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* prev, const BosSwitchCard* cur,
+						const BosSwitchCard* next, int sel, int count, bool playing, time_t saved_at) {
+	k = FIXED_WIDTH / 1024.0f;
+	pending = false;
+	SDL_FillRect(s, NULL, mapc(s, C_BG_SWITCHER, 1));
+	int bar = P(56), cy = bar / 2;
+	text(s, I18N_text("Switch game"), P(21), 600, C_TEXT, 1, P(32), cy - lineH(P(21)) / 2);
+	if (saved_at > 0) {
+		char t[16], line[128];
+		strftime(t, sizeof(t), "%H:%M", localtime(&saved_at));
+		snprintf(line, sizeof(line), I18N_text("Saved · %s"), t);
+		text(s, line, P(19), 400, C_TEXT2, 1, s->w - P(32) - textW(line, P(19), 400), cy - lineH(P(19)) / 2);
+	}
+
+	// the centre row: side 180x135 | focused 528x396 | side, gap 28, in the band between the bar and the dots
+	int hint_top = s->h - P(64), dots_h = P(10), dots_y = hint_top - P(20) - dots_h;
+	int band_top = bar, band_h = dots_y - band_top;
+	int fw = P(528), fh = P(396), sw = P(180), sh = P(135), gap = P(28);
+	int name_h = lineH(P(30)), meta_h = lineH(P(19));
+	int col_h = fh + P(18) + name_h + P(4) + meta_h;
+	int fy = band_top + (band_h - col_h) / 2, fx = (s->w - fw) / 2;
+	int sy = band_top + (band_h - sh) / 2;
+	if (prev)
+		switcherCard(s, prev, fx - gap - sw, sy, sw, sh, P(20), 0.55f);
+	if (next)
+		switcherCard(s, next, fx + fw + gap, sy, sw, sh, P(20), 0.55f);
+	if (cur) {
+		int off = P(5), o = off + P(5);
+		rrect(s, fx - o, fy - o, fw + 2 * o, fh + 2 * o, P(30) + o, C_ACCENT, 1);
+		rrect(s, fx - off, fy - off, fw + 2 * off, fh + 2 * off, P(30) + off, C_BG_SWITCHER, 1);
+		switcherCard(s, cur, fx, fy, fw, fh, P(30), 1);
+		if (playing) { // "กำลังเล่น": 18/600, black pill, radius 11, padding 5 12, 20 in from the corner
+			const char* l = I18N_text("Playing");
+			int bw = textW(l, P(18), 600) + 2 * P(12), bh = lineH(P(18)) + 2 * P(5);
+			int bx = fx + P(20), by = fy + fh - P(20) - bh;
+			rrect(s, bx, by, bw, bh, P(11), C_BG, 1);
+			text(s, l, P(18), 600, C_TEXT, 1, bx + P(12), by + P(5));
+		}
+		char name[256];
+		fit(cur->name, P(30), 700, s->w - 2 * P(40), name, sizeof(name));
+		int ny = fy + fh + P(18);
+		text(s, name, P(30), 700, C_TEXT, 1, (s->w - textW(name, P(30), 700)) / 2, ny);
+		char meta[192] = "", dur[64];
+		char tag[32];
+		tagOf(cur->path, tag, sizeof(tag));
+		if (cur->seconds > 0) {
+			char played[96];
+			durationText(cur->seconds, dur, sizeof(dur));
+			snprintf(played, sizeof(played), I18N_text("Played %s"), dur);
+			snprintf(meta, sizeof(meta), tag[0] ? "%s · %s" : "%s%s", tag, played);
+		} else
+			snprintf(meta, sizeof(meta), "%s", tag);
+		text(s, meta, P(19), 400, C_TEXT2, 1, (s->w - textW(meta, P(19), 400)) / 2, ny + name_h + P(4));
+	}
+
+	// page dots: 10x10 #48484A, the current 28x10 text, gap 12
+	if (count > 1) {
+		int total = (count - 1) * P(10) + P(28) + (count - 1) * P(12), x = (s->w - total) / 2;
+		for (int i = 0; i < count; i++) {
+			int w = i == sel ? P(28) : P(10);
+			rrect(s, x, dots_y, w, dots_h, dots_h / 2, i == sel ? C_TEXT : C_DOT_OFF, 1);
+			x += w + P(12);
+		}
+	}
+
+	SDL_FillRect(s, &(SDL_Rect){0, hint_top, s->w, P(1) > 0 ? P(1) : 1}, mapc(s, C_SURFACE1, 1));
+	int hy = hint_top + P(32), x = P(40);
+	const char* hints[][2] = {{"A", "Play this game"}, {"B", "Back to game"}, {"X", "Close game"}};
+	for (int i = 0; i < 3; i++) {
+		rrect(s, x, hy - P(16), P(32), P(32), P(16), C_SURFACE2, 1);
+		text(s, hints[i][0], P(16), 700, C_TEXT, 1, x + (P(32) - textW(hints[i][0], P(16), 700)) / 2, hy - lineH(P(16)) / 2);
+		x += P(32) + P(10);
+		const char* l = I18N_text(hints[i][1]);
+		text(s, l, P(19), 400, C_TEXT2, 1, x, hy - lineH(P(19)) / 2);
+		x += textW(l, P(19), 400) + P(32);
+	}
+	const char* note = I18N_text("Hold MENU to open");
+	text(s, note, P(19), 400, C_TEXT4, 1, s->w - P(40) - textW(note, P(19), 400), hy - lineH(P(19)) / 2);
+}
+
+bool BosSwitcher_pending(void) {
+	return pending;
+}

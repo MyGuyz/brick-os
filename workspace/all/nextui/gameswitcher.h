@@ -16,6 +16,7 @@ typedef struct {
 struct Directory;
 
 void GameSwitcher_init(void);
+bool GameSwitcher_isBos(void); // Brick OS: the DESIGN.md 6.2 switcher draws the whole screen
 int GameSwitcher_shouldStartInSwitcher(void);
 void GameSwitcher_resetSelection(void);
 GameSwitcherResult GameSwitcher_handleInput(unsigned long now);

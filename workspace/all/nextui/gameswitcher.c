@@ -9,6 +9,7 @@
 #include "gameinfo_text.h"
 #include "home.h"
 #include "homeart.h"
+#include "home_bos.h"
 #include "infoband.h"
 #include "launcher.h"
 #include "list_window.h"
@@ -27,6 +28,7 @@
 #include "utils.h"
 
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define GS_SCRIM_ALPHA 230 // the switcher's hint bar: 90%
@@ -41,6 +43,15 @@
 #define GS_BOXART_WIDTH 0.45f
 
 static int switcher_selected = 0;
+static bool gs_from_game = false; // opened by a game's MENU hold (or MENU+SELECT): B goes back into it
+
+// Brick OS: the Full screen layout is drawn as DESIGN.md 6.2 (the List layout stays upstream's)
+static bool gs_bos(void) {
+	return CFG_getSwitcherLayout() != SWITCHER_LAYOUT_LIST;
+}
+bool GameSwitcher_isBos(void) {
+	return gs_bos();
+}
 
 // Filtered view of the recents list: gs_indices[i] holds the recents index of
 // the i-th switcher entry. Identity mapping when the resumable-only setting is
@@ -220,6 +231,7 @@ int GameSwitcher_shouldStartInSwitcher(void) {
 		// consider this "consumed", dont bring up the switcher next time we
 		// regularly exit a game
 		unlink(GAME_SWITCHER_PERSIST_PATH);
+		gs_from_game = true;
 		return 1;
 	}
 	return 0;
@@ -253,7 +265,23 @@ GameSwitcherResult GameSwitcher_handleInput(unsigned long now) {
 	result.screen = SCREEN_GAMESWITCHER;
 	result.gsanimdir = ANIM_NONE;
 
+	if (gs_bos() && gs_from_game && gs_count > 0 && PAD_justPressed(BTN_B)) {
+		switcher_selected = 0; // the game it came from: resume it, as A on it would
+		Entry* e = Recents_entryFromRecent(Recents_at(gs_indices[0]));
+		gs_from_game = false;
+		if (e) {
+			readyResume(e);
+			putFile(GAME_SWITCHER_PERSIST_PATH, "unused");
+			result.startgame = true;
+			resume.should_resume = resume.can_resume;
+			Entry_open(e);
+			result.dirty = true;
+			Entry_free(e);
+			return result;
+		}
+	}
 	if (PAD_justPressed(BTN_B) || PAD_tappedSelect(now)) {
+		gs_from_game = false;
 		result.screen = SCREEN_GAMELIST;
 		switcher_selected = 0;
 		result.dirty = true;
@@ -271,7 +299,7 @@ GameSwitcherResult GameSwitcher_handleInput(unsigned long now) {
 			result.dirty = true;
 			Entry_free(selectedEntry);
 		}
-	} else if (gs_count > 0 && PAD_justReleased(BTN_Y)) {
+	} else if (gs_count > 0 && (gs_bos() ? PAD_justReleased(BTN_X) : PAD_justReleased(BTN_Y))) {
 		Recents_removeAt(gs_indices[switcher_selected]);
 		Home_reset(); // Continue may have been the removed game
 		gs_rebuildIndices();
@@ -433,8 +461,59 @@ void GameSwitcher_render(int lastScreen, SDL_Surface* blackBG, int gsanimdir, in
 	held_frame = false;
 }
 
+static void gs_card(int i, BosSwitchCard* c) {
+	memset(c, 0, sizeof(*c));
+	Recent* recent = Recents_at(gs_indices[i]);
+	if (!recent)
+		return;
+	snprintf(c->path, sizeof(c->path), "%s%s", SDCARD_PATH, recent->path);
+	if (recent->alias)
+		snprintf(c->name, sizeof(c->name), "%s", recent->alias);
+	else {
+		char name[MAX_PATH];
+		getDisplayName(c->path, name);
+		snprintf(c->name, sizeof(c->name), "%s", name);
+	}
+	Entry* e = Recents_entryFromRecent(recent);
+	if (e) {
+		ResumeState r;
+		readyResumeInto(e, &r);
+		if (r.can_resume && r.has_preview)
+			snprintf(c->preview, sizeof(c->preview), "%s", r.preview_path);
+		Entry_free(e);
+	}
+	GameInfo gi;
+	if (GameInfo_get(c->path, &gi) && gi.has_time)
+		c->seconds = gi.seconds;
+}
+
+static void gs_renderBos(void) {
+	static BosSwitchCard prev, cur, next;
+	gs_card(switcher_selected, &cur);
+	bool has_prev = gs_count > 2 || (gs_count == 2 && switcher_selected == 1);
+	bool has_next = gs_count > 2 || (gs_count == 2 && switcher_selected == 0);
+	if (has_prev)
+		gs_card((switcher_selected + gs_count - 1) % gs_count, &prev);
+	if (has_next)
+		gs_card((switcher_selected + 1) % gs_count, &next);
+	Entry* e = Recents_entryFromRecent(Recents_at(gs_indices[switcher_selected]));
+	readyResume(e); // A reads it
+	Entry_free(e);
+	time_t saved = 0;
+	struct stat st;
+	if (resume.can_resume && stat(resume.slot_path, &st) == 0)
+		saved = st.st_mtime;
+	BosSwitcher_render(screen, has_prev ? &prev : NULL, &cur, has_next ? &next : NULL, switcher_selected, gs_count,
+					   gs_from_game && switcher_selected == 0, saved);
+}
+
 static void GameSwitcher_render_(int lastScreen, SDL_Surface* blackBG, int gsanimdir, int status_w) {
 	GFX_clearLayers(LAYER_ALL);
+	if (gs_bos() && gs_count > 0) {
+		gs_renderBos();
+		GFX_flipHidden();
+		return;
+	}
 
 	if (gs_count <= 0) {
 		SDL_FillRect(screen, &(SDL_Rect){0, 0, screen->w, screen->h}, 0);
