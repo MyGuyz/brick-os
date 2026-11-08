@@ -478,3 +478,7 @@ Radio	วิทยุ
 Online Radio & Podcasts	วิทยุออนไลน์และพอดแคสต์
 Installed. Open Media Player.	ติดตั้งแล้ว เปิดได้ในแอปวิดีโอ
 Installed. Open Music Player.	ติดตั้งแล้ว เปิดได้ในแอปเพลง
+%ld days ago	%ld วันที่แล้ว
+%ld weeks ago	%ld สัปดาห์ที่แล้ว
+%ld months ago	%ld เดือนที่แล้ว
+%ld years ago	%ld ปีที่แล้ว
