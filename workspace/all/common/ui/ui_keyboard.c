@@ -15,7 +15,7 @@
 #include <string.h>
 
 #define KB_ROWS 6
-#define KB_COLS 10
+#define KB_COLS 13 // Brick OS: Thai Kedmanee rows are up to 13 keys
 #define KB_MAX_INPUT 128
 // cur_row value for the input line itself: UP from the top key row (or DOWN
 // from the bottom one) lands there, and LEFT/RIGHT then move the caret
@@ -40,23 +40,24 @@ static const char* kb_upper[KB_ROWS][KB_COLS] = {
 	{"~", "\"", "_", "+", "{", "}", "|", NULL, NULL, NULL},
 	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
 
-// Brick OS: Thai layouts (the common letters first, the rare ones and digits on SHIFT).
+// Brick OS: Thai on the standard Kedmanee layout (TIS 820-2538), as on Thai PC and phone keyboards:
+// its four rows unshifted and with SHIFT, then a row of digits (or symbols) for searches and names.
 // The language key on the bottom row switches between English and Thai.
 static const char* kb_thai_lower[KB_ROWS][KB_COLS] = {
-	{"ๆ", "ไ", "ำ", "พ", "ะ", "ั", "ี", "ร", "น", "ย"},
-	{"บ", "ล", "ฟ", "ห", "ก", "ด", "เ", "้", "่", "า"},
-	{"ส", "ว", "ง", "ผ", "ป", "แ", "อ", "ิ", "ื", "ท"},
-	{"ม", "ใ", "ฝ", "ภ", "ถ", "ุ", "ึ", "ค", "ต", "จ"},
-	{"ข", "ช", "โ", "็", "ู", "์", "๊", "๋", "ฯ", "."},
-	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+	{"ๅ", "/", "-", "ภ", "ถ", "ุ", "ึ", "ค", "ต", "จ", "ข", "ช"},
+	{"ๆ", "ไ", "ำ", "พ", "ะ", "ั", "ี", "ร", "น", "ย", "บ", "ล", "ฃ"},
+	{"ฟ", "ห", "ก", "ด", "เ", "้", "่", "า", "ส", "ว", "ง"},
+	{"ผ", "ป", "แ", "อ", "ิ", "ื", "ท", "ม", "ใ", "ฝ"},
+	{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
+	{"Space", "Confirm", KB_LANG_KEY}};
 
 static const char* kb_thai_upper[KB_ROWS][KB_COLS] = {
-	{"๑", "๒", "๓", "๔", "๕", "๖", "๗", "๘", "๙", "๐"},
-	{"ฎ", "ฑ", "ธ", "ณ", "ญ", "ฐ", "ฤ", "ฆ", "ฏ", "ฌ"},
-	{"ษ", "ศ", "ซ", "ฉ", "ฮ", "ฒ", "ฬ", "ฦ", "ฅ", "ฃ"},
-	{"ํ", "ฺ", "฿", "(", ")", "\"", ",", "?", "!", "-"},
-	{"ๅ", "/", ":", ";", "+", "=", "_", "'", "*", "@"},
-	{"Space", "Confirm", KB_LANG_KEY, NULL, NULL, NULL, NULL, NULL, NULL, NULL}};
+	{"+", "๑", "๒", "๓", "๔", "ู", "฿", "๕", "๖", "๗", "๘", "๙"},
+	{"๐", "\"", "ฎ", "ฑ", "ธ", "ํ", "๊", "ณ", "ฯ", "ญ", "ฐ", ",", "ฅ"},
+	{"ฤ", "ฆ", "ฏ", "โ", "ฌ", "็", "๋", "ษ", "ศ", "ซ", "."},
+	{"(", ")", "ฉ", "ฮ", "ฺ", "์", "?", "ฒ", "ฬ", "ฦ"},
+	{"!", "@", "#", "%", "&", "*", "_", "=", ":", "'"},
+	{"Space", "Confirm", KB_LANG_KEY}};
 
 typedef const char* KbLayout[KB_ROWS][KB_COLS];
 static KbLayout* kb_layout(int thai, int shift) {
@@ -77,6 +78,28 @@ static const char* kb_label(const char* key) {
 	else
 		return key;
 	return buf;
+}
+
+static int kb_row_len(const char* layout[KB_ROWS][KB_COLS], int row);
+
+// The widest row of a layout (10 in English, 13 in Thai): the key cells are sized to it.
+static int kb_max_cols(const char* layout[KB_ROWS][KB_COLS]) {
+	int m = 1;
+	for (int r = 0; r < KB_ROWS - 1; r++) {
+		int n = kb_row_len(layout, r);
+		if (n > m)
+			m = n;
+	}
+	return m;
+}
+
+// Moving between rows of different lengths (rows are centered) keeps the cursor over the same spot.
+static int kb_col_for_row(const char* layout[KB_ROWS][KB_COLS], int from_row, int to_row, int col) {
+	int from = kb_row_len(layout, from_row), to = kb_row_len(layout, to_row);
+	if (from_row == KB_ROWS - 1 || to_row == KB_ROWS - 1) // the wide bottom keys don't line up with letters
+		return col < to ? col : to - 1;
+	int c = col - (from - to) / 2;
+	return c < 0 ? 0 : c >= to ? to - 1 : c;
 }
 
 static int kb_row_len(const char* layout[KB_ROWS][KB_COLS], int row) {
@@ -125,10 +148,11 @@ static void kb_draw(SDL_Surface* screen, const char* title, const char* input,
 
 	// Static keyboard width referenced to the Brick (cap per-cell width so the
 	// grid doesn't span the whole panel on wider screens like the Smart Pro).
-	int cell_w = (screen->w - SCALE1(PADDING * 2)) / KB_COLS;
+	int cols = kb_max_cols(layout);
+	int cell_w = (screen->w - SCALE1(PADDING * 2)) / cols;
 	if (cell_w > SCALE1(32))
 		cell_w = SCALE1(32);
-	int kb_w = KB_COLS * cell_w;
+	int kb_w = cols * cell_w;
 	int kb_left = center_x - kb_w / 2;
 
 	// Typed text with a bar caret at the edit position; when the text
@@ -319,17 +343,16 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 		// PAD_setAnalog in the input layer.
 		// Rows cycle input line -> key rows 0..KB_ROWS-1 -> input line. The
 		// key column is kept while on the input line.
-		if (PAD_justRepeated(BTN_UP)) {
-			cur_row = cur_row == KB_INPUT_ROW ? KB_ROWS - 1 : cur_row - 1;
+		if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
+			bool up = PAD_justRepeated(BTN_UP);
+			int prev = cur_row;
+			if (up)
+				cur_row = cur_row == KB_INPUT_ROW ? KB_ROWS - 1 : cur_row - 1;
+			else
+				cur_row = cur_row == KB_ROWS - 1 ? KB_INPUT_ROW : cur_row + 1;
 			if (cur_row != KB_INPUT_ROW) {
-				int rl = kb_row_len(layout, cur_row);
-				if (cur_col >= rl)
-					cur_col = rl - 1;
-			}
-			dirty = true;
-		} else if (PAD_justRepeated(BTN_DOWN)) {
-			cur_row = cur_row == KB_ROWS - 1 ? KB_INPUT_ROW : cur_row + 1;
-			if (cur_row != KB_INPUT_ROW) {
+				if (prev != KB_INPUT_ROW)
+					cur_col = kb_col_for_row(layout, prev, cur_row, cur_col);
 				int rl = kb_row_len(layout, cur_row);
 				if (cur_col >= rl)
 					cur_col = rl - 1;
