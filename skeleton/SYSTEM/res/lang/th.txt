@@ -482,3 +482,12 @@ Installed. Open Music Player.	ติดตั้งแล้ว เปิดไ�
 %ld weeks ago	%ld สัปดาห์ที่แล้ว
 %ld months ago	%ld เดือนที่แล้ว
 %ld years ago	%ld ปีที่แล้ว
+Games	เกม
+Video	วิดีโอ
+Switch game	สลับเกม
+%d games	%d เกม
+%s games	%s เกม
+Following %d channels	ติดตาม %d ช่อง
+%d files	%d ไฟล์
+%d PC games	เกม PC %d เกม
+Playing · %s	กำลังเล่น · %s
