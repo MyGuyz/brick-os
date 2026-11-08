@@ -329,7 +329,6 @@ Please do not power off...	อย่าปิดเครื่องระห�
 Yes	ใช่
 Start	เริ่ม
 Select	เลือก
-Today	วันนี้
 Yesterday	เมื่อวาน
 Last week	สัปดาห์ที่แล้ว
 Last month	เดือนที่แล้ว
@@ -505,3 +504,4 @@ Play	เล่น
 Back	กลับ
 Sorted A-Z	เรียง A–Z
 Last played %s	เล่นล่าสุด %s
+Brick OS · based on NX Redux	Brick OS · ต่อยอดจาก NX Redux
