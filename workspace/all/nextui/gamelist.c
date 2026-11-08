@@ -1967,6 +1967,29 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 	// Home owns the D-pad, A and MENU (Y is its netplay launch, below); SELECT, START, the F keys and L1/R1 fall
 	// through to the root's handlers below, and the list's own row actions (X, Y, A, the row moves) stay off.
 	bool home = Home_active();
+	if (BosGames_active()) { // Brick OS: เกม (DESIGN.md 6.3)
+		BosGamesInput r = BosGames_handleInput(dirty);
+		if (r == BOSGAMES_SEARCH) {
+			if (Search_open()) {
+				result.animdir = SLIDE_LEFT;
+				result.folderbgchanged = true;
+				if (top->entries->count > 0)
+					readyResume(top->entries->items[top->selected]);
+			}
+			*dirty = true;
+			return result;
+		}
+		if (r == BOSGAMES_HOME) {
+			GameList_openTab(MENU_TAB_HOME, dirty);
+			result.folderbgchanged = true;
+			return result;
+		}
+		if (r == BOSGAMES_HANDLED) {
+			if (stack->count > 1 && !startgame)
+				result.animdir = SLIDE_LEFT; // a folder opened as a list
+			return result;
+		}
+	}
 	if (home && HomeBos_active()) {
 		unsigned gen = MenuTabs_generation();
 		HomeBosInput r = HomeBos_handleInput(now, dirty, tap_menu);
@@ -2684,6 +2707,10 @@ void GameList_render(SDL_Surface* screen, int lastScreen,
 					 IndicatorType show_setting, SDL_Surface* blackBG) {
 	list_body_clear = false; // only a List render with all its rows on the GPU sets it
 	list_body_row = (SDL_Rect){0, 0, 0, 0};
+	if (BosGames_active()) { // Brick OS: เกม (DESIGN.md 6.3)
+		BosGames_render(screen);
+		return;
+	}
 	list_hold_tex = NULL; // the frame's sprites start over (nextui.c's PLAT_spritesClear)
 	if (Home_active() && !Home_isList()) {
 		// the global bg.png, as on every main-menu tab, and no thumbnail (Home draws its own pictures)

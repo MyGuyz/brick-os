@@ -6,6 +6,7 @@
 #include "home_bos.h"
 
 #include <dirent.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,7 @@
 #include "gameinfo.h"
 #include "gameinfo_text.h"
 #include "gamelist.h"
+#include "gameswitcher.h"
 #include "home.h"
 #include "homeart.h"
 #include "launcher.h"
@@ -701,3 +703,5 @@ void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* prev, const BosSwit
 bool BosSwitcher_pending(void) {
 	return pending;
 }
+
+#include "bos_games.inc"

@@ -813,6 +813,7 @@ static void ensureBuilt(void) {
 void Home_reset(void) {
 	need_rebuild = true;
 	HomeBos_reset();
+	BosGames_reset();
 }
 
 void Home_quit(void) {

@@ -10,6 +10,7 @@
 #include "home.h"
 #include "homeart.h"
 #include "home_bos.h"
+#include "menutabs.h"
 #include "infoband.h"
 #include "launcher.h"
 #include "list_window.h"
@@ -229,9 +230,12 @@ void GameSwitcher_init(void) {
 int GameSwitcher_shouldStartInSwitcher(void) {
 	if (exists(GAME_SWITCHER_PERSIST_PATH)) {
 		// consider this "consumed", dont bring up the switcher next time we
-		// regularly exit a game
+		// regularly exit a game. Brick OS: only a game that asked for the switcher (MENU held, MENU+SELECT: it writes
+		// its own path) makes B resume it; the "unused" a switcher launch leaves would loop B back into the game.
+		char what[16] = "";
+		getFile(GAME_SWITCHER_PERSIST_PATH, what, sizeof(what));
 		unlink(GAME_SWITCHER_PERSIST_PATH);
-		gs_from_game = true;
+		gs_from_game = strncmp(what, "unused", 6) != 0;
 		return 1;
 	}
 	return 0;
@@ -271,9 +275,9 @@ GameSwitcherResult GameSwitcher_handleInput(unsigned long now) {
 		gs_from_game = false;
 		if (e) {
 			readyResume(e);
-			putFile(GAME_SWITCHER_PERSIST_PATH, "unused");
 			result.startgame = true;
 			resume.should_resume = resume.can_resume;
+			MenuTabs_markHomeLaunch(); // quitting it lands on Home
 			Entry_open(e);
 			result.dirty = true;
 			Entry_free(e);
@@ -291,10 +295,13 @@ GameSwitcherResult GameSwitcher_handleInput(unsigned long now) {
 			Recents_entryFromRecent(Recents_at(gs_indices[switcher_selected]));
 		// NULL when the recent's emulator is no longer available
 		if (selectedEntry) {
-			// this will drop us back into game switcher after leaving the game
-			putFile(GAME_SWITCHER_PERSIST_PATH, "unused");
+			// this will drop us back into game switcher after leaving the game (Brick OS: back to Home instead)
+			if (!gs_bos())
+				putFile(GAME_SWITCHER_PERSIST_PATH, "unused");
 			result.startgame = true;
 			resume.should_resume = resume.can_resume;
+			if (gs_bos())
+				MenuTabs_markHomeLaunch(); // quitting it lands on Home
 			Entry_open(selectedEntry);
 			result.dirty = true;
 			Entry_free(selectedEntry);

@@ -450,7 +450,7 @@ int main(int argc, char* argv[]) {
 		// slides or crossfades its lit tile, or a Carousel/Backdrop row slides or
 		// crossfades its picture. Settled, nothing redraws.
 		if (drawScreen == SCREEN_GAMELIST && !ContextMenu_isOpen() &&
-			(GameList_pillAnimating() || GameList_artWaiting() || Home_animating() || GridView_animating() ||
+			(GameList_pillAnimating() || GameList_artWaiting() || Home_animating() || (BosGames_active() && BosGames_animating()) || GridView_animating() ||
 			 RowView_animating() || MinView_animating()))
 			dirty = true;
 
@@ -561,7 +561,7 @@ int main(int argc, char* argv[]) {
 				int title_x = currentScreen != SCREEN_GAMELIST ? -1
 							  : GameList_listShown()		   ? GameList_textX()
 															   : NX_DP(NX_MENU_GUTTER_DP);
-				if ((drawScreen == SCREEN_GAMELIST && !startgame && HomeBos_active()) ||
+				if ((drawScreen == SCREEN_GAMELIST && !startgame && (HomeBos_active() || BosGames_active())) ||
 					(drawScreen == SCREEN_GAMESWITCHER && GameSwitcher_isBos()))
 					ow = 0; // Brick OS Home and Game Switcher: their own status bar
 				else
@@ -589,7 +589,7 @@ int main(int argc, char* argv[]) {
 			} else {
 				GameSwitcher_readyList(); // the switcher's List: its selection's resume state (a no-op otherwise)
 				GameList_render(screen, lastScreen, show_setting, blackBG);
-				if (stack->count == 1 && !HomeBos_active())
+				if (stack->count == 1 && !HomeBos_active() && !BosGames_active())
 					MenuTabs_renderRow(screen, ow); // the root's tab row in the bottom bar (Layouts > Bottom bar)
 				RowView_renderExit(screen);			// B's fade out of a Backdrop game list: the whole frame toward black
 				lastScreen = SCREEN_GAMELIST;

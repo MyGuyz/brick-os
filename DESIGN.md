@@ -205,19 +205,29 @@ Weights in use: 400, 500, 600, 700.
   - Suggestion chips, gap 12: padding 10 18, radius 12, `surface-1`, 20px. A history item reads "ประวัติ: …" in `text-2`.
 - **Keyboard panel** at the bottom:
   - `#121214`, 1px `#1C1C1E` top border, padding 18 24 14, gap 10 between rows.
-  - Character keys 74×66, radius 14, 34px, `surface-2`, gap 8, rows centred.
+  - Keys are 66 high, gap 8 (rows gap 10), radius 14, `surface-2`, 34px, filling the width (24 in from each side).
   - Selected key: accent background, white text.
-  - Kedmanee rows as drawn (12 / 12 / 12 / 10 keys):
+  - **Every row has the same number of key units, so the keys line up in columns from edge to edge** (user, 2026-11-09):
+    - Thai: 12 per row (74 wide).
+    - English: 10 per row.
+  - Thai Kedmanee rows:
     - `ๅ / - ภ ถ ุ ึ ค ต จ ข ช`
     - `ๆ ไ ำ พ ะ ั ี ร น ย บ ล`
     - `ฟ ห ก ด เ ้ ่ า ส ว ง ฃ`
-    - `ผ ป แ อ ิ ื ท ม ใ ฝ`
-  - Bottom row, 66 high, gap 8:
-    - "ก / A" 116
-    - "⇧ Shift" 116
-    - "เว้นวรรค" 360
-    - "ลบ" 116
-    - "ค้นหา" 158, accent background, white text
+    - `⇧ ผ ป แ อ ิ ื ท ม ใ ฝ ⌫`
+  - A vowel or tone key shows the mark alone, centred on the key, with no dotted circle (user, 2026-11-09).
+  - The Shift layer uses the same columns:
+    - `+ ๑ ๒ ๓ ๔ ู ฿ ๕ ๖ ๗ ๘ ๙`
+    - `๐ " ฎ ฑ ธ ํ ๊ ณ ฯ ญ ฐ ,`
+    - `ฤ ฆ ฏ โ ฌ ็ ๋ ษ ศ ซ . ฅ`
+    - `⇧ ( ) ฉ ฮ ฺ ์ ? ฒ ฬ ฦ ⌫`
+  - Bottom row, as on the English board:
+    - ◀ (1)
+    - ▶ (1)
+    - "เว้นวรรค" (6 units; 4 on English), 21 in `text-3`
+    - - (1)
+    - "ก / A" (1), 22/600
+    - "ค้นหา" (2), accent background, white text, 22/600
   - Hints, 18 `text-2`, gap 28, centred: **A** พิมพ์ · **B** ลบ · **X** เว้นวรรค · **Y** ก/A · **L1** Shift · **START** ค้นหา.
 - **ไม่ได้กำหนดใน mockup:**
   - The Shift layer.

@@ -34,4 +34,12 @@ typedef struct {
 void BosSwitcher_render(SDL_Surface* screen, const BosSwitchCard* prev, const BosSwitchCard* cur,
 						const BosSwitchCard* next, int sel, int count, bool playing, time_t saved_at);
 bool BosSwitcher_pending(void);
+
+// เกม (DESIGN.md 6.3): the Consoles tab drawn as consoles | games
+typedef enum { BOSGAMES_UNHANDLED, BOSGAMES_HANDLED, BOSGAMES_SEARCH, BOSGAMES_HOME } BosGamesInput;
+bool BosGames_active(void);
+void BosGames_reset(void);
+void BosGames_render(SDL_Surface* screen);
+bool BosGames_animating(void);
+BosGamesInput BosGames_handleInput(bool* dirty);
 #endif

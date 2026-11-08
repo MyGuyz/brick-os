@@ -1,3 +1,4 @@
+#include "settings_bos.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -601,6 +602,9 @@ void settings_menu_render(SDL_Surface* screen, IndicatorType show_setting) {
 	if (!page)
 		return;
 	menu_screen = screen;
+	(void)show_setting;
+	SettingsBos_render(screen, page_stack, stack_depth); // Brick OS: DESIGN.md 6.6, the whole screen
+	return;
 
 	GFX_clear(screen);
 
