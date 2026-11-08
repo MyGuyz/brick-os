@@ -177,7 +177,6 @@ ifneq (,$(filter $(PLATFORM),tg5040 tg5050))
 	# Xtras catalog pak
 	cp ./workspace/all/extras/build/$(PLATFORM)/extras.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Xtras.pak/
 	cp ./workspace/all/cheatdb/build/$(PLATFORM)/cheatdb.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Xtras.pak/catalog/cheatdb/pak/
-	cp ./workspace/all/youtube/build/$(PLATFORM)/youtube.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/YouTube.pak/
 
 	# Netplay pre-launch wizard (run bare off PATH by netplay-prelaunch.sh and the
 	# DC/N64 netplay helpers);
@@ -311,7 +310,7 @@ common: build system cores prebuilts
 # inside the toolchain image (shared ones with tg5040's). CI builds each in its
 # own cached job and drops the results in workspace/all/prebuilts/output/; locally,
 # `make build-prebuilts PLATFORM=...` builds what that platform needs.
-PREBUILTS_tg5040 = ffplay rsync sdl2-drastic
+PREBUILTS_tg5040 = ffplay rsync sdl2-drastic ytc
 PREBUILTS_tg5050 = sdl2-drastic tun-ko
 
 build-prebuilts:
@@ -326,7 +325,7 @@ endif
 	docker run --rm -v $(CURDIR)/workspace:/root/workspace ghcr.io/loveretro/$(PLATFORM)-toolchain:latest \
 		/bin/bash -c '. ~/.bashrc && cd /root/workspace && PLATFORM=$(PLATFORM) bash all/prebuilts/$(PREBUILT).sh'
 
-PREBUILT_FILES_tg5040 = SYSTEM/shared/bin/ffplay SYSTEM/shared/bin/rsync
+PREBUILT_FILES_tg5040 = SYSTEM/shared/bin/ffplay SYSTEM/shared/bin/rsync SYSTEM/tg5040/paks/Tools/YouTube.pak/ytc/ytc.aarch64
 PREBUILT_FILES_tg5050 = SYSTEM/tg5050/lib/modules/tun.ko
 PREBUILT_FILES = $(PREBUILT_FILES_$(PLATFORM)) \
 	SYSTEM/$(PLATFORM)/paks/Emus/NDS.pak/libs/libSDL2-2.0.so.0
