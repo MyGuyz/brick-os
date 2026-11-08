@@ -514,10 +514,9 @@ int main(int argc, char* argv[]) {
 
 		// Check menu long-press threshold — trigger OSD (swallowed while a
 		// frontend holds the suppress flag during button-bind capture)
+		// Brick OS: MENU held is the Game Switcher (DESIGN.md 6.2, minarch); the quick menu stays on the Home key
 		if (menu_pressed && !menu_long_fired && now - menu_press_start >= LONG_PRESS_MS) {
 			menu_long_fired = 1;
-			if (access(OSD_SUPPRESS_PATH, F_OK) != 0)
-				toggle_osd();
 		}
 
 		// Handle key repeat for volume/brightness
