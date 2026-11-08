@@ -404,7 +404,7 @@ Music Player	เพลง
 Media Player	วิดีโอ
 Music	เพลง
 Videos	วิดีโอ
-Library	คลังเพลง
+Library	คลัง
 Playlists	เพลย์ลิสต์
 Now Playing	กำลังเล่น
 Play All	เล่นทั้งหมด
