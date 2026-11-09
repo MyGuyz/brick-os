@@ -35,3 +35,6 @@ UI_COMPONENT_SRCS = \
 # ListView widget (depends on ui_list.c - apps that take this must also
 # compile $(UI_DIR)/ui_list.c, which every list-drawing app already does).
 UI_LISTVIEW_SRCS = $(UI_DIR)/ui_listview.c
+
+# Brick OS UI 2.0 kit (bos_ui.h). Opt-in: needs api.c and text_shape.c in the app.
+BOS_UI_SRCS = $(UI_DIR)/bos_ui.c
