@@ -512,3 +512,10 @@ Trophies	ถ้วยรางวัล
 Stats	สถิติ
 Sync	ซิงค์
 Artwork	ภาพปก
+All apps	แอปทั้งหมด
+%d apps · blue dot = pinned to Home	%d แอป · จุดฟ้า = ปักหมุดไว้หน้าแรก
+Pin	ปักหมุด
+Unpin	เลิกปักหมุด
+Cancel	ยกเลิก
+Move	ย้าย
+Arrange	จัดเรียง

@@ -359,7 +359,7 @@ static void buildApps(void) {
 
 	bool seen_known = exists((char*)SEEN_PATH); // the very first boot marks nothing as new
 	scanPaks(SDCARD_PATH "/.system/paks/Tools", seen_known);
-	scanPaks(SDCARD_PATH "/Tools/" PLATFORM, seen_known);
+	scanPaks(TOOLS_PATH, seen_known); // user-installed (PortMaster …), as the Tools tab reads them
 
 	npins = 0;
 	FILE* f = fopen(PINS_PATH, "r");
@@ -378,6 +378,55 @@ static void buildApps(void) {
 			if (a >= 0)
 				pins[npins++] = a;
 		}
+}
+
+static float gdim = 1.0f;		 // the เล่นต่อ block's alpha (0.35 while reordering)
+static bool moving;				 // จัดเรียง: the focused pin is picked up
+static int saved_pins[MAX_APPS]; // the order to restore on B
+static int nsaved;
+static bool lib;				 // แอปทั้งหมด is showing
+static int lorder[MAX_APPS], nlorder, lfocus, ltop;
+
+static void savePins(void) {
+	FILE* f = fopen(PINS_PATH, "w");
+	if (!f)
+		return;
+	for (int i = 0; i < npins; i++)
+		fprintf(f, "%s\n", apps[pins[i]].id);
+	fclose(f);
+}
+
+static void markSeen(void) { // every app now on the card is no longer "ใหม่"
+	FILE* f = fopen(SEEN_PATH, "w");
+	if (!f)
+		return;
+	for (int i = 0; i < napps; i++) {
+		fprintf(f, "%s\n", apps[i].id);
+		apps[i].fresh = false;
+	}
+	fclose(f);
+}
+
+static int pinIndex(int app) {
+	for (int i = 0; i < npins; i++)
+		if (pins[i] == app)
+			return i;
+	return -1;
+}
+
+static int byName(const void* a, const void* b) {
+	return strcasecmp(I18N_text(apps[*(const int*)a].name), I18N_text(apps[*(const int*)b].name));
+}
+
+static void buildLibrary(void) { // pinned apps in pin order, then the rest A–Z
+	nlorder = 0;
+	for (int i = 0; i < npins; i++)
+		lorder[nlorder++] = pins[i];
+	int rest = nlorder;
+	for (int i = 0; i < napps; i++)
+		if (pinIndex(i) < 0)
+			lorder[nlorder++] = i;
+	qsort(lorder + rest, nlorder - rest, sizeof(int), byName);
 }
 
 // ---- state ----
@@ -448,11 +497,11 @@ static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int
 	if (st == HOMEART_LOADING)
 		pending = true;
 	if (st == HOMEART_READY && pic) {
-		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a));
+		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a * gdim));
 		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
 		SDL_SetSurfaceAlphaMod(pic, 255);
 	} else
-		BOS_rrect(s, x, y, w, h, r, over(BOS_C_SURFACE, a));
+		BOS_rrect(s, x, y, w, h, r, over(BOS_C_SURFACE, a * gdim));
 }
 
 static int sectionLabel(SDL_Surface* s, int y, const char* t) { // 30/600 text2, padding 8 40 10
@@ -512,7 +561,7 @@ static int caption(SDL_Surface* s, int top) { // name 40/600, then "<console> ·
 	int y = top + BOS_px(14);
 	char name[256];
 	BOS_fit(c->entry->name, BOS_FS_BODY, 600, s->w - 2 * BOS_px(BOS_PAGE_PAD), name, sizeof(name));
-	BOS_text(s, name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, (s->w - BOS_textW(name, BOS_FS_BODY, 600)) / 2, y);
+	BOS_text(s, name, BOS_FS_BODY, 600, BOS_C_TEXT, gdim, (s->w - BOS_textW(name, BOS_FS_BODY, 600)) / 2, y);
 	y += BOS_lineH(BOS_FS_BODY) + BOS_px(4);
 	char meta[160];
 	snprintf(meta, sizeof(meta), "%s", c->tag);
@@ -528,19 +577,19 @@ static int caption(SDL_Surface* s, int top) { // name 40/600, then "<console> ·
 	const char* rl = I18N_text("Continue");
 	int mw = BOS_textW(meta, BOS_FS_SMALL, 400), pw = c->resume ? BOS_px(16) + pillW(rl, true) : 0;
 	int x = (s->w - mw - pw) / 2, cy = y + BOS_px(22);
-	BOS_textMid(s, meta, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, x, cy);
-	if (c->resume)
+	BOS_textMid(s, meta, BOS_FS_SMALL, 400, BOS_C_TEXT2, gdim, x, cy);
+	if (c->resume && gdim == 1.0f)
 		pill(s, x + mw + BOS_px(16), cy, rl, BOS_C_OK);
 	return BOS_px(14) + BOS_lineH(BOS_FS_BODY) + BOS_px(4) + BOS_px(44);
 }
 
 // one app tile (§6.1): 112 radius 26, icon 64, name 30 under it in a 128 box; focused: white, x1.12; others at 60 %
-static void appTile(SDL_Surface* s, int cx, int top, const char* icon, const char* label, uint32_t col, bool focused,
-					bool dim) {
+static SDL_Rect appTile(SDL_Surface* s, int cx, int top, const char* icon, const char* label, uint32_t col, bool focused,
+						bool dim, int label_box) {
 	float k2 = focused ? BOS_FOCUS_SCALE : 1.0f;
 	float a = dim ? BOS_DIM : 1.0f;
 	int size = (int)(BOS_px(BOS_TILE) * k2 + 0.5f), r = (int)(BOS_px(BOS_TILE_RADIUS) * k2 + 0.5f);
-	int ic = (int)(BOS_px(BOS_ICON) * k2 + 0.5f), box = (int)(BOS_px(BOS_TILE + 16 + 10) * k2 + 0.5f); // the cell plus most of the gap
+	int ic = (int)(BOS_px(BOS_ICON) * k2 + 0.5f), box = (int)(label_box * k2 + 0.5f);
 	int y = top + (BOS_px(BOS_TILE) - size) / 2; // grow about the tile's centre
 	BOS_rrect(s, cx - size / 2, y, size, size, r, focused ? BOS_theme()->focus : over(BOS_C_SURFACE, a));
 	BOS_icon(s, icon, focused ? BOS_theme()->onfocus : col, a, cx - ic / 2, y + (size - ic) / 2, ic);
@@ -548,10 +597,11 @@ static void appTile(SDL_Surface* s, int cx, int top, const char* icon, const cha
 	BOS_fit(label, BOS_FS_SMALL, focused ? 600 : 500, box, t, sizeof(t));
 	BOS_text(s, t, BOS_FS_SMALL, focused ? 600 : 500, BOS_C_TEXT, a, cx - BOS_textW(t, BOS_FS_SMALL, focused ? 600 : 500) / 2,
 			 y + size + BOS_px(8));
+	return (SDL_Rect){cx - size / 2, y, size, size};
 }
 
 static void appRow(SDL_Surface* s, int top) {
-	int n = npins + 1, cell = BOS_px(BOS_TILE + 16), gap = BOS_px(12);
+	int n = npins + (moving ? 0 : 1), cell = BOS_px(BOS_TILE + 16), gap = BOS_px(12);
 	int total = n * cell + (n - 1) * gap, x0 = (s->w - total) / 2;
 	int avail = s->w - 2 * BOS_px(BOS_PAGE_PAD);
 	if (total > avail) { // more pins than fit: scroll so the focused tile stays on screen
@@ -563,18 +613,74 @@ static void appRow(SDL_Surface* s, int top) {
 	for (int i = 0; i < n; i++) {
 		int cx = x0 + i * (cell + gap) + cell / 2;
 		bool f = row == 1 && afocus == i;
+		int box = BOS_px(BOS_TILE + 16 + 10); // the cell plus most of the gap
 		if (i < npins) {
 			const App* a = &apps[pins[i]];
-			appTile(s, cx, top, a->icon, I18N_text(a->name), a->color, f, !f);
+			if (moving && f) { // picked up: lifted 12 px, < > beside it, nothing else moves (§6.1 จัดเรียง)
+				SDL_Rect t = appTile(s, cx, top - BOS_px(12), a->icon, I18N_text(a->name), a->color, true, false, box);
+				int ar = BOS_px(40), ay = t.y + t.h / 2 - ar / 2;
+				BOS_icon(s, "chevl", BOS_C_TEXT, 1, t.x - ar + BOS_px(4), ay, ar);
+				BOS_icon(s, "chev", BOS_C_TEXT, 1, t.x + t.w - BOS_px(4), ay, ar);
+			} else
+				appTile(s, cx, top, a->icon, I18N_text(a->name), a->color, f, !f, box);
 		} else
-			appTile(s, cx, top, "grid", I18N_text("All"), BOS_C_TEXT, f, !f);
+			appTile(s, cx, top, "grid", I18N_text("All"), BOS_C_TEXT, f, !f, box);
 	}
+}
+
+// แอปทั้งหมด (§6.1b): 5 columns (cell 176, tile 112), row gap 18, scrolls by rows
+static void libraryRender(SDL_Surface* s) {
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_statusBar(s, I18N_text("Home"));
+	char sub[128];
+	snprintf(sub, sizeof(sub), I18N_text("%d apps · blue dot = pinned to Home"), napps);
+	int y = BOS_px(BOS_BAR_H);
+	y += BOS_largeTitle(s, y, I18N_text("All apps"), sub);
+	int cols = 5, cell = BOS_px(176), pad = BOS_px(BOS_PAGE_PAD);
+	int pitch = (s->w - 2 * pad - cell) / (cols - 1);
+	int rowh = BOS_px(BOS_TILE + 8) + BOS_lineH(BOS_FS_SMALL) + BOS_px(18);
+	int bottom = s->h - BOS_px(BOS_BAR_H), avail = bottom - y;
+	int vis = avail / rowh > 0 ? avail / rowh : 1, frow = lfocus / cols;
+	if (frow < ltop)
+		ltop = frow;
+	if (frow >= ltop + vis)
+		ltop = frow - vis + 1;
+	SDL_SetClipRect(s, &(SDL_Rect){0, y, s->w, avail});
+	for (int i = 0; i < nlorder; i++) {
+		int r = i / cols - ltop;
+		if (r < 0 || r > vis)
+			continue;
+		const App* a = &apps[lorder[i]];
+		bool f = i == lfocus;
+		int cx = pad + cell / 2 + (i % cols) * pitch, top = y + BOS_px(10) + r * rowh;
+		SDL_Rect t = appTile(s, cx, top, a->icon, I18N_text(a->name), a->color, f, !f, cell);
+		if (pinIndex(lorder[i]) >= 0) { // pinned: a 14 px primary dot, 10 in from the top-right corner
+			int d = BOS_px(14);
+			BOS_rrect(s, t.x + t.w - BOS_px(10) - d, t.y + BOS_px(10), d, d, d / 2, BOS_theme()->primary);
+		}
+		if (a->fresh) { // ใหม่: 32 high, padding 0 10, primary, 22/700 white, 10 above / 14 past the corner
+			const char* nl = I18N_text("New");
+			int ph = BOS_px(32), pw = BOS_textW(nl, BOS_FS_HINT_WORD, 700) + 2 * BOS_px(10);
+			int px = t.x + t.w + BOS_px(14) - pw, py = t.y - BOS_px(10);
+			BOS_rrect(s, px, py, pw, ph, ph / 2, BOS_theme()->primary);
+			BOS_textMid(s, nl, BOS_FS_HINT_WORD, 700, 0xFFFFFF, 1, px + BOS_px(10), py + ph / 2);
+		}
+	}
+	SDL_SetClipRect(s, NULL);
+	bool pinned = lfocus < nlorder && pinIndex(lorder[lfocus]) >= 0;
+	BosHint r[] = {{"A", I18N_text("Open")}, {"B", I18N_text("Back")}, {"X", I18N_text(pinned ? "Unpin" : "Pin")}};
+	BOS_hintBar(s, r, 3, NULL, 0);
 }
 
 void HomeBos_render(SDL_Surface* s) {
 	if (!built)
 		build();
 	pending = false;
+	if (lib) {
+		libraryRender(s);
+		return;
+	}
+	gdim = moving ? 0.35f : 1.0f;
 	if (cstart) { // the carousel tween
 		float t = (SDL_GetTicks() - cstart) / (float)TWEEN_MS;
 		if (t >= 1) {
@@ -594,6 +700,13 @@ void HomeBos_render(SDL_Surface* s) {
 		BosHint r[] = {{"A", I18N_text("Continue")}, {"Y", I18N_text("Search")}};
 		BosHint l[] = {{"MENU", I18N_text("Options")}};
 		BOS_hintBar(s, r, 2, l, ncards > 0 ? 1 : 0);
+	} else if (moving) {
+		BosHint r[] = {{"A", I18N_text("Done")}, {"B", I18N_text("Cancel")}};
+		BosHint l[] = {{"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Move")}};
+		BOS_hintBar(s, r, 2, l, 1);
+	} else if (afocus < npins) {
+		BosHint r[] = {{"A", I18N_text("Open")}, {"X", I18N_text("Arrange")}, {"Y", I18N_text("Search")}};
+		BOS_hintBar(s, r, 3, NULL, 0);
 	} else {
 		BosHint r[] = {{"A", I18N_text("Open")}, {"Y", I18N_text("Search")}};
 		BOS_hintBar(s, r, 2, NULL, 0);
@@ -640,9 +753,72 @@ Entry* HomeBos_focusedGame(void) {
 	return row == 0 && cfocus < ncards ? cards[cfocus].entry : NULL;
 }
 
+static HomeBosInput libraryInput(bool* dirty) {
+	int cols = 5, f = lfocus;
+	if (PAD_justRepeated(BTN_LEFT) && f > 0)
+		f--;
+	else if (PAD_justRepeated(BTN_RIGHT) && f < nlorder - 1)
+		f++;
+	else if (PAD_justRepeated(BTN_UP) && f - cols >= 0)
+		f -= cols;
+	else if (PAD_justRepeated(BTN_DOWN) && f < nlorder - 1)
+		f = f + cols < nlorder ? f + cols : nlorder - 1;
+	else if (PAD_justPressed(BTN_B)) {
+		markSeen();
+		lib = false;
+	} else if (PAD_justPressed(BTN_X) && lfocus < nlorder) {
+		int app = lorder[lfocus], at = pinIndex(app);
+		if (at >= 0) {
+			memmove(&pins[at], &pins[at + 1], (npins - at - 1) * sizeof(int));
+			npins--;
+		} else if (npins < MAX_APPS)
+			pins[npins++] = app;
+		savePins();
+		buildLibrary();
+		for (int i = 0; i < nlorder; i++) // stay on the same app
+			if (lorder[i] == app)
+				f = i;
+		if (afocus > npins)
+			afocus = npins;
+	} else if (PAD_justPressed(BTN_A) && lfocus < nlorder) {
+		markSeen();
+		openApp(lorder[lfocus], dirty);
+	}
+	lfocus = f;
+	*dirty = true;
+	return HOMEBOS_HANDLED;
+}
+
+static HomeBosInput reorderInput(bool* dirty) {
+	if (PAD_justRepeated(BTN_LEFT) && afocus > 0) {
+		int t = pins[afocus];
+		pins[afocus] = pins[afocus - 1];
+		pins[--afocus] = t;
+	} else if (PAD_justRepeated(BTN_RIGHT) && afocus < npins - 1) {
+		int t = pins[afocus];
+		pins[afocus] = pins[afocus + 1];
+		pins[++afocus] = t;
+	} else if (PAD_justPressed(BTN_A)) {
+		moving = false;
+		savePins();
+	} else if (PAD_justPressed(BTN_B)) {
+		int app = pins[afocus];
+		memcpy(pins, saved_pins, nsaved * sizeof(int));
+		npins = nsaved;
+		afocus = pinIndex(app) >= 0 ? pinIndex(app) : 0;
+		moving = false;
+	}
+	*dirty = true;
+	return HOMEBOS_HANDLED;
+}
+
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) {
 	if (!built)
 		build();
+	if (lib)
+		return libraryInput(dirty);
+	if (moving)
+		return reorderInput(dirty);
 	// MENU: a tap on a game = its options (§6.10); held 0.5 s = the Game Switcher
 	if (PAD_justPressed(BTN_MENU))
 		menu_down = (uint32_t)now;
@@ -673,6 +849,10 @@ HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) 
 			row = 0;
 	} else if (PAD_justPressed(BTN_DOWN)) {
 		row = 1;
+	} else if (PAD_justPressed(BTN_X) && row == 1 && afocus < npins) {
+		memcpy(saved_pins, pins, npins * sizeof(int));
+		nsaved = npins;
+		moving = true;
 	} else if (PAD_justPressed(BTN_A)) {
 		if (row == 0 && cfocus < ncards) {
 			Entry* e = cards[cfocus].entry;
@@ -683,8 +863,11 @@ HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) 
 		} else if (row == 1) {
 			if (afocus < npins)
 				openApp(pins[afocus], dirty);
-			else
-				GameList_openTab(MENU_TAB_TOOLS, dirty); // แอปทั้งหมด (its own screen comes next)
+			else {
+				buildLibrary();
+				lib = true;
+				lfocus = ltop = 0;
+			}
 		}
 		*dirty = true;
 		return HOMEBOS_HANDLED;
