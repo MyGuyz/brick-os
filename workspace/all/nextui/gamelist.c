@@ -1968,7 +1968,22 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 	// through to the root's handlers below, and the list's own row actions (X, Y, A, the row moves) stay off.
 	bool home = Home_active();
 	if (BosGames_active()) { // Brick OS: เกม (DESIGN.md 6.3)
-		BosGamesInput r = BosGames_handleInput(dirty);
+		BosGamesInput r = BosGames_handleInput(now, dirty, tap_menu, tap_select);
+		tap_select = false; // เกม: SELECT is the cover/list switch, never the old Game Switcher shortcut
+		if (r == BOSGAMES_OPTIONS) {
+			Entry* e = BosGames_focusedGame();
+			if (e)
+				GameList_openContextMenuFor(e, false, false);
+			*dirty = true;
+			return result;
+		}
+		if (r == BOSGAMES_SWITCHER) {
+			result.screen = SCREEN_GAMESWITCHER;
+			GameSwitcher_resetSelection();
+			result.animdir = SLIDE_UP;
+			*dirty = true;
+			return result;
+		}
 		if (r == BOSGAMES_SEARCH) {
 			if (Search_open()) {
 				result.animdir = SLIDE_LEFT;

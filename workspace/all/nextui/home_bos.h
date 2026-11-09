@@ -39,10 +39,11 @@ void BosSwitcher_render(SDL_Surface* screen, const BosSwitchCard* prev, const Bo
 bool BosSwitcher_pending(void);
 
 // เกม (DESIGN.md 6.3): the Consoles tab drawn as consoles | games
-typedef enum { BOSGAMES_UNHANDLED, BOSGAMES_HANDLED, BOSGAMES_SEARCH, BOSGAMES_HOME } BosGamesInput;
+typedef enum { BOSGAMES_UNHANDLED, BOSGAMES_HANDLED, BOSGAMES_SEARCH, BOSGAMES_HOME, BOSGAMES_OPTIONS, BOSGAMES_SWITCHER } BosGamesInput;
 bool BosGames_active(void);
 void BosGames_reset(void);
 void BosGames_render(SDL_Surface* screen);
 bool BosGames_animating(void);
-BosGamesInput BosGames_handleInput(bool* dirty);
+BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu, bool tap_select);
+Entry* BosGames_focusedGame(void); // step 2's focused game, else NULL
 #endif

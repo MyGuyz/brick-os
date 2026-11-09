@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "api.h"
 #include "config.h"
@@ -24,6 +25,8 @@
 #include "../musicplayer/music_service_client.h"
 #include "../musicplayer/music_service_protocol.h"
 #include "content.h"
+#include "controller_art_model.h"
+#include <math.h>
 #include "gameinfo.h"
 #include "gameinfo_text.h"
 #include "gamelist.h"

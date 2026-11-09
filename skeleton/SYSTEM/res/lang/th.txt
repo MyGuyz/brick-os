@@ -519,3 +519,6 @@ Unpin	เลิกปักหมุด
 Cancel	ยกเลิก
 Move	ย้าย
 Arrange	จัดเรียง
+No games yet	ยังไม่มีเกม
+%d games · Sorted A-Z	%d เกม · เรียง A–Z
+Favorite	โปรด
