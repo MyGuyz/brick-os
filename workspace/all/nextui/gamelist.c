@@ -2000,6 +2000,13 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 			*dirty = true;
 			return result;
 		}
+		if (r == HOMEBOS_OPTIONS) {
+			Entry* e = HomeBos_focusedGame();
+			if (e)
+				GameList_openContextMenuFor(e, false, true);
+			*dirty = true;
+			return result;
+		}
 		if (r == HOMEBOS_SEARCH) {
 			if (Search_open()) {
 				result.animdir = SLIDE_LEFT;

@@ -6,12 +6,14 @@
 #include <stdbool.h>
 
 #include "sdl.h"
+#include "types.h"
 
 typedef enum {
 	HOMEBOS_UNHANDLED, // the caller's own handlers see the press (SELECT, START, the F keys)
 	HOMEBOS_HANDLED,
 	HOMEBOS_SEARCH,	  // Y: the caller opens search
-	HOMEBOS_SWITCHER, // MENU: the caller opens the Game Switcher
+	HOMEBOS_SWITCHER, // MENU held: the caller opens the Game Switcher
+	HOMEBOS_OPTIONS,  // MENU tapped on a game: the caller opens its options (HomeBos_focusedGame)
 } HomeBosInput;
 
 bool HomeBos_active(void); // Home is showing in the Brick OS layout
@@ -20,6 +22,7 @@ void HomeBos_render(SDL_Surface* screen);
 bool HomeBos_animating(void);
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu);
 void HomeBos_quit(void);
+Entry* HomeBos_focusedGame(void); // the เล่นต่อ card in focus, NULL on the app row
 
 
 

@@ -53,4 +53,21 @@
 #define BOS_BATT_WARN 20
 #define BOS_BATT_DANGER 10
 
+// ---- app identity colours (icon colour on the app tiles, DESIGN.md 6.1b) ----
+#define BOS_APP_GAMES 0x4A9BFF
+#define BOS_APP_YOUTUBE 0xFF4D5E
+#define BOS_APP_MUSIC 0xFF7AB6
+#define BOS_APP_VIDEO 0xFFB340
+#define BOS_APP_PORTS 0x5EE0A0
+#define BOS_APP_SETTINGS 0xC7C7CC
+#define BOS_APP_FILES 0x64D2FF
+#define BOS_APP_IMAGES 0xFFD60A
+#define BOS_APP_TROPHIES 0xFF9F0A
+#define BOS_APP_STATS 0x30D158
+#define BOS_APP_SYNC 0x0A84FF
+#define BOS_APP_XTRAS 0xFF6482
+#define BOS_APP_EMUSET 0xAC8E68
+#define BOS_APP_ARTWORK 0xBF5AF2
+#define BOS_APP_PORTMASTER 0x5AC8FA
+
 #endif

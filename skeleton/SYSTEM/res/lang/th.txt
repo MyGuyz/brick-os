@@ -505,3 +505,10 @@ Back	กลับ
 Sorted A-Z	เรียง A–Z
 Last played %s	เล่นล่าสุด %s
 Brick OS · based on NX Redux	Brick OS · ต่อยอดจาก NX Redux
+Open	เปิด
+All	ทั้งหมด
+Images	รูปภาพ
+Trophies	ถ้วยรางวัล
+Stats	สถิติ
+Sync	ซิงค์
+Artwork	ภาพปก

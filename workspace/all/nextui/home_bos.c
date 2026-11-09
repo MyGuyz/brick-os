@@ -19,6 +19,7 @@
 #include "text_thai.h"
 #include "utils.h"
 #include "ui/ui_draw.h"
+#include "bos_ui.h"
 
 #include "../musicplayer/music_service_client.h"
 #include "../musicplayer/music_service_protocol.h"
@@ -45,8 +46,6 @@
 #define C_ACCENT 0x0A84FF
 
 #define BOS_RES RES_PATH "/bos"
-#define MAX_CARDS 3
-#define NTOOLS 6
 
 static float k = 1.0f; // screen width / 1024
 static int P(float v) {
@@ -163,136 +162,12 @@ static void rrect(SDL_Surface* s, int x, int y, int w, int h, int r, uint32_t c,
 	UI_fillRoundedRect(s, x, y, w, h, r, mapc(s, c, a));
 }
 
-// ---- icons: white stroke PNGs (design/icons, rendered at the mockup's px), tinted when drawn ----
-static SDL_Surface* icons[NTOOLS + 1]; // the six tools, then WiFi
-static const char* icon_names[NTOOLS + 1] = {"games", "youtube", "music", "video", "ports", "settings", "wifi"};
-static void drawIcon(SDL_Surface* dst, int i, uint32_t c, int x, int y, int w, int h) {
-	if (!icons[i]) {
-		char path[MAX_PATH];
-		snprintf(path, sizeof(path), "%s/icon_%s.png", BOS_RES, icon_names[i]);
-		SDL_Surface* raw = IMG_Load(path);
-		if (!raw)
-			return;
-		icons[i] = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
-		SDL_FreeSurface(raw);
-		if (!icons[i])
-			return;
-		SDL_SetSurfaceBlendMode(icons[i], SDL_BLENDMODE_BLEND);
-	}
-	SDL_SetSurfaceColorMod(icons[i], (c >> 16) & 255, (c >> 8) & 255, c & 255);
-	SDL_BlitScaled(icons[i], NULL, dst, &(SDL_Rect){x, y, w, h});
-}
+// ==== Home v2 (DESIGN.md 6.1): status bar, เล่นต่อ carousel, pinned app row + ทั้งหมด, hint bar — all from bos_ui ====
 
-// ---- data ----
-typedef struct {
-	Entry* entry;
-	char tag[32];
-} Card;
-static Card cards[MAX_CARDS];
-static int ncards;
+#define MAX_CARDS 12
+#define MAX_APPS 40
 
-typedef struct {
-	const char* name;  // English key (I18N_text)
-	uint32_t color;	   // icon colour (DESIGN.md 2)
-	char sub[96];	   // subtitle
-	char path[MAX_PATH];
-} Tool;
-static Tool tools[NTOOLS] = {
-	{"Games", C_ACCENT, "", ""},
-	{"YouTube", 0xFF6B5E, "", "/.system/paks/Tools/YouTube.pak"},
-	{"Music", 0xFF7AB6, "", "/.system/paks/Tools/Music Player.pak"},
-	{"Video", 0xFFB340, "", "/.system/paks/Tools/Media Player.pak"},
-	{"Ports", 0x5EE0A0, "", ""},
-	{"Settings", 0xC7C7CC, "", "/.system/paks/Tools/Settings.pak"},
-};
-
-static bool built;
-static int focus; // 0..2 the cards, 3..8 the tools (row by row)
-
-static void groupDigits(int n, char* out, size_t size) { // 1248 -> "1,248"
-	char raw[32];
-	snprintf(raw, sizeof(raw), "%d", n);
-	int len = (int)strlen(raw), o = 0;
-	for (int i = 0; i < len && o < (int)size - 2; i++) {
-		if (i > 0 && (len - i) % 3 == 0)
-			out[o++] = ',';
-		out[o++] = raw[i];
-	}
-	out[o] = '\0';
-}
-
-static int countLines(const char* path) { // lines that aren't the "#fp=" header
-	FILE* f = fopen(path, "r");
-	if (!f)
-		return 0;
-	char line[1024];
-	int n = 0;
-	while (fgets(line, sizeof(line), f))
-		if (line[0] && line[0] != '#' && line[0] != '\n')
-			n++;
-	fclose(f);
-	return n;
-}
-
-static int countFiles(const char* dir, bool scripts_only) {
-	DIR* d = opendir(dir);
-	if (!d)
-		return 0;
-	int n = 0;
-	struct dirent* e;
-	while ((e = readdir(d))) {
-		if (e->d_name[0] == '.')
-			continue;
-		if (scripts_only) {
-			const char* ext = strrchr(e->d_name, '.');
-			if (!ext || strcasecmp(ext, ".sh"))
-				continue;
-		} else if (e->d_type == DT_DIR)
-			continue;
-		n++;
-	}
-	closedir(d);
-	return n;
-}
-
-static int countChannels(void) { // YTC's favourite channels: one "id" per channel in channels.json
-	FILE* f = fopen(SDCARD_PATH "/.userdata/shared/ytc/config/channels.json", "r");
-	if (!f)
-		return 0;
-	char line[1024];
-	int n = 0;
-	while (fgets(line, sizeof(line), f))
-		if (strstr(line, "\"id\""))
-			n++;
-	fclose(f);
-	return n;
-}
-
-static void portsDir(char* out, size_t size) {
-	out[0] = '\0';
-	DIR* d = opendir(ROMS_PATH);
-	if (!d)
-		return;
-	struct dirent* e;
-	while ((e = readdir(d)))
-		if (strstr(e->d_name, "(PORTS)")) {
-			snprintf(out, size, "%s/%s", ROMS_PATH, e->d_name);
-			break;
-		}
-	closedir(d);
-}
-
-static void nowPlaying(char* out, size_t size) {
-	out[0] = '\0';
-	int fd = MusicService_connect(NULL, 20);
-	if (fd < 0)
-		return;
-	MusicResponseWire r;
-	if (MusicService_request(fd, MUSIC_CMD_SNAPSHOT, NULL, 0, &r, 100) == MUSIC_STATUS_OK &&
-		r.snapshot.state == MUSIC_STATE_PLAYING && r.snapshot.title[0])
-		snprintf(out, size, I18N_text("Playing · %s"), r.snapshot.title);
-	MusicService_disconnect(fd);
-}
+static bool pending; // a picture or a game's info still loading: keep drawing
 
 static void tagOf(const char* path, char* out, size_t size) { // "Roms/Super Nintendo ES (SFC)/x.sfc" -> "SFC"
 	out[0] = '\0';
@@ -314,14 +189,209 @@ static void tagOf(const char* path, char* out, size_t size) { // "Roms/Super Nin
 		snprintf(out, size, "%.*s", (int)(close - open - 1), open + 1);
 }
 
+static int countLines(const char* path) { // lines that aren't the "#fp=" header
+	FILE* f = fopen(path, "r");
+	if (!f)
+		return 0;
+	char line[1024];
+	int n = 0;
+	while (fgets(line, sizeof(line), f))
+		if (line[0] && line[0] != '#' && line[0] != '\n')
+			n++;
+	fclose(f);
+	return n;
+}
+
+static bool musicPlaying(void) {
+	int fd = MusicService_connect(NULL, 20);
+	if (fd < 0)
+		return false;
+	MusicResponseWire r;
+	bool playing = MusicService_request(fd, MUSIC_CMD_SNAPSHOT, NULL, 0, &r, 100) == MUSIC_STATUS_OK &&
+				   r.snapshot.state == MUSIC_STATE_PLAYING;
+	MusicService_disconnect(fd);
+	return playing;
+}
+
+// ---- เล่นต่อ cards ----
+typedef struct {
+	Entry* entry;
+	char tag[32];
+	bool resume; // has a resume state (the เล่นต่อ pill)
+} Card;
+static Card cards[MAX_CARDS];
+static int ncards;
+
 static void freeCards(void) {
 	for (int i = 0; i < ncards; i++)
 		Entry_free(cards[i].entry);
 	ncards = 0;
 }
 
+// ---- apps: every Tools pak (shipped + installed), plus เกม and Ports ----
+typedef enum { APP_GAMES, APP_PORTS, APP_PAK } AppKind;
+typedef struct {
+	char id[64];	 // "games", "ports", or the pak's folder name ("Music Player")
+	char name[64];	 // English key for I18N_text, or the pak name as is
+	const char* icon;
+	uint32_t color;
+	AppKind kind;
+	char path[MAX_PATH]; // the pak or the Ports folder
+	bool fresh;			 // installed since the user last opened แอปทั้งหมด (the ใหม่ pill)
+} App;
+static App apps[MAX_APPS];
+static int napps;
+static int pins[MAX_APPS]; // indexes into apps, in the user's order
+static int npins;
+
+static const struct {
+	const char* pak;
+	const char* name;
+	const char* icon;
+	uint32_t color;
+} KNOWN[] = {
+	{"YouTube", "YouTube", "youtube", BOS_APP_YOUTUBE},
+	{"Music Player", "Music", "music", BOS_APP_MUSIC},
+	{"Media Player", "Video", "video", BOS_APP_VIDEO},
+	{"Settings", "Settings", "settings", BOS_APP_SETTINGS},
+	{"Files", "Files", "folder", BOS_APP_FILES},
+	{"Image Viewer", "Images", "image", BOS_APP_IMAGES},
+	{"RetroAchievements", "Trophies", "trophy", BOS_APP_TROPHIES},
+	{"Game Tracker", "Stats", "chart", BOS_APP_STATS},
+	{"Device Sync", "Sync", "sync", BOS_APP_SYNC},
+	{"Xtras", "Xtras", "spark", BOS_APP_XTRAS},
+	{"Emulator Settings", "Emulator Settings", "sliders", BOS_APP_EMUSET},
+	{"Artwork Manager", "Artwork", "palette", BOS_APP_ARTWORK},
+	{"PortMaster", "PortMaster", "box", BOS_APP_PORTMASTER},
+};
+
+#define PINS_PATH USERDATA_PATH "/bos_home_pins.txt"
+#define SEEN_PATH USERDATA_PATH "/bos_apps_seen.txt"
+static const char* DEFAULT_PINS[] = {"games", "YouTube", "Music Player", "Media Player", "ports", "Settings"};
+
+static int findApp(const char* id) {
+	for (int i = 0; i < napps; i++)
+		if (!strcmp(apps[i].id, id))
+			return i;
+	return -1;
+}
+
+static bool lineInFile(const char* path, const char* s) {
+	FILE* f = fopen(path, "r");
+	if (!f)
+		return false;
+	char line[128];
+	bool found = false;
+	while (!found && fgets(line, sizeof(line), f)) {
+		line[strcspn(line, "\r\n")] = '\0';
+		found = !strcmp(line, s);
+	}
+	fclose(f);
+	return found;
+}
+
+static void addPak(const char* dir, const char* file, bool seen_known) {
+	if (napps >= MAX_APPS)
+		return;
+	size_t n = strlen(file);
+	if (n < 5 || strcasecmp(file + n - 4, ".pak"))
+		return;
+	char id[64];
+	snprintf(id, sizeof(id), "%.*s", (int)(n - 4), file);
+	if (findApp(id) >= 0)
+		return;
+	App* a = &apps[napps];
+	memset(a, 0, sizeof(*a));
+	snprintf(a->id, sizeof(a->id), "%s", id);
+	snprintf(a->path, sizeof(a->path), "%s/%s", dir, file);
+	a->kind = APP_PAK;
+	a->icon = "box";
+	a->color = BOS_C_SECONDARY;
+	snprintf(a->name, sizeof(a->name), "%s", id);
+	for (size_t k2 = 0; k2 < sizeof(KNOWN) / sizeof(KNOWN[0]); k2++)
+		if (!strcmp(KNOWN[k2].pak, id)) {
+			snprintf(a->name, sizeof(a->name), "%s", KNOWN[k2].name);
+			a->icon = KNOWN[k2].icon;
+			a->color = KNOWN[k2].color;
+		}
+	a->fresh = seen_known && !lineInFile(SEEN_PATH, id);
+	napps++;
+}
+
+static void scanPaks(const char* dir, bool seen_known) {
+	DIR* d = opendir(dir);
+	if (!d)
+		return;
+	struct dirent* e;
+	while ((e = readdir(d)))
+		if (e->d_name[0] != '.')
+			addPak(dir, e->d_name, seen_known);
+	closedir(d);
+}
+
+static void buildApps(void) {
+	napps = 0;
+	App* g = &apps[napps++];
+	memset(g, 0, sizeof(*g));
+	snprintf(g->id, sizeof(g->id), "games");
+	snprintf(g->name, sizeof(g->name), "Games");
+	g->icon = "game";
+	g->color = BOS_APP_GAMES;
+	g->kind = APP_GAMES;
+
+	App* p = &apps[napps++];
+	memset(p, 0, sizeof(*p));
+	snprintf(p->id, sizeof(p->id), "ports");
+	snprintf(p->name, sizeof(p->name), "Ports");
+	p->icon = "ports";
+	p->color = BOS_APP_PORTS;
+	p->kind = APP_PORTS;
+	DIR* d = opendir(ROMS_PATH);
+	if (d) {
+		struct dirent* e;
+		while ((e = readdir(d)))
+			if (strstr(e->d_name, "(PORTS)")) {
+				snprintf(p->path, sizeof(p->path), "%s/%s", ROMS_PATH, e->d_name);
+				break;
+			}
+		closedir(d);
+	}
+
+	bool seen_known = exists((char*)SEEN_PATH); // the very first boot marks nothing as new
+	scanPaks(SDCARD_PATH "/.system/paks/Tools", seen_known);
+	scanPaks(SDCARD_PATH "/Tools/" PLATFORM, seen_known);
+
+	npins = 0;
+	FILE* f = fopen(PINS_PATH, "r");
+	if (f) {
+		char line[128];
+		while (npins < MAX_APPS && fgets(line, sizeof(line), f)) {
+			line[strcspn(line, "\r\n")] = '\0';
+			int i = findApp(line);
+			if (i >= 0)
+				pins[npins++] = i;
+		}
+		fclose(f);
+	} else
+		for (size_t i = 0; i < sizeof(DEFAULT_PINS) / sizeof(DEFAULT_PINS[0]); i++) {
+			int a = findApp(DEFAULT_PINS[i]);
+			if (a >= 0)
+				pins[npins++] = a;
+		}
+}
+
+// ---- state ----
+static bool built;
+static int row;		 // 0 the carousel, 1 the app row
+static int cfocus;	 // carousel card
+static int afocus;	 // app row tile (npins = ทั้งหมด)
+static float cpos;	 // carousel position shown (tweens to cfocus)
+static float cfrom;	 // tween start
+static uint32_t cstart; // tween start time (ms), 0 = idle
+static uint32_t menu_down; // when MENU went down (hold = switcher)
+#define TWEEN_MS 180
+
 static void build(void) {
-	k = FIXED_WIDTH / 1024.0f;
 	freeCards();
 	Recents_load();
 	for (int i = 0; i < Recents_count() && ncards < MAX_CARDS; i++) {
@@ -331,22 +401,21 @@ static void build(void) {
 		Entry* e = Recents_entryFromRecent(r);
 		if (!e)
 			continue;
-		cards[ncards].entry = e;
-		tagOf(e->path, cards[ncards].tag, sizeof(cards[ncards].tag));
-		ncards++;
+		Card* c = &cards[ncards++];
+		c->entry = e;
+		tagOf(e->path, c->tag, sizeof(c->tag));
+		readyResume(e);
+		c->resume = resume.can_resume;
 	}
-	char n[32];
-	groupDigits(countLines(USERDATA_PATH "/romindex_cache.txt"), n, sizeof(n));
-	snprintf(tools[0].sub, sizeof(tools[0].sub), I18N_text("%s games"), n);
-	snprintf(tools[1].sub, sizeof(tools[1].sub), I18N_text("Following %d channels"), countChannels());
-	nowPlaying(tools[2].sub, sizeof(tools[2].sub));
-	snprintf(tools[3].sub, sizeof(tools[3].sub), I18N_text("%d files"), countFiles(SDCARD_PATH "/Videos", false));
-	portsDir(tools[4].path, sizeof(tools[4].path));
-	snprintf(tools[4].sub, sizeof(tools[4].sub), I18N_text("%d PC games"),
-			 tools[4].path[0] ? countFiles(tools[4].path, true) : 0);
-	snprintf(tools[5].sub, sizeof(tools[5].sub), "WiFi · Bluetooth");
-	if (focus < 3 && focus >= ncards)
-		focus = ncards > 0 ? 0 : 3;
+	buildApps();
+	if (cfocus >= ncards)
+		cfocus = ncards > 0 ? ncards - 1 : 0;
+	cpos = cfrom = (float)cfocus;
+	if (afocus > npins)
+		afocus = npins;
+	if (ncards == 0)
+		row = 1;
+	BOS_setMusicPlaying(musicPlaying());
 	built = true;
 }
 
@@ -358,137 +427,147 @@ void HomeBos_reset(void) {
 	built = false;
 }
 
-static bool pending; // a picture or a game's info still loading: keep drawing
-
 // ---- drawing ----
-static void statusBar(SDL_Surface* s) { // DESIGN.md 5.1, Home's
-	int h = P(56), cy = h / 2;
-	char clock[16];
-	time_t now = time(NULL);
-	strftime(clock, sizeof(clock), "%H:%M", localtime(&now));
-	text(s, clock, P(21), 600, C_TEXT, 1, P(32), cy - lineH(P(21)) / 2);
-
-	int charging = 0, pct = 0;
-	PLAT_getBatteryStatusFine(&charging, &pct);
-	int bw = P(35), bh = P(18), bx = s->w - P(32) - bw, by = cy - bh / 2;
-	rrect(s, bx, by, bw, bh, P(5), C_BATTERY, 1);
-	rrect(s, bx + P(2), by + P(2), bw - P(4), bh - P(4), P(3), C_BG, 1);
-	int iw = bw - P(8), fill = iw * (pct < 0 ? 0 : pct > 100 ? 100 : pct) / 100;
-	if (fill > 0)
-		rrect(s, bx + P(4), by + P(4), fill, bh - P(8), P(1), C_TEXT, 1);
-	char p[16];
-	snprintf(p, sizeof(p), "%d%%", pct);
-	int pw = textW(p, P(19), 600), px = bx - P(8) - pw;
-	text(s, p, P(19), 600, C_TEXT, 1, px, cy - lineH(P(19)) / 2);
-	if (PLAT_wifiConnected())
-		drawIcon(s, NTOOLS, C_TEXT, px - P(16) - P(26), cy - P(19) / 2, P(26), P(19));
+static float easeOut(float t) {
+	return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
 }
 
-static void hintBar(SDL_Surface* s) { // DESIGN.md 5.2
-	int top = s->h - P(64), cy = top + P(32);
-	SDL_FillRect(s, &(SDL_Rect){0, top, s->w, P(1) > 0 ? P(1) : 1}, mapc(s, C_SURFACE1, 1));
-	struct {
-		const char* btn;
-		const char* label;
-	} hints[] = {{"A", "Continue"}, {"Y", "Search"}, {"MENU", "Switch game"}};
-	int x = P(40);
-	for (size_t i = 0; i < sizeof(hints) / sizeof(hints[0]); i++) {
-		bool wide = strlen(hints[i].btn) > 1;
-		int bpx = wide ? P(15) : P(16);
-		int bw = wide ? textW(hints[i].btn, bpx, 700) + 2 * P(12) : P(32);
-		rrect(s, x, cy - P(16), bw, P(32), P(16), C_SURFACE2, 1);
-		text(s, hints[i].btn, bpx, 700, C_TEXT, 1, x + (bw - textW(hints[i].btn, bpx, 700)) / 2, cy - lineH(bpx) / 2);
-		x += bw + P(10);
-		const char* l = I18N_text(hints[i].label);
-		text(s, l, P(19), 400, C_TEXT2, 1, x, cy - lineH(P(19)) / 2);
-		x += textW(l, P(19), 400) + P(32);
+// a colour drawn at `a` alpha over the black page
+static uint32_t over(uint32_t c, float a) {
+	return ((uint32_t)(((c >> 16) & 255) * a) << 16) | ((uint32_t)(((c >> 8) & 255) * a) << 8) | (uint32_t)((c & 255) * a);
+}
+
+static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int r, float a, bool ring) {
+	if (ring) { // picture focus: 4 px ring, offset 4 (§4)
+		int o = BOS_px(BOS_RING), q = 2 * o;
+		BOS_rrect(s, x - q, y - q, w + 2 * q, h + 2 * q, r + q, BOS_theme()->focus);
+		BOS_rrect(s, x - o, y - o, w + 2 * o, h + 2 * o, r + o, BOS_theme()->bg);
 	}
-	const char* note = "Brick OS";
-	text(s, note, P(19), 400, C_TEXT4, 1, s->w - P(40) - textW(note, P(19), 400), cy - lineH(P(19)) / 2);
+	SDL_Surface* pic = NULL;
+	HomeArtState st = HomeArt_continue(c->entry->path, NULL, w, h, r, &pic);
+	if (st == HOMEART_LOADING)
+		pending = true;
+	if (st == HOMEART_READY && pic) {
+		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a));
+		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
+		SDL_SetSurfaceAlphaMod(pic, 255);
+	} else
+		BOS_rrect(s, x, y, w, h, r, over(BOS_C_SURFACE, a));
 }
 
-static void ring(SDL_Surface* s, int x, int y, int w, int h, int r, int off) { // 5px accent outline at `off`
-	int o = off + P(5);
-	rrect(s, x - o, y - o, w + 2 * o, h + 2 * o, r + o, C_ACCENT, 1);
-	rrect(s, x - off, y - off, w + 2 * off, h + 2 * off, r + off, C_BG, 1);
+static int sectionLabel(SDL_Surface* s, int y, const char* t) { // 30/600 text2, padding 8 40 10
+	BOS_text(s, t, BOS_FS_SMALL, 600, BOS_C_TEXT2, 1, BOS_px(BOS_PAGE_PAD), y + BOS_px(8));
+	return BOS_px(8) + BOS_lineH(BOS_FS_SMALL) + BOS_px(10);
 }
 
-static void continueRow(SDL_Surface* s) {
-	int top = P(56) + P(8);
-	const char* title = I18N_text("Continue");
-	text(s, title, P(35), 700, C_TEXT, 1, P(40), top);
-	char count[32];
-	snprintf(count, sizeof(count), I18N_text("%d games"), ncards);
-	int title_h = lineH(P(35));
-	// the count shares the title's baseline
-	TTF_Font* tf = fontFor(P(35), 700, false);
-	TTF_Font* cf = fontFor(P(19), 400, false);
-	int base = top + (tf ? TTF_FontAscent(tf) : P(35));
-	text(s, count, P(19), 400, C_TEXT2, 1, s->w - P(40) - textW(count, P(19), 400), base - (cf ? TTF_FontAscent(cf) : P(19)));
+static void pill(SDL_Surface* s, int x, int cy, const char* label, uint32_t dot) { // §5.4: 44 high, padding 0 18
+	int h = BOS_px(44), d = dot ? BOS_px(12) : 0, gap = dot ? BOS_px(8) : 0;
+	int w = 2 * BOS_px(18) + d + gap + BOS_textW(label, BOS_FS_BADGE, 600);
+	BOS_rrect(s, x, cy - h / 2, w, h, h / 2, BOS_C_SURFACE2);
+	if (dot)
+		BOS_rrect(s, x + BOS_px(18), cy - d / 2, d, d, d / 2, dot);
+	BOS_textMid(s, label, BOS_FS_BADGE, 600, BOS_C_TEXT, 1, x + BOS_px(18) + d + gap, cy);
+}
 
-	int cy = top + title_h + P(14), cw = P(298), ch = P(224), gap = P(24), r = P(22);
-	time_t now = time(NULL);
-	for (int i = 0; i < ncards; i++) {
-		int x = P(40) + i * (cw + gap);
-		bool sel = focus == i;
-		float a = sel ? 1.0f : 0.72f;
-		if (sel)
-			ring(s, x, cy, cw, ch, r, P(4));
-		SDL_Surface* pic = NULL;
-		HomeArtState st = HomeArt_continue(cards[i].entry->path, NULL, cw, ch, r, &pic);
-		if (st == HOMEART_LOADING)
-			pending = true;
-		if (st == HOMEART_READY && pic) {
-			SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a));
-			SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, cy});
-			SDL_SetSurfaceAlphaMod(pic, 255);
-		} else
-			rrect(s, x, cy, cw, ch, r, C_SURFACE1, a);
-		if (cards[i].tag[0]) { // console badge: 16/600, black pill, radius 10, padding 4 10, 14 in from the corner
-			int bw = textW(cards[i].tag, P(16), 600) + 2 * P(10), bh = lineH(P(16)) + 2 * P(4);
-			int bx = x + P(14), by = cy + ch - P(14) - bh;
-			rrect(s, bx, by, bw, bh, P(10), C_BG, 1);
-			text(s, cards[i].tag, P(16), 600, C_TEXT, a, bx + P(10), by + P(4));
-		}
-		char name[256];
-		fit(cards[i].entry->name, P(21), 600, cw, name, sizeof(name));
-		int ny = cy + ch + P(10);
-		text(s, name, P(21), 600, C_TEXT, a, x, ny);
-		GameInfo gi;
-		if (GameInfo_get(cards[i].entry->path, &gi)) {
-			if (gi.has_time && gi.last_played > 0) {
-				char when[64];
-				GameInfo_whenText(now, gi.last_played, when, sizeof(when));
-				text(s, when, P(18), 400, C_TEXT2, a, x, ny + lineH(P(21)) + P(2));
-			}
-		} else
-			pending = true;
+static int pillW(const char* label, bool dot) {
+	return 2 * BOS_px(18) + (dot ? BOS_px(20) : 0) + BOS_textW(label, BOS_FS_BADGE, 600);
+}
+
+// Home's carousel (§5.3 "home"): centre 346x260, sides 240x180 at .55, outer 180x135 at .25, gap 24
+static int carousel(SDL_Surface* s, int top) {
+	int cw = BOS_px(346), ch = BOS_px(260), sw = BOS_px(240), sh = BOS_px(180);
+	int ow = BOS_px(180), oh = BOS_px(135), gap = BOS_px(24);
+	float c1 = cw / 2.0f + gap + sw / 2.0f, c2 = cw / 2.0f + gap + sw + gap + ow / 2.0f; // slot centre offsets
+	bool focused = row == 0;
+	if (ncards == 0) {
+		BOS_rrect(s, (s->w - cw) / 2, top, cw, ch, BOS_px(24), BOS_C_SURFACE);
+		const char* t = I18N_text("Nothing played yet");
+		BOS_textMid(s, t, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, (s->w - BOS_textW(t, BOS_FS_SMALL, 400)) / 2, top + ch / 2);
+		return ch;
 	}
-}
-
-static int toolsTop(void) {
-	return P(56) + P(8) + lineH(P(35)) + P(14) + P(224) + P(10) + lineH(P(21)) + P(2) + lineH(P(18)) + P(24);
-}
-
-static void toolGrid(SDL_Surface* s) {
-	int top = toolsTop(), gap = P(16), tw = (s->w - 2 * P(40) - 2 * gap) / 3, th = P(120), r = P(24);
-	for (int i = 0; i < NTOOLS; i++) {
-		int x = P(40) + (i % 3) * (tw + gap), y = top + (i / 3) * (th + gap);
-		if (focus == 3 + i)
-			ring(s, x, y, tw, th, r, P(4));
-		rrect(s, x, y, tw, th, r, C_SURFACE1, 1);
-		int well = P(62), wx = x + P(20), wy = y + (th - well) / 2;
-		rrect(s, wx, wy, well, well, P(18), C_SURFACE2, 1);
-		drawIcon(s, i, tools[i].color, wx + (well - P(34)) / 2, wy + (well - P(34)) / 2, P(34), P(34));
-		int tx = wx + well + P(16), maxw = x + tw - P(20) - tx;
-		int nh = lineH(P(24)), sh = tools[i].sub[0] ? lineH(P(18)) + P(2) : 0, ty = y + (th - nh - sh) / 2;
-		char buf[128];
-		fit(I18N_text(tools[i].name), P(24), 600, maxw, buf, sizeof(buf));
-		text(s, buf, P(24), 600, C_TEXT, 1, tx, ty);
-		if (tools[i].sub[0]) {
-			fit(tools[i].sub, P(18), 400, maxw, buf, sizeof(buf));
-			text(s, buf, P(18), 400, C_TEXT2, 1, tx, ty + nh + P(2));
+	// back to front: the outer cards first so the centre draws on top
+	for (int pass = 2; pass >= 0; pass--)
+		for (int i = 0; i < ncards; i++) {
+			float d = i - cpos;
+			int slot = (int)(d < 0 ? -d + 0.5f : d + 0.5f);
+			if (slot != pass)
+				continue;
+			float ad = d < 0 ? -d : d;
+			float off = ad <= 1 ? ad * c1 : ad <= 2 ? c1 + (ad - 1) * (c2 - c1) : c2;
+			if (ad > 2.6f)
+				continue;
+			int w = slot == 0 ? cw : slot == 1 ? sw : ow, h = slot == 0 ? ch : slot == 1 ? sh : oh;
+			float a = slot == 0 ? 1.0f : slot == 1 ? 0.55f : 0.25f;
+			int r = BOS_px(slot == 0 ? 24 : slot == 1 ? 20 : 18);
+			int cx = s->w / 2 + (int)(d < 0 ? -off : off);
+			cover(s, &cards[i], cx - w / 2, top + (ch - h) / 2, w, h, r, a, focused && slot == 0 && cstart == 0);
 		}
+	return ch;
+}
+
+static int caption(SDL_Surface* s, int top) { // name 40/600, then "<console> · <when>" 30 text2 + pill
+	if (ncards == 0)
+		return 0;
+	const Card* c = &cards[cfocus];
+	int y = top + BOS_px(14);
+	char name[256];
+	BOS_fit(c->entry->name, BOS_FS_BODY, 600, s->w - 2 * BOS_px(BOS_PAGE_PAD), name, sizeof(name));
+	BOS_text(s, name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, (s->w - BOS_textW(name, BOS_FS_BODY, 600)) / 2, y);
+	y += BOS_lineH(BOS_FS_BODY) + BOS_px(4);
+	char meta[160];
+	snprintf(meta, sizeof(meta), "%s", c->tag);
+	GameInfo gi;
+	if (GameInfo_get(c->entry->path, &gi)) {
+		if (gi.has_time && gi.last_played > 0) {
+			char when[64];
+			GameInfo_whenText(time(NULL), gi.last_played, when, sizeof(when));
+			snprintf(meta, sizeof(meta), c->tag[0] ? "%s · %s" : "%s%s", c->tag, when);
+		}
+	} else
+		pending = true;
+	const char* rl = I18N_text("Continue");
+	int mw = BOS_textW(meta, BOS_FS_SMALL, 400), pw = c->resume ? BOS_px(16) + pillW(rl, true) : 0;
+	int x = (s->w - mw - pw) / 2, cy = y + BOS_px(22);
+	BOS_textMid(s, meta, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, x, cy);
+	if (c->resume)
+		pill(s, x + mw + BOS_px(16), cy, rl, BOS_C_OK);
+	return BOS_px(14) + BOS_lineH(BOS_FS_BODY) + BOS_px(4) + BOS_px(44);
+}
+
+// one app tile (§6.1): 112 radius 26, icon 64, name 30 under it in a 128 box; focused: white, x1.12; others at 60 %
+static void appTile(SDL_Surface* s, int cx, int top, const char* icon, const char* label, uint32_t col, bool focused,
+					bool dim) {
+	float k2 = focused ? BOS_FOCUS_SCALE : 1.0f;
+	float a = dim ? BOS_DIM : 1.0f;
+	int size = (int)(BOS_px(BOS_TILE) * k2 + 0.5f), r = (int)(BOS_px(BOS_TILE_RADIUS) * k2 + 0.5f);
+	int ic = (int)(BOS_px(BOS_ICON) * k2 + 0.5f), box = (int)(BOS_px(BOS_TILE + 16 + 10) * k2 + 0.5f); // the cell plus most of the gap
+	int y = top + (BOS_px(BOS_TILE) - size) / 2; // grow about the tile's centre
+	BOS_rrect(s, cx - size / 2, y, size, size, r, focused ? BOS_theme()->focus : over(BOS_C_SURFACE, a));
+	BOS_icon(s, icon, focused ? BOS_theme()->onfocus : col, a, cx - ic / 2, y + (size - ic) / 2, ic);
+	char t[96];
+	BOS_fit(label, BOS_FS_SMALL, focused ? 600 : 500, box, t, sizeof(t));
+	BOS_text(s, t, BOS_FS_SMALL, focused ? 600 : 500, BOS_C_TEXT, a, cx - BOS_textW(t, BOS_FS_SMALL, focused ? 600 : 500) / 2,
+			 y + size + BOS_px(8));
+}
+
+static void appRow(SDL_Surface* s, int top) {
+	int n = npins + 1, cell = BOS_px(BOS_TILE + 16), gap = BOS_px(12);
+	int total = n * cell + (n - 1) * gap, x0 = (s->w - total) / 2;
+	int avail = s->w - 2 * BOS_px(BOS_PAGE_PAD);
+	if (total > avail) { // more pins than fit: scroll so the focused tile stays on screen
+		int fx = afocus * (cell + gap) + cell / 2;
+		x0 = s->w / 2 - fx;
+		int minx = s->w - BOS_px(BOS_PAGE_PAD) - total, maxx = BOS_px(BOS_PAGE_PAD);
+		x0 = x0 < minx ? minx : x0 > maxx ? maxx : x0;
+	}
+	for (int i = 0; i < n; i++) {
+		int cx = x0 + i * (cell + gap) + cell / 2;
+		bool f = row == 1 && afocus == i;
+		if (i < npins) {
+			const App* a = &apps[pins[i]];
+			appTile(s, cx, top, a->icon, I18N_text(a->name), a->color, f, !f);
+		} else
+			appTile(s, cx, top, "grid", I18N_text("All"), BOS_C_TEXT, f, !f);
 	}
 }
 
@@ -496,34 +575,46 @@ void HomeBos_render(SDL_Surface* s) {
 	if (!built)
 		build();
 	pending = false;
-	SDL_FillRect(s, NULL, mapc(s, C_BG, 1));
-	statusBar(s);
-	continueRow(s);
-	toolGrid(s);
-	hintBar(s);
+	if (cstart) { // the carousel tween
+		float t = (SDL_GetTicks() - cstart) / (float)TWEEN_MS;
+		if (t >= 1) {
+			t = 1;
+			cstart = 0;
+		}
+		cpos = cfrom + (cfocus - cfrom) * easeOut(t);
+	}
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_statusBar(s, I18N_text("Home"));
+	int y = BOS_px(BOS_BAR_H);
+	y += sectionLabel(s, y, I18N_text("Continue"));
+	y += carousel(s, y);
+	y += caption(s, y);
+	appRow(s, y + BOS_px(14));
+	if (row == 0) {
+		BosHint r[] = {{"A", I18N_text("Continue")}, {"Y", I18N_text("Search")}};
+		BosHint l[] = {{"MENU", I18N_text("Options")}};
+		BOS_hintBar(s, r, 2, l, ncards > 0 ? 1 : 0);
+	} else {
+		BosHint r[] = {{"A", I18N_text("Open")}, {"Y", I18N_text("Search")}};
+		BOS_hintBar(s, r, 2, NULL, 0);
+	}
 }
 
 bool HomeBos_animating(void) {
-	return pending || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
+	return cstart != 0 || pending || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
 }
 
 // ---- input ----
-static void openTool(int i, bool* dirty) {
-	if (i == 0) {
+static void openApp(int i, bool* dirty) {
+	const App* a = &apps[i];
+	if (a->kind == APP_GAMES) {
 		GameList_openTab(MENU_TAB_CONSOLES, dirty);
 		return;
 	}
-	if (!tools[i].path[0])
+	if (!a->path[0] || !exists((char*)a->path))
 		return;
-	char full[MAX_PATH];
-	bool dir = i == 4;
-	if (dir)
-		snprintf(full, sizeof(full), "%s", tools[i].path);
-	else
-		snprintf(full, sizeof(full), "%s%s", SDCARD_PATH, tools[i].path);
-	if (!exists(full))
-		return;
-	Entry* e = Entry_new(full, dir ? ENTRY_DIR : ENTRY_PAK);
+	bool dir = a->kind == APP_PORTS;
+	Entry* e = Entry_new((char*)a->path, dir ? ENTRY_DIR : ENTRY_PAK);
 	if (!e)
 		return;
 	if (dir || GameList_settingsPinAllows(e)) {
@@ -535,63 +626,77 @@ static void openTool(int i, bool* dirty) {
 	*dirty = true;
 }
 
+static void moveCarousel(int to) {
+	if (to < 0 || to >= ncards || to == cfocus)
+		return;
+	cfrom = cpos;
+	cfocus = to;
+	cstart = SDL_GetTicks();
+	if (!cstart)
+		cstart = 1;
+}
+
+Entry* HomeBos_focusedGame(void) {
+	return row == 0 && cfocus < ncards ? cards[cfocus].entry : NULL;
+}
+
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) {
-	(void)now;
 	if (!built)
 		build();
-	if (tap_menu)
+	// MENU: a tap on a game = its options (§6.10); held 0.5 s = the Game Switcher
+	if (PAD_justPressed(BTN_MENU))
+		menu_down = (uint32_t)now;
+	if (menu_down && PAD_isPressed(BTN_MENU) && (uint32_t)now - menu_down >= 500) {
+		menu_down = 0;
 		return HOMEBOS_SWITCHER;
+	}
+	if (!PAD_isPressed(BTN_MENU))
+		menu_down = 0;
+	if (tap_menu)
+		return HomeBos_focusedGame() ? HOMEBOS_OPTIONS : HOMEBOS_HANDLED;
 	if (PAD_justPressed(BTN_Y))
 		return HOMEBOS_SEARCH;
 	if (PAD_justPressed(BTN_L1) || PAD_justPressed(BTN_R1))
-		return HOMEBOS_HANDLED; // no tabs on Home (the mockup)
-	int f = focus;
+		return HOMEBOS_HANDLED; // no tabs on Home
 	if (PAD_justRepeated(BTN_LEFT)) {
-		if (f < 3 ? f > 0 : (f - 3) % 3 > 0)
-			f--;
+		if (row == 0)
+			moveCarousel(cfocus - 1);
+		else if (afocus > 0)
+			afocus--;
 	} else if (PAD_justRepeated(BTN_RIGHT)) {
-		if (f < 3 ? f < ncards - 1 : (f - 3) % 3 < 2)
-			f++;
-	} else if (PAD_justRepeated(BTN_UP)) {
-		if (f >= 6)
-			f -= 3;
-		else if (f >= 3 && ncards > 0)
-			f = (f - 3) < ncards ? f - 3 : ncards - 1;
-	} else if (PAD_justRepeated(BTN_DOWN)) {
-		if (f < 3)
-			f += 3;
-		else if (f < 6)
-			f += 3;
+		if (row == 0)
+			moveCarousel(cfocus + 1);
+		else if (afocus < npins)
+			afocus++;
+	} else if (PAD_justPressed(BTN_UP)) {
+		if (ncards > 0)
+			row = 0;
+	} else if (PAD_justPressed(BTN_DOWN)) {
+		row = 1;
 	} else if (PAD_justPressed(BTN_A)) {
-		if (focus < 3 && focus < ncards) {
-			Entry* e = cards[focus].entry;
+		if (row == 0 && cfocus < ncards) {
+			Entry* e = cards[cfocus].entry;
 			readyResume(e);
 			resume.should_resume = resume.can_resume;
 			MenuTabs_markHomeLaunch();
 			Entry_open(e);
-		} else if (focus >= 3)
-			openTool(focus - 3, dirty);
+		} else if (row == 1) {
+			if (afocus < npins)
+				openApp(pins[afocus], dirty);
+			else
+				GameList_openTab(MENU_TAB_TOOLS, dirty); // แอปทั้งหมด (its own screen comes next)
+		}
 		*dirty = true;
 		return HOMEBOS_HANDLED;
 	} else
 		return HOMEBOS_UNHANDLED;
-	if (f != focus) {
-		focus = f;
-		*dirty = true;
-	}
+	*dirty = true;
 	return HOMEBOS_HANDLED;
 }
 
 void HomeBos_quit(void) {
 	freeCards();
-	for (int i = 0; i < nfonts; i++)
-		TTF_CloseFont(fonts[i].f);
-	nfonts = 0;
-	for (int i = 0; i < NTOOLS + 1; i++)
-		if (icons[i]) {
-			SDL_FreeSurface(icons[i]);
-			icons[i] = NULL;
-		}
+	BOS_quit();
 	built = false;
 }
 
