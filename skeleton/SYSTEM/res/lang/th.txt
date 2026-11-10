@@ -559,3 +559,4 @@ Use extracted file name	ใช้ชื่อไฟล์ที่แตกอ�
 Set time and date automatically	ตั้งเวลาอัตโนมัติ
 F1 / F2 keys	ปุ่ม F1 / F2
 FN switch	สวิตช์ FN
+Choose	เลือก

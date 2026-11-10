@@ -244,6 +244,11 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 		return;
 	}
 
+	if (SettingsBos_pickerActive()) { // the value list is open: it takes every press until A or B closes it
+		SettingsBos_pickerInput(dirty);
+		return;
+	}
+
 	int has_lock = (page->dynamic_start >= 0);
 	if (has_lock)
 		pthread_rwlock_rdlock(&page->lock);
@@ -338,6 +343,15 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 			if (sel_snap.on_press && !sel_snap.a_cycles) {
 				sel_snap.on_press();
 				settings_item_sync(sel);
+				changed = 1;
+			} else if (!has_lock && SettingsBos_isPickable(sel)) { // a static page's value row: its value list
+				SettingsBos_pickerOpen(sel);
+				changed = 1;
+			}
+			break;
+		case ITEM_COLOR:
+			if (!has_lock && SettingsBos_isPickable(sel)) {
+				SettingsBos_pickerOpen(sel);
 				changed = 1;
 			}
 			break;

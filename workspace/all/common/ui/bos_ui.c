@@ -41,9 +41,13 @@ static TTF_Font* fontFor(int px, int weight, bool thai) {
 		return NULL;
 	TTF_Font* f;
 	if (thai) {
-		f = TTF_OpenFont(GFX_getThaiFontPath(), px);
-		if (f && weight >= 600)
-			TTF_SetFontStyle(f, TTF_STYLE_BOLD); // the Thai font has one weight: 600/700 as synthetic bold
+		// a real SemiBold for 600/700 (scripts/font/gen_thai_font.py on IBM Plex Sans Thai SemiBold): SDL_ttf's
+		// synthetic bold blurs Thai and grows the strokes past the glyph box, cutting their tops and bottoms
+		f = NULL;
+		if (weight >= 600)
+			f = TTF_OpenFont(RES_PATH "/font1-thai-semibold.ttf", px);
+		if (!f)
+			f = TTF_OpenFont(GFX_getThaiFontPath(), px);
 	} else {
 		const char* name = weight >= 700 ? "Inter-Bold" : weight >= 600 ? "Inter-SemiBold"
 													: weight >= 500	  ? "Inter-Medium"

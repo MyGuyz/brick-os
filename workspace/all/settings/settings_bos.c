@@ -95,15 +95,24 @@ static bool numericRange(SettingItem* it) { // a 0..N cycle drawn as a slider
 static int toggleState(SettingItem* it) {
 	if (it->type != ITEM_CYCLE || !it->labels || it->label_count != 2 || !it->labels[0] || !it->labels[1])
 		return -1;
-	int off = !strcmp(it->labels[0], "Off") ? 0 : !strcmp(it->labels[1], "Off") ? 1 : -1;
-	int on = !strcmp(it->labels[0], "On") ? 0 : !strcmp(it->labels[1], "On") ? 1 : -1;
-	if (off < 0 || on < 0)
-		return -1;
-	return it->current_idx == on;
+	static const char* pairs[][2] = {{"Off", "On"}, {"Hide", "Show"}};
+	for (int p = 0; p < 2; p++) {
+		int off = !strcmp(it->labels[0], pairs[p][0]) ? 0 : !strcmp(it->labels[1], pairs[p][0]) ? 1 : -1;
+		int on = !strcmp(it->labels[0], pairs[p][1]) ? 0 : !strcmp(it->labels[1], pairs[p][1]) ? 1 : -1;
+		if (off >= 0 && on >= 0)
+			return it->current_idx == on;
+	}
+	return -1;
 }
 
 bool SettingsBos_isToggle(SettingItem* it) {
 	return it && toggleState(it) >= 0;
+}
+
+// a Left/Right value row (not a switch, a two-value flip or a button-capture row): A opens its value list
+bool SettingsBos_isPickable(SettingItem* it) {
+	return it && (it->type == ITEM_CYCLE || it->type == ITEM_COLOR) && it->labels && it->label_count > 1 &&
+		   toggleState(it) < 0 && !it->a_cycles && !it->on_press;
 }
 
 static const char* pageTitle(SettingsPage* page, SettingItem* cat) {
@@ -211,39 +220,70 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	}
 	float a = hot ? 1.0f : BOS_DIM;
 	uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT, sub = hot ? C_ON_SUB : BOS_C_TEXT2;
-	int cy = y + h / 2, right = x + w - BOS_px(24), used = 0;
-	int ts = toggleState(it);
-	if (ts >= 0) {
-		used = BOS_px(80);
-		toggle(s, right - used, cy, ts == 1, hot, a);
-	} else if (numericRange(it)) { // 240 wide, shorter (to 120) before the label is cut
-		int room = right - (x + BOS_px(28)) - BOS_px(24) - BOS_textW(I18N_text(it->name), BOS_FS_BODY, hot ? 600 : 500);
-		used = room > BOS_px(240) ? BOS_px(240) : room < BOS_px(120) ? BOS_px(120) : room;
-		slider(s, right - used, used, cy, it->label_count > 1 ? (float)it->current_idx / (it->label_count - 1) : 0, hot, a);
-	} else if (it->type == ITEM_COLOR && it->values && it->current_idx >= 0 && it->current_idx < it->label_count) {
-		int d = BOS_px(32);
-		uint32_t c = (uint32_t)it->values[it->current_idx] & 0xFFFFFF;
-		BOS_rrect(s, right - d, cy - d / 2, d, d, d / 2, hot ? c : mix(c, BOS_C_SURFACE, a));
-		used = d;
-	} else {
-		if (it->type == ITEM_SUBMENU) {
-			int ch = BOS_px(28);
-			BOS_icon(s, "chev", hot ? C_ON_SUB : BOS_C_TEXTOFF, a, right - ch, cy - ch / 2, ch);
-			used = ch + BOS_px(10);
-		}
+	int cy = y + h / 2, lx = x + BOS_px(28), right = x + w - BOS_px(24);
+	int weight = hot ? 600 : 500;
+	const char* name = I18N_text(it->name);
+
+	// the value: a switch, a slider, a colour dot, or text; a Left/Right row in focus gets ‹ › round it
+	enum { V_NONE, V_TEXT, V_SLIDER, V_DOT, V_TOGGLE } k = V_NONE;
+	int ts = toggleState(it), cw = 0;
+	char val[160] = "";
+	if (ts >= 0)
+		k = V_TOGGLE, cw = BOS_px(80);
+	else if (numericRange(it))
+		k = V_SLIDER, cw = BOS_px(240);
+	else if (it->type == ITEM_COLOR && it->values && it->current_idx >= 0 && it->current_idx < it->label_count)
+		k = V_DOT, cw = BOS_px(32);
+	else {
 		const char* v = itemValue(it);
 		if (v && v[0]) {
-			char val[160];
-			BOS_fit(I18N_text(v), BOS_FS_SMALL, 400, w / 2, val, sizeof(val));
-			int vw = BOS_textW(val, BOS_FS_SMALL, 400);
-			BOS_textMid(s, val, BOS_FS_SMALL, 400, sub, a, right - used - vw, cy);
-			used += vw;
+			snprintf(val, sizeof(val), "%s", I18N_text(v));
+			k = V_TEXT, cw = BOS_textW(val, BOS_FS_SMALL, 400);
 		}
 	}
+	bool arrows = hot && SettingsBos_isPickable(it);
+	int ar = BOS_px(28), ag = BOS_px(4), arw = arrows ? 2 * (ar + ag) : 0;
+	int chevw = it->type == ITEM_SUBMENU ? BOS_px(28 + 10) : 0;
+	int room = right - chevw - lx; // the label's width with nothing beside it
+	// the name is never cut for its value: when both don't fit on one line the value goes under the name
+	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, weight) + BOS_px(16) + cw + arw > room;
+	if (two && k == V_TEXT && cw + arw > room)
+		BOS_fit(I18N_text(itemValue(it)), BOS_FS_SMALL, 400, room - arw, val, sizeof(val)), cw = BOS_textW(val, BOS_FS_SMALL, 400);
+	if (two && k == V_SLIDER && cw + arw > room)
+		cw = room - arw;
+
+	if (chevw)
+		BOS_icon(s, "chev", hot ? C_ON_SUB : BOS_C_TEXTOFF, a, right - BOS_px(28), cy - BOS_px(14), BOS_px(28));
+	int ly = two ? y + h * 32 / 100 : cy, vy = two ? y + h * 73 / 100 : cy;
 	char label[160];
-	int lx = x + BOS_px(28);
-	BOS_fit(I18N_text(it->name), BOS_FS_BODY, hot ? 600 : 500, right - (used ? used + BOS_px(16) : 0) - lx, label, sizeof(label));
-	BOS_textMid(s, label, BOS_FS_BODY, hot ? 600 : 500, fg, a, lx, cy);
+	int label_room = two || k == V_NONE ? room : k == V_TOGGLE ? room - cw - BOS_px(16) : room - cw - arw - BOS_px(16);
+	BOS_fit(name, BOS_FS_BODY, weight, label_room, label, sizeof(label));
+	BOS_textMid(s, label, BOS_FS_BODY, weight, fg, a, lx, ly);
+	if (k == V_NONE)
+		return;
+
+	int vx = two ? lx : right - chevw - cw - arw;
+	if (arrows) {
+		BOS_icon(s, "chevl", sub, 1, vx, vy - ar / 2, ar);
+		vx += ar + ag;
+	}
+	switch (k) {
+	case V_TOGGLE:
+		toggle(s, vx, vy, ts == 1, hot, a);
+		break;
+	case V_SLIDER:
+		slider(s, vx, cw, vy, it->label_count > 1 ? (float)it->current_idx / (it->label_count - 1) : 0, hot, a);
+		break;
+	case V_DOT: {
+		uint32_t c = (uint32_t)it->values[it->current_idx] & 0xFFFFFF;
+		BOS_rrect(s, vx, vy - cw / 2, cw, cw, cw / 2, hot ? c : mix(c, BOS_C_SURFACE, a));
+		break;
+	}
+	default:
+		BOS_textMid(s, val, BOS_FS_SMALL, 400, sub, a, vx, vy);
+	}
+	if (arrows)
+		BOS_icon(s, "chev", sub, 1, vx + cw + ag, vy - ar / 2, ar);
 }
 
 static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bool focused, int top, int bottom,
@@ -327,12 +367,112 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 	}
 }
 
+// ---- the value list (A on a Left/Right row): every value at once, a §5.7 sheet over the page ----
+static SettingItem* pk_item;
+static int pk_sel, pk_top;
+#define PK_ROWS 6
+
+void SettingsBos_pickerOpen(SettingItem* it) {
+	if (!SettingsBos_isPickable(it))
+		return;
+	pk_item = it;
+	pk_sel = it->current_idx >= 0 && it->current_idx < it->label_count ? it->current_idx : 0;
+	pk_top = pk_sel - PK_ROWS / 2;
+	if (pk_top > it->label_count - PK_ROWS)
+		pk_top = it->label_count - PK_ROWS;
+	if (pk_top < 0)
+		pk_top = 0;
+}
+
+bool SettingsBos_pickerActive(void) {
+	return pk_item != NULL;
+}
+
+void SettingsBos_pickerInput(bool* dirty) {
+	if (!pk_item)
+		return;
+	int n = pk_item->label_count;
+	if (PAD_justRepeated(BTN_UP) && pk_sel > 0)
+		pk_sel--, *dirty = true;
+	else if (PAD_justRepeated(BTN_DOWN) && pk_sel < n - 1)
+		pk_sel++, *dirty = true;
+	else if (PAD_justRepeated(BTN_L1))
+		pk_sel = pk_sel > PK_ROWS ? pk_sel - PK_ROWS : 0, *dirty = true;
+	else if (PAD_justRepeated(BTN_R1))
+		pk_sel = pk_sel + PK_ROWS < n ? pk_sel + PK_ROWS : n - 1, *dirty = true;
+	else if (PAD_justPressed(BTN_A)) {
+		pk_item->current_idx = pk_sel;
+		int v = pk_item->values ? pk_item->values[pk_sel] : pk_sel;
+		if (pk_item->set_value)
+			pk_item->set_value(v);
+		settings_item_sync(pk_item); // the setter may refuse
+		pk_item = NULL, *dirty = true;
+	} else if (PAD_justPressed(BTN_B))
+		pk_item = NULL, *dirty = true;
+	if (pk_sel < pk_top)
+		pk_top = pk_sel;
+	if (pk_sel >= pk_top + PK_ROWS)
+		pk_top = pk_sel - PK_ROWS + 1;
+}
+
+static void pickerRender(SDL_Surface* s) {
+	static SDL_Surface* shade = NULL; // 60 % black over the page
+	if (!shade || shade->w != s->w || shade->h != s->h) {
+		if (shade)
+			SDL_FreeSurface(shade);
+		shade = SDL_CreateRGBSurfaceWithFormat(0, s->w, s->h, 32, SDL_PIXELFORMAT_ARGB8888);
+		if (shade) {
+			SDL_FillRect(shade, NULL, SDL_MapRGBA(shade->format, 0, 0, 0, 153));
+			SDL_SetSurfaceBlendMode(shade, SDL_BLENDMODE_BLEND);
+		}
+	}
+	if (shade)
+		SDL_BlitSurface(shade, NULL, s, NULL);
+	int n = pk_item->label_count, rows = n < PK_ROWS ? n : PK_ROWS;
+	int rh = BOS_px(84), pad = BOS_px(24), w = BOS_px(600), th = BOS_px(44 * 1.2f);
+	int h = pad + th + BOS_px(12) + rows * rh + pad;
+	int x = (s->w - w) / 2, y = BOS_px(BOS_BAR_H) + (s->h - 2 * BOS_px(BOS_BAR_H) - h) / 2;
+	BOS_rrect(s, x, y, w, h, BOS_px(28), BOS_C_SURFACE);
+	char t[160];
+	BOS_fit(I18N_text(pk_item->name), 44, 700, w - 2 * pad, t, sizeof(t));
+	BOS_text(s, t, 44, 700, BOS_C_TEXT, 1, x + pad, y + pad);
+	int ry = y + pad + th + BOS_px(12);
+	for (int r = 0; r < rows; r++) {
+		int i = pk_top + r, yy = ry + r * rh, xx = x + BOS_px(12), ww = w - 2 * BOS_px(12), hh = rh;
+		bool hot = i == pk_sel;
+		if (hot) {
+			int gw = (int)(ww * BOS_ROW_SCALE) - ww, gh = (int)(hh * BOS_ROW_SCALE) - hh;
+			xx -= gw / 2, ww += gw, yy -= gh / 2, hh += gh;
+			BOS_rrect(s, xx, yy, ww, hh, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+		}
+		uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT;
+		float a = hot ? 1.0f : BOS_DIM;
+		int cyy = yy + hh / 2, cx = xx + ww - BOS_px(20) - BOS_px(32);
+		if (i == pk_item->current_idx) // the value set now
+			BOS_icon(s, "check", hot ? BOS_theme()->onfocus : BOS_theme()->primary, 1, cx, cyy - BOS_px(16), BOS_px(32));
+		if (pk_item->type == ITEM_COLOR && pk_item->values) {
+			int d = BOS_px(32);
+			BOS_rrect(s, xx + BOS_px(20), cyy - d / 2, d, d, d / 2, (uint32_t)pk_item->values[i] & 0xFFFFFF);
+		}
+		int lx = xx + BOS_px(20) + (pk_item->type == ITEM_COLOR && pk_item->values ? BOS_px(48) : 0);
+		char l[160];
+		BOS_fit(I18N_text(pk_item->labels[i] ? pk_item->labels[i] : ""), BOS_FS_BODY, hot ? 600 : 500, cx - BOS_px(12) - lx, l,
+				sizeof(l));
+		BOS_textMid(s, l, BOS_FS_BODY, hot ? 600 : 500, fg, a, lx, cyy);
+	}
+	if (n > rows) { // a scroll mark inside the sheet
+		int tt = rows * rh, mh = tt * rows / n, my = ry + (tt - mh) * pk_top / (n - rows);
+		BOS_rrect(s, x + w - BOS_px(10), my, BOS_px(5), mh, BOS_px(2), BOS_C_TEXTOFF);
+	}
+	BosHint r[] = {{"A", I18N_text("Choose")}, {"B", I18N_text("Cancel")}};
+	BOS_hintBar(s, r, 2, NULL, 0);
+}
+
 void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	if (depth <= 0)
 		return;
 	SettingsPage* root = stack[0];
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
-	BOS_statusBar(s, I18N_text("Settings"));
 	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
 	bool right_focused = depth > 1;
 	leftColumn(s, root, !right_focused, top, bottom);
@@ -342,7 +482,10 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	SettingItem* hot = NULL;
 	rightColumn(s, page, cat, right_focused, top, bottom, &hot);
 
-	// hint bar: A opens (เปิด/ปิด on a toggle), ← → changes a value, X clears, B back
+	// drawn after the columns: a scrolled category's squircle can't show through it
+	BOS_statusBar(s, I18N_text("Settings"));
+
+	// hint bar: A opens (เปิด/ปิด on a toggle, เลือก on a value row), ← → changes a value, X clears, B back
 	BosHint r[3], l[1];
 	int nr = 0, nl = 0;
 	SettingItem* it = right_focused ? hot : cat;
@@ -354,6 +497,8 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 			r[nr++] = (BosHint){"A", I18N_text("On/Off")};
 		else if (cyc && it->on_press)
 			r[nr++] = (BosHint){"A", I18N_text("Set")};
+		else if (SettingsBos_isPickable(it))
+			r[nr++] = (BosHint){"A", I18N_text("Choose")};
 		if (cyc && toggleState(it) < 0)
 			l[nl++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change")};
 	}
@@ -361,4 +506,6 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	if (it && right_focused && it->on_clear)
 		r[nr++] = (BosHint){"X", I18N_text("Clear")};
 	BOS_hintBar(s, r, nr, l, nl);
+	if (pk_item)
+		pickerRender(s);
 }

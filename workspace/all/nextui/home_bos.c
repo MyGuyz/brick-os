@@ -73,9 +73,9 @@ static TTF_Font* fontFor(int px, int weight, bool thai) {
 	char path[MAX_PATH];
 	TTF_Font* f;
 	if (thai) {
-		f = TTF_OpenFont(GFX_getThaiFontPath(), px);
-		if (f && weight >= 600)
-			TTF_SetFontStyle(f, TTF_STYLE_BOLD); // the Thai font has one weight: 600/700 as synthetic bold
+		f = weight >= 600 ? TTF_OpenFont(RES_PATH "/font1-thai-semibold.ttf", px) : NULL; // a real SemiBold (bos_ui.c)
+		if (!f)
+			f = TTF_OpenFont(GFX_getThaiFontPath(), px);
 	} else {
 		const char* name = weight >= 700 ? "Inter-Bold" : weight >= 600 ? "Inter-SemiBold"
 													: weight >= 500	  ? "Inter-Medium"
