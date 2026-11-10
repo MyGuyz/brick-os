@@ -463,10 +463,9 @@ static void listRender(SDL_Surface* s, int top) { // §6.4: rows of 96 on the le
 	char meta[128];
 	lastPlayed(e, meta, sizeof(meta));
 	int y = top + ch + BOS_px(12);
-	if (meta[0]) {
+	if (meta[0])
 		BOS_text(s, meta, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, rx, y);
-		y += BOS_lineH(BOS_FS_SMALL) + BOS_px(12);
-	}
+	y += BOS_lineH(BOS_FS_SMALL) + BOS_px(12); // the line's space stays, so the pill never jumps
 	if (canResume(e))
 		pill(s, rx, y + BOS_px(22), I18N_text("Continue"), BOS_C_OK);
 }

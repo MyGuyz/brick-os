@@ -539,8 +539,8 @@ static int carousel(SDL_Surface* s, int top) {
 	bool focused = row == 0;
 	if (ncards == 0) {
 		BOS_rrect(s, (s->w - cw) / 2, top, cw, ch, BOS_px(24), BOS_C_SURFACE);
-		const char* t = I18N_text("Nothing played yet");
-		BOS_textMid(s, t, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, (s->w - BOS_textW(t, BOS_FS_SMALL, 400)) / 2, top + ch / 2);
+		const char* t = I18N_text("Nothing to continue"); // ว่าง, large in the box
+		BOS_textMid(s, t, BOS_FS_TITLE, 600, BOS_C_TEXTOFF, 1, (s->w - BOS_textW(t, BOS_FS_TITLE, 600)) / 2, top + ch / 2);
 		return ch;
 	}
 	// back to front: the outer cards first so the centre draws on top
@@ -563,9 +563,10 @@ static int carousel(SDL_Surface* s, int top) {
 	return ch;
 }
 
+#define CAPTION_H (BOS_px(14) + BOS_lineH(BOS_FS_BODY) + BOS_px(4) + BOS_px(44))
 static int caption(SDL_Surface* s, int top) { // name 40/600, then "<console> · <when>" 30 text2 + pill
 	if (ncards == 0)
-		return 0;
+		return CAPTION_H; // its space stays: the app row never moves
 	const Card* c = &cards[cfocus];
 	int y = top + BOS_px(14);
 	char name[256];
@@ -589,7 +590,7 @@ static int caption(SDL_Surface* s, int top) { // name 40/600, then "<console> ·
 	BOS_textMid(s, meta, BOS_FS_SMALL, 400, BOS_C_TEXT2, gdim, x, cy);
 	if (c->resume && gdim == 1.0f)
 		pill(s, x + mw + BOS_px(16), cy, rl, BOS_C_OK);
-	return BOS_px(14) + BOS_lineH(BOS_FS_BODY) + BOS_px(4) + BOS_px(44);
+	return CAPTION_H;
 }
 
 // one app tile (§6.1): 112 radius 26, icon 64, name 30 under it in a 128 box; focused: white, x1.12; others at 60 %

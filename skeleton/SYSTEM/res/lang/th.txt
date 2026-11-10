@@ -528,3 +528,4 @@ No open games	ยังไม่มีเกมที่เปิดค้าง
 Remove	ลบ
 Saved at %s	บันทึกเมื่อ %s
 Close	ปิด
+Nothing to continue	ว่าง
