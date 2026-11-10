@@ -2181,7 +2181,7 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	// แถบสถานะ (DESIGN.md 5.1): one toggle each; the battery icon always shows
 	// ============================
 	idx = 0;
-	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Music playing", "♪ while music plays in the background",
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Music playing", "While music plays in the background",
 		on_off_labels, 2, on_off_values, get_sb_music, set_sb_music, reset_sb_music);
 	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Bluetooth", "While a Bluetooth device is connected",
 		on_off_labels, 2, on_off_values, get_sb_bt, set_sb_bt, reset_sb_bt);

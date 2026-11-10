@@ -543,7 +543,7 @@ Full: every slide. Reduced: shorter. Off: no motion.	เต็ม: เลื่�
 Full	เต็ม
 Reduced	น้อย
 Music playing	เพลงที่เล่นอยู่
-♪ while music plays in the background	♪ ตอนเพลงเล่นอยู่เบื้องหลัง
+While music plays in the background	ตอนเพลงเล่นอยู่เบื้องหลัง
 While a Bluetooth device is connected	ตอนต่ออุปกรณ์ Bluetooth อยู่
 Mute	ปิดเสียง
 While the volume is 0	ตอนเสียงเป็น 0
