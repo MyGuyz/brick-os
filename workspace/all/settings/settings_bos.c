@@ -190,8 +190,12 @@ static void leftColumn(SDL_Surface* s, SettingsPage* root, bool focused, int top
 		BOS_icon(s, c->icon, 0xFFFFFF, a, sx + (sq - ic) / 2, sy + (sq - ic) / 2, ic);
 		char name[128];
 		int nx = sx + sq + BOS_px(22);
-		BOS_fit(I18N_text(it->name), 34, hot ? 600 : 500, x + w - BOS_px(20) - nx, name, sizeof(name));
-		BOS_textMid(s, name, 34, hot ? 600 : 500, hot ? BOS_theme()->onfocus : BOS_C_TEXT, a, nx, yy + h / 2);
+		if (hot)
+			BOS_textMarquee(s, I18N_text(it->name), 34, 600, BOS_theme()->onfocus, a, nx, yy + h / 2, x + w - BOS_px(20) - nx);
+		else {
+			BOS_fit(I18N_text(it->name), 34, 500, x + w - BOS_px(20) - nx, name, sizeof(name));
+			BOS_textMid(s, name, 34, 500, BOS_C_TEXT, a, nx, yy + h / 2);
+		}
 	}
 	SDL_SetClipRect(s, NULL);
 }
@@ -247,7 +251,9 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	int room = right - chevw - lx; // the label's width with nothing beside it
 	// the name is never cut for its value: when both don't fit on one line the value goes under the name
 	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, weight) + BOS_px(16) + cw + arw > room;
-	if (two && k == V_TEXT && cw + arw > room)
+	if (two && k == V_TEXT && cw + arw > room && hot)
+		cw = room - arw; // the whole value, scrolling in that room
+	else if (two && k == V_TEXT && cw + arw > room)
 		BOS_fit(I18N_text(itemValue(it)), BOS_FS_SMALL, 400, room - arw, val, sizeof(val)), cw = BOS_textW(val, BOS_FS_SMALL, 400);
 	if (two && k == V_SLIDER && cw + arw > room)
 		cw = room - arw;
@@ -257,8 +263,12 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	int ly = two ? y + h * 32 / 100 : cy, vy = two ? y + h * 73 / 100 : cy;
 	char label[160];
 	int label_room = two || k == V_NONE ? room : k == V_TOGGLE ? room - cw - BOS_px(16) : room - cw - arw - BOS_px(16);
-	BOS_fit(name, BOS_FS_BODY, weight, label_room, label, sizeof(label));
-	BOS_textMid(s, label, BOS_FS_BODY, weight, fg, a, lx, ly);
+	if (hot)
+		BOS_textMarquee(s, name, BOS_FS_BODY, weight, fg, a, lx, ly, label_room);
+	else {
+		BOS_fit(name, BOS_FS_BODY, weight, label_room, label, sizeof(label));
+		BOS_textMid(s, label, BOS_FS_BODY, weight, fg, a, lx, ly);
+	}
 	if (k == V_NONE)
 		return;
 
@@ -280,7 +290,7 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		break;
 	}
 	default:
-		BOS_textMid(s, val, BOS_FS_SMALL, 400, sub, a, vx, vy);
+		BOS_textMarquee(s, val, BOS_FS_SMALL, 400, sub, a, vx, vy, cw);
 	}
 	if (arrows)
 		BOS_icon(s, "chev", sub, 1, vx + cw + ag, vy - ar / 2, ar);
@@ -455,7 +465,11 @@ static void pickerRender(SDL_Surface* s) {
 		char l[160];
 		BOS_fit(I18N_text(pk_item->labels[i] ? pk_item->labels[i] : ""), BOS_FS_BODY, hot ? 600 : 500, cx - BOS_px(12) - lx, l,
 				sizeof(l));
-		BOS_textMid(s, l, BOS_FS_BODY, hot ? 600 : 500, fg, a, lx, cyy);
+		if (hot)
+			BOS_textMarquee(s, I18N_text(pk_item->labels[i] ? pk_item->labels[i] : ""), BOS_FS_BODY, 600, fg, a, lx, cyy,
+							cx - BOS_px(12) - lx);
+		else
+			BOS_textMid(s, l, BOS_FS_BODY, 500, fg, a, lx, cyy);
 	}
 	if (n > rows) { // a scroll mark inside the sheet
 		int tt = rows * rh, mh = tt * rows / n, my = ry + (tt - mh) * pk_top / (n - rows);

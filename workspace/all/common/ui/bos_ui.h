@@ -28,10 +28,16 @@ int BOS_text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, 
 // Draws `s` centred on the line at y (cy = vertical centre).
 int BOS_textMid(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int cy);
 void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size); // cut with "…"
-// Draws `s` wrapped to max_w (at spaces, else between Thai clusters), up to max_lines lines; the last is cut with "…".
-// Returns the height drawn.
+// Draws `s` wrapped to max_w (at spaces, else between Thai clusters), up to max_lines lines; a longer last line
+// scrolls (BOS_textMarquee). Returns the height drawn.
 int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y, int max_w,
 				 int max_lines);
+// A focused text too long for max_w: drawn clipped to it and scrolling (hold 1.2 s, 60 px/s, hold, back), centred on
+// cy; a text that fits is drawn as BOS_textMid. Unfocused text keeps BOS_fit's "…". While one scrolls,
+// BOS_marqueeActive() is true: the app keeps redrawing.
+int BOS_textMarquee(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int cy,
+					int max_w);
+bool BOS_marqueeActive(void);
 
 // ---- shapes ----
 uint32_t BOS_map(SDL_Surface* s, uint32_t rgb);

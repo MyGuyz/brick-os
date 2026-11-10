@@ -315,8 +315,7 @@ static void wheelRender(SDL_Surface* s) {
 	BgConsole* c = &bg_cons[bg_sel];
 	int ny = top + BOS_px(WSLOT[0].h) + BOS_px(18);
 	char name[128];
-	BOS_fit(c->name, BOS_FS_TITLE, 700, s->w - 2 * BOS_px(BOS_PAGE_PAD), name, sizeof(name));
-	BOS_text(s, name, BOS_FS_TITLE, 700, BOS_C_TEXT, 1, (s->w - BOS_textW(name, BOS_FS_TITLE, 700)) / 2, ny);
+	centredName(s, c->name, BOS_FS_TITLE, 700, BOS_C_TEXT, 1, ny);
 	char cnt[64];
 	if (c->count > 0)
 		snprintf(cnt, sizeof(cnt), I18N_text("%d games"), c->count);
@@ -409,8 +408,7 @@ static void coversRender(SDL_Surface* s, int top) { // §6.3: the full-size caro
 	Entry* e = bg_games->entries->items[bg_gsel];
 	int y = top + ch + BOS_px(14);
 	char name[256];
-	BOS_fit(e->name, BOS_FS_BODY, 600, s->w - 2 * BOS_px(BOS_PAGE_PAD), name, sizeof(name));
-	BOS_text(s, name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, (s->w - BOS_textW(name, BOS_FS_BODY, 600)) / 2, y);
+	centredName(s, e->name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, y);
 	y += BOS_lineH(BOS_FS_BODY) + BOS_px(4);
 	char meta[128];
 	lastPlayed(e, meta, sizeof(meta));
@@ -452,8 +450,12 @@ static void listRender(SDL_Surface* s, int top) { // §6.4: rows of 96 on the le
 				pill(s, x + w - pad - pillW(rl, true), y + h / 2, rl, BOS_C_OK);
 		}
 		char name[256];
-		BOS_fit(e->name, BOS_FS_BODY, f ? 600 : 500, w - 2 * pad - pill_w, name, sizeof(name));
-		BOS_textMid(s, name, BOS_FS_BODY, f ? 600 : 500, fg, a, x + pad, y + h / 2);
+		if (f) // the focused row's long name scrolls
+			BOS_textMarquee(s, e->name, BOS_FS_BODY, 600, fg, a, x + pad, y + h / 2, w - 2 * pad - pill_w);
+		else {
+			BOS_fit(e->name, BOS_FS_BODY, 500, w - 2 * pad - pill_w, name, sizeof(name));
+			BOS_textMid(s, name, BOS_FS_BODY, 500, fg, a, x + pad, y + h / 2);
+		}
 	}
 	if (ng == 0)
 		return;
@@ -532,7 +534,7 @@ void BosGames_render(SDL_Surface* s) {
 }
 
 bool BosGames_animating(void) {
-	return pending || bg_start != 0 || bg_gstart != 0 || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
+	return pending || bg_start != 0 || bg_gstart != 0 || BOS_marqueeActive() || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
 }
 
 Entry* BosGames_focusedGame(void) {

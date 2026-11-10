@@ -495,6 +495,15 @@ static uint32_t over(uint32_t c, float a) {
 	return ((uint32_t)(((c >> 16) & 255) * a) << 16) | ((uint32_t)(((c >> 8) & 255) * a) << 8) | (uint32_t)((c & 255) * a);
 }
 
+// a centred name on one line: centred when it fits, else scrolling across the page's width (BOS_textMarquee)
+static void centredName(SDL_Surface* s, const char* nm, int px, int weight, uint32_t rgb, float a, int y) {
+	int room = s->w - 2 * BOS_px(BOS_PAGE_PAD), w = BOS_textW(nm, px, weight);
+	if (w <= room)
+		BOS_text(s, nm, px, weight, rgb, a, (s->w - w) / 2, y);
+	else
+		BOS_textMarquee(s, nm, px, weight, rgb, a, BOS_px(BOS_PAGE_PAD), y + BOS_lineH(px) / 2, room);
+}
+
 static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int r, float a, bool ring) {
 	if (ring) { // picture focus: 4 px ring, offset 4 (§4)
 		int o = BOS_px(BOS_RING), q = 2 * o;
@@ -570,8 +579,7 @@ static int caption(SDL_Surface* s, int top) { // name 40/600, then "<console> ·
 	const Card* c = &cards[cfocus];
 	int y = top + BOS_px(14);
 	char name[256];
-	BOS_fit(c->entry->name, BOS_FS_BODY, 600, s->w - 2 * BOS_px(BOS_PAGE_PAD), name, sizeof(name));
-	BOS_text(s, name, BOS_FS_BODY, 600, BOS_C_TEXT, gdim, (s->w - BOS_textW(name, BOS_FS_BODY, 600)) / 2, y);
+	centredName(s, c->entry->name, BOS_FS_BODY, 600, BOS_C_TEXT, gdim, y);
 	y += BOS_lineH(BOS_FS_BODY) + BOS_px(4);
 	char meta[160];
 	snprintf(meta, sizeof(meta), "%s", c->tag);
@@ -724,7 +732,7 @@ void HomeBos_render(SDL_Surface* s) {
 }
 
 bool HomeBos_animating(void) {
-	return cstart != 0 || pending || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
+	return cstart != 0 || pending || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded() || BOS_marqueeActive();
 }
 
 // ---- input ----
@@ -989,8 +997,7 @@ void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int
 	const BosSwitchCard* c = cards[2];
 	int y = top + ch + BOS_px(14);
 	char name[256];
-	BOS_fit(c->name, BOS_FS_BODY, 600, s->w - 2 * BOS_px(BOS_PAGE_PAD), name, sizeof(name));
-	BOS_text(s, name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, (s->w - BOS_textW(name, BOS_FS_BODY, 600)) / 2, y);
+	centredName(s, c->name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, y);
 	y += BOS_lineH(BOS_FS_BODY) + BOS_px(4);
 	char tag[32], meta[160];
 	tagOf(c->path, tag, sizeof(tag));
@@ -1014,7 +1021,7 @@ void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int
 }
 
 bool BosSwitcher_animating(void) {
-	return pending || sw_start != 0;
+	return pending || sw_start != 0 || BOS_marqueeActive();
 }
 
 #include "bos_games.inc"

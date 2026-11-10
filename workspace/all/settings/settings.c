@@ -16,6 +16,7 @@
 #include "brand.h"
 #include "i18n.h"
 #include "settings_bos.h"
+#include "bos_ui.h"
 #include "settings_menu.h"
 #include "settings_wifi.h"
 #include "settings_bt.h"
@@ -2666,7 +2667,7 @@ int main(int argc, char* argv[]) {
 							 "Your settings are automatically saved");
 		settings_menu_handle_input(&quit, &dirty);
 
-		if (settings_menu_glide_active())
+		if (settings_menu_glide_active() || BOS_marqueeActive()) // a focused long name scrolls
 			dirty = true;
 
 		// TG5050: keyboard may have triggered display recovery

@@ -137,7 +137,58 @@ void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size) 
 	out[0] = '\0';
 }
 
-// ---- wrapped text: up to max_lines lines max_w wide, then "…" ----
+// ---- marquee: a focused text too long for its room scrolls instead of being cut (§5.3) ----
+// hold 1.2 s at the start, scroll at 60 px/s to its end, hold 1.2 s, jump back. Up to 4 at once (a row's name and value).
+typedef struct {
+	unsigned key;
+	uint32_t start, seen;
+} MarqueeSlot;
+static MarqueeSlot marquees[4];
+static uint32_t marquee_at; // the last time one was drawn scrolling
+
+bool BOS_marqueeActive(void) {
+	return marquee_at && SDL_GetTicks() - marquee_at < 300;
+}
+
+int BOS_textMarquee(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int cy,
+					int max_w) {
+	if (!s || !s[0] || max_w <= 0)
+		return 0;
+	int w = BOS_textW(s, px, weight);
+	if (w <= max_w)
+		return BOS_textMid(dst, s, px, weight, rgb, alpha, x, cy);
+	uint32_t now = SDL_GetTicks();
+	unsigned key = 2166136261u ^ (unsigned)px;
+	for (const char* p = s; *p; p++)
+		key = (key ^ (unsigned char)*p) * 16777619u;
+	MarqueeSlot* sl = &marquees[0];
+	for (int i = 0; i < 4; i++) {
+		if (marquees[i].key == key) {
+			sl = &marquees[i];
+			break;
+		}
+		if (marquees[i].seen < sl->seen)
+			sl = &marquees[i];
+	}
+	if (sl->key != key || now - sl->seen > 300) // new, or not on screen a moment ago: from the start
+		sl->key = key, sl->start = now;
+	sl->seen = now;
+	int over = w - max_w, speed = BOS_px(60), hold = 1200;
+	int run = over * 1000 / (speed > 0 ? speed : 1);
+	int t = (int)((now - sl->start) % (uint32_t)(hold + run + hold));
+	int off = t < hold ? 0 : t < hold + run ? (t - hold) * speed / 1000 : over;
+	SDL_Rect old, r = {x, cy - BOS_lineH(px), max_w, 2 * BOS_lineH(px)}, clip;
+	SDL_GetClipRect(dst, &old);
+	if (!SDL_IntersectRect(&r, &old, &clip))
+		return max_w;
+	SDL_SetClipRect(dst, &clip);
+	BOS_textMid(dst, s, px, weight, rgb, alpha, x - off, cy);
+	SDL_SetClipRect(dst, &old);
+	marquee_at = now ? now : 1;
+	return max_w;
+}
+
+// ---- wrapped text: up to max_lines lines max_w wide; a longer last line scrolls ----
 static unsigned cpAt(const char* p, int* len) { // the UTF-8 code point at p
 	const unsigned char* u = (const unsigned char*)p;
 	if (u[0] < 0x80)
@@ -169,9 +220,8 @@ int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t r
 	while (*p && lines < max_lines) {
 		while (*p == ' ')
 			p++;
-		if (lines == max_lines - 1 || BOS_textW(p, px, weight) <= max_w) { // the last line takes the rest, cut with "…"
-			BOS_fit(p, px, weight, max_w, line, sizeof(line));
-			BOS_text(dst, line, px, weight, rgb, alpha, x, y + lines * lh);
+		if (lines == max_lines - 1 || BOS_textW(p, px, weight) <= max_w) { // the last line takes the rest, scrolling
+			BOS_textMarquee(dst, p, px, weight, rgb, alpha, x, y + lines * lh + lh / 2, max_w);
 			return (lines + 1) * lh;
 		}
 		// the longest head that fits, ending at a space if there is one, else at a legal Thai break
