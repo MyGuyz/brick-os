@@ -286,6 +286,14 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 	SettingItem* sel = settings_page_visible_item(page, page->selected);
 	int changed = 0;
 
+	// a block that moves its own focus (ธีมสี's cards) gets the D-pad first; what it doesn't use moves the list
+	if (!page->input_blocked && sel && sel->on_input && sel->on_input(sel)) {
+		if (has_lock)
+			pthread_rwlock_unlock(&page->lock);
+		*dirty = true;
+		return;
+	}
+
 	// Navigation
 	if (PAD_justRepeated(BTN_UP)) {
 		page->selected--;

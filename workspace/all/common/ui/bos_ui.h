@@ -26,7 +26,9 @@ typedef struct {
 const BosTheme* BOS_theme(void);			  // read from the shared config on every call
 uint32_t BOS_iconColor(uint32_t own);		  // an app / category icon colour after สีไอคอน
 double BOS_contrast(uint32_t a, uint32_t b);  // WCAG contrast ratio, 1..21
-uint32_t BOS_textOn(uint32_t bg, int mode);	  // 0 auto (the more readable of onfocus / white), 1 white, 2 black
+uint32_t BOS_textOn(uint32_t bg, int mode);	  // 0 auto (the more readable of onfocus / white), 1 white, 2 black,
+											  // THEME_TEXT_RGB|rgb any colour
+void BOS_preset(int i, uint32_t* focus, uint32_t* primary); // ธีมสำเร็จรูป 0-5 (0 = ค่าเริ่มต้น)
 
 // ---- text: Inter for Latin, IBM Plex Sans Thai for any string with Thai; weight 400/500/600/700 ----
 int BOS_textW(const char* s, int px, int weight);

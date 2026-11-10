@@ -37,7 +37,8 @@ uint32_t THEME_COLOR6_255;
 uint32_t THEME_COLOR7_255;
 
 static const char* THEME_KEYS[THEME_SLOTS] = {"themefocus", "themefocustext", "themeprimary", "themeprimarytext",
-											   "themehint", "themehinttext", "themeicon", "themebg"};
+											   "themehint", "themehinttext", "themeicon", "themebg",
+											   "themepreset", "themecustom"};
 
 void CFG_defaults(NextUISettings* cfg) {
 	if (!cfg)
@@ -63,7 +64,7 @@ void CFG_defaults(NextUISettings* cfg) {
 
 		.showClock = CFG_DEFAULT_SHOWCLOCK,
 		.statusBar = CFG_DEFAULT_STATUSBAR,
-		.theme = {-1, 0, -1, 0, -1, 0, 0, 0},
+		.theme = {-1, 0, -1, 0, -1, 0, 0, 0, 0, 0},
 		.clock24h = CFG_DEFAULT_CLOCK24H,
 		.showBatteryPercent = CFG_DEFAULT_SHOWBATTERYPERCENT,
 		.showSearchHint = CFG_DEFAULT_SHOWSEARCHHINT,

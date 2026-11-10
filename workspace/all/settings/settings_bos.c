@@ -69,13 +69,11 @@ static uint32_t mix(uint32_t c, uint32_t under, float t) {
 }
 
 // ---- ธีมสี (DESIGN §6.8): presets, swatches, the colour a slot has now ----
-static const uint32_t PRESETS[6][2] = {{0xF2F2F7, 0x4A9BFF}, {0x64B5FF, 0x64B5FF}, {0xFF8FC0, 0xFF6FAE},
-									   {0x5EE08A, 0x30D158}, {0xFFB04A, 0xFF9F0A}, {0xC79BFF, 0xBF5AF2}};
 static const uint32_t SWATCHES[12] = {0xF2F2F7, 0x64B5FF, 0x5AC8FA, 0x5EE08A, 0xD4F25A, 0xFFD60A,
 									  0xFFB04A, 0xFF7A6B, 0xFF8FC0, 0xC79BFF, 0x9E9EFF, 0xAC8E68};
 
 void SettingsBos_preset(int i, uint32_t* focus, uint32_t* primary) {
-	*focus = PRESETS[i][0], *primary = PRESETS[i][1];
+	BOS_preset(i, focus, primary);
 }
 
 static uint32_t slotColor(int slot) {
@@ -537,17 +535,20 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 }
 
 
-// ---- ธีมสี › ธีมสำเร็จรูป: six mini screens (128×92) with their names, 3 a row; Left/Right picks one ----
+// ---- ธีมสี › ธีมสำเร็จรูป: six mini screens (128×92) with their names, 3 a row. The D-pad moves the ring
+// (it->cursor), A uses the card; the card in use has the check, none while กำหนดเอง is on ----
 void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h, int hot) {
 	(void)h;
-	int cur = it->get_value ? it->get_value() : -1; // -1: a custom mix, no card has the check
+	int cur = CFG_getTheme(THEME_CUSTOM) ? -1 : CFG_getTheme(THEME_PRESET);
 	int cw = BOS_px(128), ch = BOS_px(92), name_h = BOS_px(14) + BOS_lineH(26), gap_y = BOS_px(14);
 	int pad = BOS_px(20), gap_x = (w - 2 * pad - 3 * cw) / 2;
 	uint32_t bg = BOS_theme()->bg;
 	for (int i = 0; i < 6; i++) {
 		int cx = x + pad + (i % 3) * (cw + gap_x), cy = y + BOS_px(10) + (i / 3) * (ch + name_h + gap_y);
-		bool focus = hot && i == cur;
-		float a = focus || (!hot && i == cur) ? 1.0f : BOS_DIM;
+		bool focus = hot && i == it->cursor;
+		float a = focus || i == cur ? 1.0f : BOS_DIM;
+		uint32_t pf, pp;
+		BOS_preset(i, &pf, &pp);
 		if (focus) { // the picture ring (§4): 4 px, 4 px off the card
 			int o = BOS_px(BOS_RING) * 2;
 			BOS_rrect(s, cx - o, cy - o, cw + 2 * o, ch + 2 * o, BOS_px(16) + o, BOS_theme()->focus);
@@ -557,11 +558,11 @@ void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w
 		BOS_rrect(s, cx, cy, cw, ch, BOS_px(16), mix(0x38383A, bg, a));
 		BOS_rrect(s, cx + 2, cy + 2, cw - 4, ch - 4, BOS_px(14), BOS_C_BG);
 		int ix = cx + BOS_px(12), iw = cw - 2 * BOS_px(12);
-		BOS_rrect(s, ix, cy + BOS_px(12), iw, BOS_px(22), BOS_px(8), mix(PRESETS[i][0], BOS_C_BG, a));
+		BOS_rrect(s, ix, cy + BOS_px(12), iw, BOS_px(22), BOS_px(8), mix(pf, BOS_C_BG, a));
 		int ry = cy + BOS_px(12 + 22 + 8) + BOS_px(10);
 		BOS_rrect(s, ix, ry - BOS_px(4), BOS_px(50), BOS_px(8), BOS_px(4), mix(0x48484A, BOS_C_BG, a));
 		int tw = BOS_px(34), th = BOS_px(20);
-		BOS_rrect(s, ix + iw - tw, ry - th / 2, tw, th, th / 2, mix(PRESETS[i][1], BOS_C_BG, a));
+		BOS_rrect(s, ix + iw - tw, ry - th / 2, tw, th, th / 2, mix(pp, BOS_C_BG, a));
 		BOS_rrect(s, ix + iw - BOS_px(18), ry - BOS_px(8), BOS_px(16), BOS_px(16), BOS_px(8), mix(0xFFFFFF, BOS_C_BG, a));
 		if (i == cur) { // the theme in use: a primary check badge on the corner
 			int b = BOS_px(36);
@@ -575,74 +576,186 @@ void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w
 	}
 }
 
-// ---- the colour sheet (§6.8): 12 swatches, a custom hue, the text colour on it, a preview ----
-static int cs_slot = -1, cs_row, cs_col, cs_text;
-static uint32_t cs_color, cs_was;
+// ---- the colour sheet (§6.8 v3): two tabs, สีพื้น | สีตัวหนังสือ (L1/R1); 12 swatches, a custom hue, the colour code
+// (#RRGGBB, a digit at a time) and a preview with the readability verdict. A saves both tabs, B drops both ----
+static const uint32_t TEXT_SWATCHES[12] = {0, 0xFFFFFF, 0x0B0B0D, 0x3A3A3E, 0x0A2A66, 0x0F3D22,
+										   0x5C1020, 0x34145C, 0xFFD60A, 0x64B5FF, 0xFF8FC0, 0x5EE08A}; // [0] อัตโนมัติ
+static int cs_slot = -1, cs_tab, cs_row, cs_col, cs_text, cs_text_was, cs_edit, cs_digit, cs_code_text;
+static uint32_t cs_color, cs_was, cs_code_was;
 static float cs_hue;
 static const char* cs_title;
 #define CS_SAT 0.55f // the hue bar's colours: as soft as the swatches
 
-void SettingsBos_colorSheetOpen(int slot, const char* title) {
-	cs_slot = slot, cs_title = title;
-	cs_color = cs_was = slotColor(slot);
-	cs_text = CFG_getTheme(slot + 1);
-	cs_hue = hueOf(cs_color);
+static int textValue(int v) { // stored text colour -> 0 auto or THEME_TEXT_RGB|rgb (old configs: 1 white, 2 black)
+	if (v == 1)
+		return (int)(THEME_TEXT_RGB | 0xFFFFFF);
+	if (v == 2)
+		return (int)(THEME_TEXT_RGB | BOS_C_ONFOCUS);
+	return v;
+}
+static uint32_t tabColor(void) { // the colour the tab edits now (auto text: the colour auto picks)
+	return cs_tab ? BOS_textOn(cs_color, cs_text) : cs_color;
+}
+static void setTabColor(uint32_t c) {
+	if (cs_tab)
+		cs_text = (int)(THEME_TEXT_RGB | (c & 0xFFFFFF));
+	else
+		cs_color = c & 0xFFFFFF;
+}
+static bool swatchIs(int i, bool was) { // the swatch holds the tab's value (now, or when the sheet opened)
+	if (cs_tab) {
+		int v = was ? cs_text_was : cs_text;
+		return i == 0 ? v == 0 : v == (int)(THEME_TEXT_RGB | TEXT_SWATCHES[i]);
+	}
+	return SWATCHES[i] == (was ? cs_was : cs_color);
+}
+static void pickSwatch(void) {
+	int i = cs_row * 6 + cs_col;
+	if (cs_tab)
+		cs_text = i == 0 ? 0 : (int)(THEME_TEXT_RGB | TEXT_SWATCHES[i]);
+	else
+		cs_color = SWATCHES[i];
+	cs_hue = hueOf(tabColor());
+}
+static void seekTab(void) { // land on the swatch holding the tab's value, else on กำหนดเอง
 	cs_row = 2, cs_col = 0;
 	for (int i = 0; i < 12; i++)
-		if (SWATCHES[i] == cs_color)
+		if (swatchIs(i, false)) {
 			cs_row = i / 6, cs_col = i % 6;
+			break;
+		}
+	cs_hue = hueOf(tabColor());
+}
+
+void SettingsBos_colorSheetOpen(int slot, const char* title) {
+	cs_slot = slot, cs_title = title, cs_tab = 0, cs_edit = 0;
+	cs_color = cs_was = slotColor(slot);
+	cs_text = cs_text_was = textValue(CFG_getTheme(slot + 1));
+	seekTab();
 }
 
 static void sheetInput(bool* dirty) {
-	if (PAD_justRepeated(BTN_UP) && cs_row > 0) {
-		cs_row--, *dirty = true;
-		if (cs_row < 2)
-			cs_color = SWATCHES[cs_row * 6 + cs_col];
+	if (PAD_justPressed(BTN_A)) { // ใช้สีนี้ (on the code row, not yet editing: edit it)
+		if (cs_row == 3 && !cs_edit) {
+			cs_edit = 1, cs_digit = 0, cs_code_was = cs_color, cs_code_text = cs_text;
+		} else {
+			CFG_setTheme(cs_slot, (int)cs_color);
+			CFG_setTheme(cs_slot + 1, cs_text);
+			cs_slot = -1;
+		}
+		*dirty = true;
+	} else if (PAD_justPressed(BTN_B)) {
+		if (cs_edit) // leave the code as it was before editing
+			cs_color = cs_code_was, cs_text = cs_code_text, cs_hue = hueOf(tabColor()), cs_edit = 0;
+		else
+			cs_slot = -1;
+		*dirty = true;
+	} else if (PAD_justPressed(BTN_L1) || PAD_justPressed(BTN_R1)) {
+		cs_tab = !cs_tab;
+		seekTab();
+		if (cs_edit)
+			cs_row = 3;
+		*dirty = true;
+	} else if (cs_edit) { // the colour code: Left/Right picks the digit, Up/Down steps it 0-F
+		if (PAD_justRepeated(BTN_LEFT) && cs_digit > 0)
+			cs_digit--, *dirty = true;
+		else if (PAD_justRepeated(BTN_RIGHT) && cs_digit < 5)
+			cs_digit++, *dirty = true;
+		else if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
+			int sh = 4 * (5 - cs_digit);
+			uint32_t c = tabColor(), n = (((c >> sh) & 15) + (PAD_justRepeated(BTN_UP) ? 1 : 15)) & 15;
+			setTabColor((c & ~(15u << sh)) | (n << sh));
+			cs_hue = hueOf(tabColor());
+			*dirty = true;
+		}
+	} else if (PAD_justRepeated(BTN_UP) && cs_row > 0) {
+		if (--cs_row < 2)
+			pickSwatch();
+		*dirty = true;
 	} else if (PAD_justRepeated(BTN_DOWN) && cs_row < 3) {
-		cs_row++, *dirty = true;
-		if (cs_row < 2)
-			cs_color = SWATCHES[cs_row * 6 + cs_col];
+		if (++cs_row < 2)
+			pickSwatch();
+		*dirty = true;
 	} else if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) {
 		int d = PAD_justRepeated(BTN_RIGHT) ? 1 : -1;
 		if (cs_row < 2) {
 			cs_col = (cs_col + d + 6) % 6;
-			cs_color = SWATCHES[cs_row * 6 + cs_col];
+			pickSwatch();
 		} else if (cs_row == 2) {
 			cs_hue = fmodf(cs_hue + d * 6 + 360, 360);
-			cs_color = hsv(cs_hue, CS_SAT, 1);
-		} else
-			cs_text = (cs_text + d + 3) % 3;
+			setTabColor(hsv(cs_hue, CS_SAT, 1));
+		}
 		*dirty = true;
-	} else if (PAD_justPressed(BTN_A)) {
-		CFG_setTheme(cs_slot, (int)cs_color);
-		CFG_setTheme(cs_slot + 1, cs_text);
-		cs_slot = -1, *dirty = true;
-	} else if (PAD_justPressed(BTN_B))
-		cs_slot = -1, *dirty = true;
+	}
+}
+
+static void triangle(SDL_Surface* s, int cx, int y, int hgt, bool up, uint32_t c) {
+	for (int r = 0; r < hgt; r++) {
+		int half = up ? r : hgt - 1 - r;
+		SDL_FillRect(s, &(SDL_Rect){cx - half, y + r, 2 * half + 1, 1}, BOS_map(s, c));
+	}
 }
 
 static void sheetRender(SDL_Surface* s) {
+	const BosTheme* th = BOS_theme();
 	int bar = BOS_px(BOS_BAR_H), sh = BOS_px(590), top = s->h - bar - sh, px = BOS_px(48);
-	BOS_rrect(s, 0, top, s->w, sh + bar, BOS_px(32), BOS_theme()->surface);
+	BOS_rrect(s, 0, top, s->w, sh + bar, BOS_px(32), th->surface);
 	int y = top + BOS_px(24);
 	BOS_text(s, I18N_text(cs_title), 44, 700, BOS_C_TEXT, 1, px, y);
+	// the tabs: สีพื้น | สีตัวหนังสือ, right of the title
+	{
+		const char* tl[2] = {I18N_text("Background colour"), I18N_text("Text colour")};
+		int pad = BOS_px(24), segh = BOS_px(52), tw[2], tot = BOS_px(8) + BOS_px(4);
+		for (int i = 0; i < 2; i++)
+			tw[i] = BOS_textW(tl[i], BOS_FS_SMALL, 600) + 2 * pad, tot += tw[i];
+		int sx = s->w - px - tot, cy = y + BOS_lineH(44) / 2;
+		BOS_rrect(s, sx, cy - segh / 2 - BOS_px(4), tot, segh + BOS_px(8), BOS_px(18), th->surface2);
+		sx += BOS_px(4);
+		for (int i = 0; i < 2; i++) {
+			bool on = i == cs_tab;
+			if (on)
+				BOS_rrect(s, sx, cy - segh / 2, tw[i], segh, BOS_px(14), th->focus);
+			int w = BOS_textW(tl[i], BOS_FS_SMALL, on ? 600 : 400);
+			BOS_textMid(s, tl[i], BOS_FS_SMALL, on ? 600 : 400, on ? th->onfocus : BOS_C_TEXT2, 1, sx + (tw[i] - w) / 2, cy);
+			sx += tw[i] + BOS_px(4);
+		}
+	}
 	y += BOS_lineH(44) + BOS_px(16);
-	// swatches: the one in use has a check, the focused one a ring and 1.08
+	// swatches: the one in use has a check, the focused one a ring and 1.08; the text tab's first is อัตโนมัติ
 	int d = BOS_px(92), gx = (s->w - 2 * px - 6 * d) / 5;
 	for (int i = 0; i < 12; i++) {
+		uint32_t c = cs_tab ? TEXT_SWATCHES[i] : SWATCHES[i];
+		bool autosw = cs_tab && i == 0;
 		int cx = px + (i % 6) * (d + gx) + d / 2, cy = y + (i / 6) * (d + BOS_px(20)) + d / 2;
-		bool focus = cs_row == i / 6 && cs_col == i % 6;
+		bool focus = !cs_edit && cs_row == i / 6 && cs_col == i % 6;
 		int dd = focus ? (int)(d * 1.08f) : d;
 		if (focus) {
 			int o = BOS_px(5) + BOS_px(4);
 			BOS_rrect(s, cx - dd / 2 - o, cy - dd / 2 - o, dd + 2 * o, dd + 2 * o, dd / 2 + o, 0xFFFFFF);
 			o = BOS_px(5);
-			BOS_rrect(s, cx - dd / 2 - o, cy - dd / 2 - o, dd + 2 * o, dd + 2 * o, dd / 2 + o, BOS_theme()->surface);
+			BOS_rrect(s, cx - dd / 2 - o, cy - dd / 2 - o, dd + 2 * o, dd + 2 * o, dd / 2 + o, th->surface);
 		}
-		BOS_rrect(s, cx - dd / 2, cy - dd / 2, dd, dd, dd / 2, SWATCHES[i]);
-		if (SWATCHES[i] == cs_was) {
+		if (autosw || BOS_contrast(c, th->surface) < 1.6) { // a dark swatch gets a rim so it shows on the sheet
+			int o = BOS_px(2);
+			BOS_rrect(s, cx - dd / 2 - o, cy - dd / 2 - o, dd + 2 * o, dd + 2 * o, dd / 2 + o, 0x48484A);
+		}
+		if (autosw) { // half white, half black: auto picks one of them
+			BOS_rrect(s, cx - dd / 2, cy - dd / 2, dd, dd, dd / 2, 0xFFFFFF);
+			// rounded fills ignore the clip: draw a black disc on the sheet colour apart, then copy its right half
+			SDL_Surface* tmp = SDL_CreateRGBSurfaceWithFormat(0, dd, dd, 32, s->format->format);
+			if (tmp) {
+				SDL_Rect box = {cx - dd / 2, cy - dd / 2, dd, dd};
+				SDL_BlitSurface(s, &box, tmp, NULL); // what is there now (the rim, the sheet), so only the disc changes
+				BOS_rrect(tmp, 0, 0, dd, dd, dd / 2, BOS_C_ONFOCUS);
+				SDL_Rect src = {dd / 2, 0, dd - dd / 2, dd}, dst = {cx, cy - dd / 2, 0, 0};
+				SDL_BlitSurface(tmp, &src, s, &dst);
+				SDL_FreeSurface(tmp);
+			}
+		} else
+			BOS_rrect(s, cx - dd / 2, cy - dd / 2, dd, dd, dd / 2, c);
+		if (swatchIs(i, true)) {
 			int ic = BOS_px(44);
-			BOS_icon(s, "check", BOS_textOn(SWATCHES[i], 0), 1, cx - ic / 2, cy - ic / 2, ic);
+			BOS_icon(s, "check", autosw ? th->primary : BOS_textOn(c, 0), 1, cx - ic / 2, cy - ic / 2, ic);
 		}
 	}
 	y += 2 * d + BOS_px(20) + BOS_px(24);
@@ -655,31 +768,55 @@ static void sheetRender(SDL_Surface* s) {
 	BOS_rrect(s, kx - k / 2, cy - k / 2, k, k, k / 2, BOS_C_BG);
 	BOS_rrect(s, kx - k / 2 + BOS_px(3), cy - k / 2 + BOS_px(3), k - BOS_px(6), k - BOS_px(6), k / 2, 0xFFFFFF);
 	y += BOS_px(36) + BOS_px(20);
-	// ตัวหนังสือ: อัตโนมัติ / ขาว / ดำ
-	cy = y + BOS_px(30);
-	BOS_textMid(s, I18N_text("Text"), BOS_FS_SMALL, cs_row == 3 ? 600 : 400, cs_row == 3 ? BOS_C_TEXT : BOS_C_TEXT2, 1, px, cy);
-	int segh = BOS_px(60);
-	if (cs_row == 3)
-		BOS_rrect(s, bx - BOS_px(4), cy - segh / 2 - BOS_px(4), bw + BOS_px(8), segh + BOS_px(8), BOS_px(22), BOS_theme()->focus);
-	BOS_rrect(s, bx, cy - segh / 2, bw, segh, BOS_px(18), BOS_theme()->surface2);
-	static const char* TXT[] = {"Auto", "White", "Black"};
-	int sw = (bw - BOS_px(8) - 2 * BOS_px(4)) / 3;
-	for (int i = 0; i < 3; i++) {
-		int sx = bx + BOS_px(4) + i * (sw + BOS_px(4));
-		bool on = i == cs_text;
-		if (on)
-			BOS_rrect(s, sx, cy - BOS_px(26), sw, BOS_px(52), BOS_px(14), BOS_theme()->focus);
-		const char* t = I18N_text(TXT[i]);
-		int tw = BOS_textW(t, BOS_FS_SMALL, on ? 600 : 400);
-		BOS_textMid(s, t, BOS_FS_SMALL, on ? 600 : 400, on ? BOS_theme()->onfocus : BOS_C_TEXT, 1, sx + (sw - tw) / 2, cy);
+	// รหัสสี: #RRGGBB; A edits it a digit at a time
+	int ch = BOS_px(60);
+	cy = y + ch / 2;
+	BOS_textMid(s, I18N_text("Colour code"), BOS_FS_SMALL, cs_row == 3 ? 600 : 400, cs_row == 3 ? BOS_C_TEXT : BOS_C_TEXT2, 1, px, cy);
+	uint32_t tc = tabColor();
+	char hex[8];
+	snprintf(hex, sizeof(hex), "%06X", (unsigned)(tc & 0xFFFFFF));
+	if (cs_edit) {
+		int cw = BOS_px(48), g = BOS_px(8), x = bx + BOS_px(4);
+		BOS_textMid(s, "#", 36, 700, BOS_C_TEXTOFF, 1, x, cy);
+		x += BOS_textW("#", 36, 700) + BOS_px(10);
+		for (int i = 0; i < 6; i++) {
+			bool on = i == cs_digit;
+			BOS_rrect(s, x, cy - ch / 2, cw, ch, BOS_px(12), on ? th->focus : th->surface2);
+			char dg[2] = {hex[i], 0};
+			int w = BOS_textW(dg, 36, 700);
+			BOS_textMid(s, dg, 36, 700, on ? th->onfocus : BOS_C_TEXT, 1, x + (cw - w) / 2, cy);
+			if (on) {
+				triangle(s, x + cw / 2, cy - ch / 2 - BOS_px(16), BOS_px(10), true, th->focus);
+				triangle(s, x + cw / 2, cy + ch / 2 + BOS_px(6), BOS_px(10), false, th->focus);
+			}
+			x += cw + g;
+		}
+		int sw = ch;
+		BOS_rrect(s, s->w - px - sw, cy - sw / 2, sw, sw, BOS_px(16), 0x48484A);
+		BOS_rrect(s, s->w - px - sw + BOS_px(2), cy - sw / 2 + BOS_px(2), sw - BOS_px(4), sw - BOS_px(4), BOS_px(14), tc);
+	} else {
+		if (cs_row == 3)
+			BOS_rrect(s, bx - BOS_px(4), cy - ch / 2 - BOS_px(4), bw + BOS_px(8), ch + BOS_px(8), BOS_px(20), th->focus);
+		BOS_rrect(s, bx, cy - ch / 2, bw, ch, BOS_px(16), th->surface2);
+		int sw = BOS_px(32), x = bx + BOS_px(20);
+		BOS_rrect(s, x, cy - sw / 2, sw, sw, BOS_px(9), 0x48484A);
+		BOS_rrect(s, x + BOS_px(2), cy - sw / 2 + BOS_px(2), sw - BOS_px(4), sw - BOS_px(4), BOS_px(7), tc);
+		x += sw + BOS_px(16);
+		char shown[16];
+		snprintf(shown, sizeof(shown), "#%s", hex);
+		BOS_textMid(s, cs_tab && cs_text == 0 ? I18N_text("Auto") : shown, 34, 600, BOS_C_TEXT, 1, x, cy);
+		if (cs_row == 3) {
+			const char* h = I18N_text("Press A to edit");
+			BOS_textMid(s, h, 26, 400, BOS_C_TEXTOFF, 1, bx + bw - BOS_px(20) - BOS_textW(h, 26, 400), cy);
+		}
 	}
-	y += segh + BOS_px(20);
-	// the preview: a focused row in this colour and text colour, and whether it reads well (4.5:1)
+	y += ch + BOS_px(20);
+	// the preview: this colour with its text colour, and whether it reads well (4.5:1)
 	uint32_t fg = BOS_textOn(cs_color, cs_text);
 	bool easy = BOS_contrast(cs_color, fg) >= 4.5;
 	int ph = BOS_px(84);
 	BOS_rrect(s, px, y, s->w - 2 * px, ph, BOS_px(20), cs_color);
-	BOS_textMid(s, I18N_text("Preview of a selected row"), BOS_FS_BODY, 600, fg, 1, px + BOS_px(24), y + ph / 2);
+	BOS_textMid(s, I18N_text("Preview"), BOS_FS_BODY, 600, fg, 1, px + BOS_px(24), y + ph / 2);
 	const char* verdict = I18N_text(easy ? "Easy to read" : "Hard to read");
 	int vw = BOS_textW(verdict, 26, 600), ic = BOS_px(28), pw = vw + BOS_px(24) + (easy ? ic + BOS_px(6) : 0);
 	int vx = s->w - px - BOS_px(16) - pw, vh = BOS_px(44);
@@ -687,9 +824,15 @@ static void sheetRender(SDL_Surface* s) {
 	BOS_textMid(s, verdict, 26, 600, easy ? BOS_C_OK : BOS_C_WARN, 1, vx + BOS_px(12), y + ph / 2);
 	if (easy)
 		BOS_icon(s, "check", BOS_C_OK, 1, vx + BOS_px(12) + vw + BOS_px(6), y + (ph - ic) / 2, ic);
-	BosHint r[] = {{"A", I18N_text("Use this colour")}, {"B", I18N_text("Cancel")}};
-	BosHint l[] = {{"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change")}};
-	BOS_hintBar(s, r, 2, l, 1);
+	if (cs_edit) {
+		BosHint r[] = {{"A", I18N_text("Use this colour")}, {"B", I18N_text("Cancel")}};
+		BosHint l[] = {{"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Pick digit")}, {"\xE2\x86\x91 \xE2\x86\x93", I18N_text("Change value")}};
+		BOS_hintBar(s, r, 2, l, 2);
+	} else {
+		BosHint r[] = {{"A", I18N_text(cs_row == 3 ? "Edit code" : "Use this colour")}, {"B", I18N_text("Cancel")}};
+		BosHint l[] = {{"L1 R1", I18N_text("Background/Text")}};
+		BOS_hintBar(s, r, 2, l, 1);
+	}
 }
 
 // ---- the value list (A on a Left/Right row): every value at once, a §5.7 sheet over the page ----
@@ -814,8 +957,8 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 		bool cyc = it->type == ITEM_CYCLE || it->type == ITEM_COLOR;
 		if (it->color_slot)
 			r[nr++] = (BosHint){"A", I18N_text("Choose")};
-		else if (it->custom_draw && cyc)
-			; // the theme cards: Left/Right picks, nothing to open
+		else if (it->custom_draw)
+			r[nr++] = (BosHint){"A", I18N_text("Use this theme")}; // the theme cards
 		else if (!cyc && it->type != ITEM_STATIC)
 			r[nr++] = (BosHint){"A", I18N_text("Open")};
 		else if (cyc && (it->a_cycles || toggleState(it) >= 0))

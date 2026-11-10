@@ -36,6 +36,8 @@ double BOS_contrast(uint32_t a, uint32_t b) {
 }
 
 uint32_t BOS_textOn(uint32_t bg, int mode) {
+	if (mode & THEME_TEXT_RGB)
+		return (uint32_t)mode & 0xFFFFFF;
 	if (mode == 1)
 		return 0xFFFFFF;
 	if (mode == 2)
@@ -43,15 +45,35 @@ uint32_t BOS_textOn(uint32_t bg, int mode) {
 	return BOS_contrast(bg, BOS_C_ONFOCUS) >= BOS_contrast(bg, 0xFFFFFF) ? BOS_C_ONFOCUS : 0xFFFFFF;
 }
 
+// ธีมสำเร็จรูป: {focus (also the hint keys), primary}; 0 is ค่าเริ่มต้น
+static const uint32_t PRESETS[6][2] = {{BOS_C_FOCUS, BOS_C_PRIMARY}, {0x64B5FF, 0x64B5FF}, {0xFF8FC0, 0xFF6FAE},
+									   {0x5EE08A, 0x30D158}, {0xFFB04A, 0xFF9F0A}, {0xC79BFF, 0xBF5AF2}};
+void BOS_preset(int i, uint32_t* focus, uint32_t* primary) {
+	if (i < 0 || i > 5)
+		i = 0;
+	*focus = PRESETS[i][0];
+	*primary = PRESETS[i][1];
+}
+
 static BosTheme theme;
 const BosTheme* BOS_theme(void) {
-	int f = CFG_getTheme(THEME_FOCUS), p = CFG_getTheme(THEME_PRIMARY), h = CFG_getTheme(THEME_HINT);
-	theme.focus = f < 0 ? BOS_C_FOCUS : (uint32_t)f & 0xFFFFFF;
-	theme.onfocus = BOS_textOn(theme.focus, CFG_getTheme(THEME_FOCUS_TEXT));
-	theme.primary = p < 0 ? BOS_C_PRIMARY : (uint32_t)p & 0xFFFFFF;
-	theme.onprimary = BOS_textOn(theme.primary, CFG_getTheme(THEME_PRIMARY_TEXT));
-	theme.hint_cap = h < 0 ? BOS_C_FOCUS : (uint32_t)h & 0xFFFFFF;
-	theme.onhint = BOS_textOn(theme.hint_cap, CFG_getTheme(THEME_HINT_TEXT));
+	// กำหนดเอง off: the preset card's colours with auto text; on: the colour slots (-1 = the default colour)
+	uint32_t pf, pp;
+	BOS_preset(CFG_getTheme(THEME_PRESET), &pf, &pp);
+	if (CFG_getTheme(THEME_CUSTOM)) {
+		int f = CFG_getTheme(THEME_FOCUS), p = CFG_getTheme(THEME_PRIMARY), h = CFG_getTheme(THEME_HINT);
+		theme.focus = f < 0 ? BOS_C_FOCUS : (uint32_t)f & 0xFFFFFF;
+		theme.onfocus = BOS_textOn(theme.focus, CFG_getTheme(THEME_FOCUS_TEXT));
+		theme.primary = p < 0 ? BOS_C_PRIMARY : (uint32_t)p & 0xFFFFFF;
+		theme.onprimary = BOS_textOn(theme.primary, CFG_getTheme(THEME_PRIMARY_TEXT));
+		theme.hint_cap = h < 0 ? BOS_C_FOCUS : (uint32_t)h & 0xFFFFFF;
+		theme.onhint = BOS_textOn(theme.hint_cap, CFG_getTheme(THEME_HINT_TEXT));
+	} else {
+		theme.focus = theme.hint_cap = pf;
+		theme.primary = pp;
+		theme.onfocus = theme.onhint = BOS_textOn(pf, 0);
+		theme.onprimary = BOS_textOn(pp, 0);
+	}
 	theme.icon_mode = CFG_getTheme(THEME_ICON);
 	// พื้นหลังเทาเข้ม lifts the groups and their controls one step, so they still stand off the page
 	bool grey = CFG_getTheme(THEME_BG) == 1;

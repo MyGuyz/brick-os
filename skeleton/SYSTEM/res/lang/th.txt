@@ -592,3 +592,18 @@ Preview of a selected row	ตัวอย่างแถวที่เลือ
 Easy to read	อ่านง่าย
 Hard to read	อ่านยาก
 Use this colour	ใช้สีนี้
+Arrows pick a theme, A uses it. X goes back to Default.	ปุ่มทิศเลือกธีม กด A ใช้ กด X กลับเป็นค่าเริ่มต้น
+Use this theme	ใช้ธีมนี้
+Customize	ปรับเอง
+Whole system	ทั้งระบบ
+Off: the colours come from the theme picked above	ปิดอยู่: ใช้สีจากธีมที่เลือกด้านบน
+The colours you set below are used	ใช้สีที่ปรับเองด้านล่าง ค่าที่ปรับไว้ไม่หายแม้ปิด
+Background colour	สีพื้น
+Text colour	สีตัวหนังสือ
+Background/Text	พื้น/ตัวหนังสือ
+Colour code	รหัสสี
+Press A to edit	กด A เพื่อแก้
+Edit code	แก้รหัส
+Pick digit	เลือกหลัก
+Change value	เปลี่ยนค่า
+Preview	ตัวอย่าง

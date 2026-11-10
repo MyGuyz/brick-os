@@ -83,6 +83,8 @@ typedef struct SettingItem {
 	const char* header;		 // starts a new group with this small title above it
 	int color_slot;
 	const char* clear_label; // X's hint (default "Clear")
+	int cursor;				 // a free block's own focus (ธีมสี's cards)
+	int (*on_input)(struct SettingItem* it); // takes the D-pad before the list; 1 = used it
 } SettingItem;
 
 // ============================================

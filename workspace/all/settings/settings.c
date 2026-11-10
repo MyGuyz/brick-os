@@ -1467,7 +1467,7 @@ static SettingItem keys_items[MAX_KEYS_ITEMS];
 static SettingItem controls_items[MAX_CONTROLS_ITEMS];
 static SettingItem ingame_items[MAX_INGAME_ITEMS];
 static SettingItem statusbar_items[MAX_STATUSBAR_ITEMS];
-static SettingItem theme_items[6];
+static SettingItem theme_items[8];
 
 static SettingsPage appearance_page;
 static SettingsPage layouts_page;
@@ -1983,46 +1983,79 @@ static void reset_motion(void) {
 	set_motion(0);
 }
 
-// ธีมสี (DESIGN.md 6.8): a preset sets สีตอนเลือก, สีหลัก and สีปุ่มแถบล่าง together (text colours back to auto);
-// each colour row opens the colour sheet; X puts that one thing back to its default
+// ธีมสี (DESIGN.md 6.8 v3): six preset cards (the D-pad moves the ring, A uses the card), then the กำหนดเอง switch.
+// On, the custom colours below it are used and shown; off, the card's. The custom colours are kept either way.
 static const char* theme_preset_labels[] = {"Default", "Blue", "Pink", "Green", "Orange", "Purple"};
-static int theme_preset_values[] = {0, 1, 2, 3, 4, 5};
-static int get_theme_preset(void) {
-	int f = CFG_getTheme(THEME_FOCUS), p = CFG_getTheme(THEME_PRIMARY), h = CFG_getTheme(THEME_HINT);
-	if (CFG_getTheme(THEME_FOCUS_TEXT) || CFG_getTheme(THEME_PRIMARY_TEXT) || CFG_getTheme(THEME_HINT_TEXT))
-		return -1;
-	if (f < 0 && p < 0 && h < 0)
-		return 0;
-	for (int i = 1; i < 6; i++) {
-		uint32_t pf, pp;
-		SettingsBos_preset(i, &pf, &pp);
-		if (f == (int)pf && p == (int)pp && h == (int)pf)
-			return i;
+static const char* theme_onoff_labels[] = {"Off", "On"};
+static int theme_onoff_values[] = {0, 1};
+static void theme_sync_rows(void) {
+	int on = CFG_getTheme(THEME_CUSTOM) ? 1 : 0;
+	for (int i = 2; i <= 4; i++)
+		theme_items[i].visible = on;
+	theme_items[1].desc = on ? "The colours you set below are used" : "Off: the colours come from the theme picked above";
+}
+static int theme_cards_input(SettingItem* it) {
+	int c = it->cursor;
+	if (PAD_justRepeated(BTN_LEFT)) {
+		if (c % 3)
+			it->cursor--;
+		return 1;
 	}
-	return -1; // a custom mix
+	if (PAD_justRepeated(BTN_RIGHT)) {
+		if (c % 3 < 2)
+			it->cursor++;
+		return 1;
+	}
+	if (PAD_justRepeated(BTN_UP)) { // the top row: nothing above the cards
+		if (c >= 3)
+			it->cursor -= 3;
+		return 1;
+	}
+	if (PAD_justRepeated(BTN_DOWN) && c < 3) { // the bottom row hands Down to the list (the switch)
+		it->cursor += 3;
+		return 1;
+	}
+	return 0;
 }
-static void set_theme_preset(int i) {
-	uint32_t pf, pp;
-	SettingsBos_preset(i, &pf, &pp);
-	CFG_setTheme(THEME_FOCUS, i ? (int)pf : -1);
-	CFG_setTheme(THEME_PRIMARY, i ? (int)pp : -1);
-	CFG_setTheme(THEME_HINT, i ? (int)pf : -1);
-	CFG_setTheme(THEME_FOCUS_TEXT, 0);
-	CFG_setTheme(THEME_PRIMARY_TEXT, 0);
-	CFG_setTheme(THEME_HINT_TEXT, 0);
+static void apply_theme_card(void) {
+	CFG_setTheme(THEME_PRESET, theme_items[0].cursor);
+	CFG_setTheme(THEME_CUSTOM, 0);
+	theme_sync_rows();
 }
-static void reset_theme_all(void) {
-	set_theme_preset(0);
-	CFG_setTheme(THEME_ICON, 0);
-	CFG_setTheme(THEME_BG, 0);
+static void reset_theme_cards(void) {
+	theme_items[0].cursor = 0;
+	apply_theme_card();
 }
-#define THEME_COLOR_ROW(_name, _slot, _title)               \
-	static void open_##_name(void) {                         \
-		SettingsBos_colorSheetOpen(_slot, _title);           \
-	}                                                        \
-	static void clear_##_name(void) {                        \
-		CFG_setTheme(_slot, -1);                             \
-		CFG_setTheme(_slot + 1, 0);                          \
+static int get_theme_custom(void) {
+	return CFG_getTheme(THEME_CUSTOM) ? 1 : 0;
+}
+static void set_theme_custom(int v) {
+	// the first time on, the custom colours start as the card in use
+	if (v && CFG_getTheme(THEME_FOCUS) < 0 && CFG_getTheme(THEME_PRIMARY) < 0 && CFG_getTheme(THEME_HINT) < 0) {
+		uint32_t f, p;
+		SettingsBos_preset(CFG_getTheme(THEME_PRESET), &f, &p);
+		CFG_setTheme(THEME_FOCUS, (int)f);
+		CFG_setTheme(THEME_PRIMARY, (int)p);
+		CFG_setTheme(THEME_HINT, (int)f);
+	}
+	CFG_setTheme(THEME_CUSTOM, v ? 1 : 0);
+	theme_sync_rows();
+}
+static void theme_on_show(SettingsPage* page) {
+	(void)page;
+	theme_items[0].cursor = CFG_getTheme(THEME_PRESET);
+	theme_sync_rows();
+}
+// X on a colour row: back to the card in use's colour, text auto
+#define THEME_COLOR_ROW(_name, _slot, _title)                                 \
+	static void open_##_name(void) {                                           \
+		SettingsBos_colorSheetOpen(_slot, _title);                             \
+	}                                                                          \
+	static void clear_##_name(void) {                                          \
+		uint32_t f, p;                                                         \
+		SettingsBos_preset(CFG_getTheme(THEME_PRESET), &f, &p);                \
+		CFG_setTheme(_slot, (int)((_slot) == THEME_PRIMARY ? p : f));          \
+		CFG_setTheme(_slot + 1, 0);                                            \
 	}
 THEME_COLOR_ROW(theme_focus, THEME_FOCUS, "Highlight colour")
 THEME_COLOR_ROW(theme_primary, THEME_PRIMARY, "Main colour")
@@ -2271,15 +2304,19 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	// ธีมสี (DESIGN.md 6.8)
 	// ============================
 	idx = 0;
-	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Theme presets", "Left/Right picks a theme. X puts every colour back.",
-		theme_preset_labels, 6, theme_preset_values, get_theme_preset, set_theme_preset, NULL);
+	theme_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Theme presets", "Arrows pick a theme, A uses it. X goes back to Default.", apply_theme_card);
+	theme_items[idx].labels = theme_preset_labels;
+	theme_items[idx].label_count = 6;
 	theme_items[idx].custom_draw = SettingsBos_themeCards;
+	theme_items[idx].on_input = theme_cards_input;
 	theme_items[idx].height = 310;
 	theme_items[idx].header = "Theme presets";
-	theme_items[idx].on_clear = reset_theme_all;
+	theme_items[idx].on_clear = reset_theme_cards;
 	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Custom", "",
+		theme_onoff_labels, 2, theme_onoff_values, get_theme_custom, set_theme_custom, NULL);
+	theme_items[idx++].header = "Customize";
 	theme_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Highlight colour", "The selected row, tile and the picture ring", open_theme_focus);
-	theme_items[idx].header = "Customize by kind";
 	theme_items[idx].color_slot = 1 + THEME_FOCUS;
 	theme_items[idx].on_clear = clear_theme_focus;
 	theme_items[idx++].clear_label = "Restore default";
@@ -2287,19 +2324,22 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	theme_items[idx].color_slot = 1 + THEME_PRIMARY;
 	theme_items[idx].on_clear = clear_theme_primary;
 	theme_items[idx++].clear_label = "Restore default";
-	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Icon colour", "App tiles on Home and the icons here",
-		theme_icon_labels, 3, theme_icon_values, get_theme_icon, set_theme_icon, reset_theme_icon);
-	theme_items[idx].on_clear = reset_theme_icon;
-	theme_items[idx++].clear_label = "Restore default";
 	theme_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Hint button colour", "The A B X Y keys in the bar at the bottom", open_theme_hint);
 	theme_items[idx].color_slot = 1 + THEME_HINT;
 	theme_items[idx].on_clear = clear_theme_hint;
+	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Icon colour", "App tiles on Home and the icons here",
+		theme_icon_labels, 3, theme_icon_values, get_theme_icon, set_theme_icon, reset_theme_icon);
+	theme_items[idx].header = "Whole system";
+	theme_items[idx].on_clear = reset_theme_icon;
 	theme_items[idx++].clear_label = "Restore default";
 	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Background", "",
 		theme_bg_labels, 2, theme_bg_values, get_theme_bg, set_theme_bg, reset_theme_bg);
 	theme_items[idx].on_clear = reset_theme_bg;
 	theme_items[idx++].clear_label = "Restore default";
 	init_page(&theme_page, "Settings | Theme colours", theme_items, idx, 0);
+	theme_page.on_show = theme_on_show;
+	theme_on_show(&theme_page);
 
 	// ============================
 	// Appearance page (หน้าตา)
