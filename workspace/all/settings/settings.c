@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "brand.h"
 #include "i18n.h"
+#include "settings_bos.h"
 #include "settings_menu.h"
 #include "settings_wifi.h"
 #include "settings_bt.h"
@@ -2516,6 +2517,16 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
 		"About", "", &about_page);
 
+	// Brick OS: the categories in their DESIGN.md 6.7 groups (a stable insertion sort)
+	for (int i = 1; i < idx; i++) {
+		SettingItem t = main_items[i];
+		int o = SettingsBos_order(t.name), j = i;
+		while (j > 0 && SettingsBos_order(main_items[j - 1].name) > o) {
+			main_items[j] = main_items[j - 1];
+			j--;
+		}
+		main_items[j] = t;
+	}
 	init_page(&main_page, "Settings", main_items, idx, 1);
 
 	// ============================

@@ -529,3 +529,7 @@ Remove	ลบ
 Saved at %s	บันทึกเมื่อ %s
 Close	ปิด
 Nothing to continue	ว่าง
+On/Off	เปิด/ปิด
+Set	ตั้งปุ่ม
+Change	เปลี่ยน
+Clear	ล้าง

@@ -309,7 +309,7 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 			cycle_item_prev(sel, step);
 			changed = 1;
 		}
-		if (sel->a_cycles && PAD_justPressed(BTN_A)) {
+		if ((sel->a_cycles || (SettingsBos_isToggle(sel) && !sel->on_press)) && PAD_justPressed(BTN_A)) {
 			cycle_item_next(sel, 1);
 			changed = 1;
 		}
