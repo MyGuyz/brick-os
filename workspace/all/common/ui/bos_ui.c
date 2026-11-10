@@ -138,7 +138,7 @@ void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size) 
 }
 
 // ---- marquee: a focused text too long for its room scrolls instead of being cut (§5.3) ----
-// hold 1.2 s at the start, scroll at 60 px/s to its end, hold 1.2 s, jump back. Up to 4 at once (a row's name and value).
+// hold 0.5 s at the start, scroll at 120 px/s to its end, hold 1 s, jump back. Up to 4 at once (a row's name and value).
 typedef struct {
 	unsigned key;
 	uint32_t start, seen;
@@ -173,9 +173,9 @@ int BOS_textMarquee(SDL_Surface* dst, const char* s, int px, int weight, uint32_
 	if (sl->key != key || now - sl->seen > 300) // new, or not on screen a moment ago: from the start
 		sl->key = key, sl->start = now;
 	sl->seen = now;
-	int over = w - max_w, speed = BOS_px(60), hold = 1200;
+	int over = w - max_w, speed = BOS_px(120), hold = 500, end_hold = 1000; // user: start at 0.5 s, faster
 	int run = over * 1000 / (speed > 0 ? speed : 1);
-	int t = (int)((now - sl->start) % (uint32_t)(hold + run + hold));
+	int t = (int)((now - sl->start) % (uint32_t)(hold + run + end_hold));
 	int off = t < hold ? 0 : t < hold + run ? (t - hold) * speed / 1000 : over;
 	SDL_Rect old, r = {x, cy - BOS_lineH(px), max_w, 2 * BOS_lineH(px)}, clip;
 	SDL_GetClipRect(dst, &old);

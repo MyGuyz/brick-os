@@ -32,7 +32,7 @@ void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size);
 // scrolls (BOS_textMarquee). Returns the height drawn.
 int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y, int max_w,
 				 int max_lines);
-// A focused text too long for max_w: drawn clipped to it and scrolling (hold 1.2 s, 60 px/s, hold, back), centred on
+// A focused text too long for max_w: drawn clipped to it and scrolling (hold 0.5 s, 120 px/s, hold 1 s, back), centred on
 // cy; a text that fits is drawn as BOS_textMid. Unfocused text keeps BOS_fit's "…". While one scrolls,
 // BOS_marqueeActive() is true: the app keeps redrawing.
 int BOS_textMarquee(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int cy,
