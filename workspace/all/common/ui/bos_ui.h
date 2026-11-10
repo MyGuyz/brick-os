@@ -28,6 +28,10 @@ int BOS_text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, 
 // Draws `s` centred on the line at y (cy = vertical centre).
 int BOS_textMid(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int cy);
 void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size); // cut with "…"
+// Draws `s` wrapped to max_w (at spaces, else between Thai clusters), up to max_lines lines; the last is cut with "…".
+// Returns the height drawn.
+int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y, int max_w,
+				 int max_lines);
 
 // ---- shapes ----
 uint32_t BOS_map(SDL_Surface* s, uint32_t rgb);

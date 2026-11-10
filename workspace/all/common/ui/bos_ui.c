@@ -137,6 +137,75 @@ void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size) 
 	out[0] = '\0';
 }
 
+// ---- wrapped text: up to max_lines lines max_w wide, then "…" ----
+static unsigned cpAt(const char* p, int* len) { // the UTF-8 code point at p
+	const unsigned char* u = (const unsigned char*)p;
+	if (u[0] < 0x80)
+		return *len = 1, u[0];
+	if ((u[0] & 0xE0) == 0xC0 && u[1])
+		return *len = 2, ((u[0] & 0x1F) << 6) | (u[1] & 0x3F);
+	if ((u[0] & 0xF0) == 0xE0 && u[1] && u[2])
+		return *len = 3, ((u[0] & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
+	return *len = 1, u[0];
+}
+// Thai has no spaces between words: a line may break between two code points unless the next one belongs to the
+// letter before it (an above/below mark, ะ า ำ ๆ) or this one is a leading vowel (เ แ โ ใ ไ) that needs its letter.
+static bool breakBefore(unsigned prev, unsigned next) {
+	if (next == 0x0E30 || next == 0x0E31 || (next >= 0x0E32 && next <= 0x0E3A) || next == 0x0E45 || next == 0x0E46 ||
+		(next >= 0x0E47 && next <= 0x0E4E))
+		return false;
+	if (prev >= 0x0E40 && prev <= 0x0E44)
+		return false;
+	return true;
+}
+
+int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y, int max_w,
+				 int max_lines) {
+	if (!s || !s[0] || max_lines <= 0)
+		return 0;
+	int lh = BOS_lineH(px), lines = 0;
+	const char* p = s;
+	char line[512];
+	while (*p && lines < max_lines) {
+		while (*p == ' ')
+			p++;
+		if (lines == max_lines - 1 || BOS_textW(p, px, weight) <= max_w) { // the last line takes the rest, cut with "…"
+			BOS_fit(p, px, weight, max_w, line, sizeof(line));
+			BOS_text(dst, line, px, weight, rgb, alpha, x, y + lines * lh);
+			return (lines + 1) * lh;
+		}
+		// the longest head that fits, ending at a space if there is one, else at a legal Thai break
+		const char *q = p, *fit = NULL, *space = NULL;
+		unsigned prev = 0;
+		while (*q) {
+			int n;
+			unsigned cp = cpAt(q, &n);
+			if (q > p && (prev == ' ' || breakBefore(prev, cp))) {
+				int len = (int)(q - p);
+				if (len >= (int)sizeof(line))
+					break;
+				memcpy(line, p, len), line[len] = '\0';
+				if (BOS_textW(line, px, weight) > max_w)
+					break;
+				fit = q;
+				if (prev == ' ')
+					space = q;
+			}
+			prev = cp;
+			q += n;
+		}
+		const char* end = space ? space : fit ? fit : q;
+		if (end == p) // not even one cluster fits: give up on wrapping
+			end = p + strlen(p);
+		int len = (int)(end - p) < (int)sizeof(line) ? (int)(end - p) : (int)sizeof(line) - 1;
+		memcpy(line, p, len), line[len] = '\0';
+		BOS_text(dst, line, px, weight, rgb, alpha, x, y + lines * lh);
+		lines++;
+		p = end;
+	}
+	return lines * lh;
+}
+
 // ---- shapes ----
 uint32_t BOS_map(SDL_Surface* s, uint32_t rgb) {
 	return SDL_MapRGB(s->format, (rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);

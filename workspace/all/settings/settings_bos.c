@@ -293,16 +293,14 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 	BOS_fit(I18N_text(pageTitle(page, cat)), BOS_FS_TITLE, 700, rw - BOS_px(8), head, sizeof(head));
 	BOS_text(s, head, BOS_FS_TITLE, 700, BOS_C_TEXT, 1, rx + BOS_px(8), top);
 	int list_y = top + BOS_px(74), rh = BOS_px(BOS_ROW_H);
-	int foot_h = BOS_px(8) + BOS_lineH(26);
+	int foot_h = BOS_px(8) + 2 * BOS_lineH(26);
 	const char* foot = NULL;
 	*hot_item = NULL;
 	if (!page) {
 		if (cat && cat->desc && cat->desc[0])
 			foot = cat->desc;
 		if (foot) {
-			char f[256];
-			BOS_fit(I18N_text(foot), 26, 400, rw - BOS_px(28), f, sizeof(f));
-			BOS_text(s, f, 26, 400, BOS_C_TEXTOFF, 1, rx + BOS_px(28), list_y);
+			BOS_textWrap(s, I18N_text(foot), 26, 400, BOS_C_TEXTOFF, 1, rx + BOS_px(28), list_y, rw - BOS_px(28), 2);
 		}
 		return;
 	}
@@ -361,9 +359,8 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 	if (has_lock)
 		pthread_rwlock_unlock(&page->lock);
 	if (foot) {
-		char f[256];
-		BOS_fit(I18N_text(foot), 26, 400, rw - BOS_px(28), f, sizeof(f));
-		BOS_text(s, f, 26, 400, BOS_C_TEXTOFF, 1, rx + BOS_px(28), list_y + rows * rh + BOS_px(8));
+		BOS_textWrap(s, I18N_text(foot), 26, 400, BOS_C_TEXTOFF, 1, rx + BOS_px(28), list_y + rows * rh + BOS_px(8),
+					 rw - BOS_px(28), 2); // two lines, so a description is read whole
 	}
 }
 
