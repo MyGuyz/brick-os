@@ -222,6 +222,7 @@ typedef struct {
 	char tag[32];
 	bool resume; // has a resume state (the เล่นต่อ pill)
 	char preview[MAX_PATH]; // its resume frame, "" for none (the picture, as สลับเกม shows it)
+	int recent;				// its index in Recents (X ปิด)
 } Card;
 static Card cards[MAX_CARDS];
 static int ncards;
@@ -456,6 +457,7 @@ static void build(void) {
 			continue;
 		Card* c = &cards[ncards++];
 		c->entry = e;
+		c->recent = i;
 		tagOf(e->path, c->tag, sizeof(c->tag));
 		readyResume(e);
 		c->resume = resume.can_resume;
@@ -704,9 +706,9 @@ void HomeBos_render(SDL_Surface* s) {
 	y += caption(s, y);
 	appRow(s, y + BOS_px(14));
 	if (row == 0) {
-		BosHint r[] = {{"A", I18N_text("Continue")}, {"Y", I18N_text("Search")}};
+		BosHint r[] = {{"A", I18N_text("Continue")}, {"X", I18N_text("Close")}, {"Y", I18N_text("Search")}};
 		BosHint l[] = {{"MENU", I18N_text("Options")}};
-		BOS_hintBar(s, r, 2, l, ncards > 0 ? 1 : 0);
+		BOS_hintBar(s, r, 3, l, ncards > 0 ? 1 : 0);
 	} else if (moving) {
 		BosHint r[] = {{"A", I18N_text("Done")}, {"B", I18N_text("Cancel")}};
 		BosHint l[] = {{"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Move")}};
@@ -856,6 +858,12 @@ HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) 
 			row = 0;
 	} else if (PAD_justPressed(BTN_DOWN)) {
 		row = 1;
+	} else if (PAD_justPressed(BTN_X) && row == 0 && cfocus < ncards) {
+		// ปิด: the game leaves เล่นต่อ and สลับเกม (its save stays), as สลับเกม's X
+		Recents_removeAt(cards[cfocus].recent);
+		build();
+		cfrom = cpos = (float)cfocus;
+		cstart = 0;
 	} else if (PAD_justPressed(BTN_X) && row == 1 && afocus < npins) {
 		memcpy(saved_pins, pins, npins * sizeof(int));
 		nsaved = npins;
@@ -948,7 +956,7 @@ void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int
 	int top = BOS_px(BOS_BAR_H);
 	top += BOS_largeTitle(s, top, I18N_text("Open games"), sub);
 
-	BosHint r[] = {{"A", I18N_text("Play this game")}, {"B", I18N_text(from_game ? "Back to game" : "Back")}, {"X", I18N_text("Remove")}};
+	BosHint r[] = {{"A", I18N_text("Play this game")}, {"B", I18N_text(from_game ? "Back to game" : "Back")}, {"X", I18N_text("Close")}};
 	if (count <= 0) {
 		const char* t = I18N_text("No open games");
 		BOS_text(s, t, BOS_FS_BODY, 400, BOS_C_TEXT2, 1, (s->w - BOS_textW(t, BOS_FS_BODY, 400)) / 2, top + BOS_px(120));
