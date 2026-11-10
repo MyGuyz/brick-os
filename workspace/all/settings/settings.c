@@ -1442,6 +1442,12 @@ static void init_about_info(void) {
 #define MAX_SIMPLE_MODE_ITEMS 2
 #define MAX_SHORTCUT_ITEMS (SHORTCUT_COUNT + 1)
 #define MAX_MAIN_ITEMS 18
+#define MAX_BATTERY_ITEMS 5
+#define MAX_HOMEGAMES_ITEMS 5
+#define MAX_KEYS_ITEMS 4
+#define MAX_CONTROLS_ITEMS 7
+#define MAX_INGAME_ITEMS 6
+#define MAX_STATUSBAR_ITEMS 7
 
 static SettingItem appearance_items[MAX_APPEARANCE_ITEMS];
 static SettingItem layouts_items[MAX_LAYOUTS_ITEMS];
@@ -1454,6 +1460,12 @@ static SettingItem notify_items[MAX_NOTIFY_ITEMS];
 static SettingItem about_items[MAX_ABOUT_ITEMS];
 static SettingItem simple_mode_items[MAX_SIMPLE_MODE_ITEMS];
 static SettingItem main_items[MAX_MAIN_ITEMS];
+static SettingItem battery_items[MAX_BATTERY_ITEMS];
+static SettingItem homegames_items[MAX_HOMEGAMES_ITEMS];
+static SettingItem keys_items[MAX_KEYS_ITEMS];
+static SettingItem controls_items[MAX_CONTROLS_ITEMS];
+static SettingItem ingame_items[MAX_INGAME_ITEMS];
+static SettingItem statusbar_items[MAX_STATUSBAR_ITEMS];
 
 static SettingsPage appearance_page;
 static SettingsPage layouts_page;
@@ -1467,6 +1479,12 @@ static SettingsPage notify_page;
 static SettingsPage about_page;
 static SettingsPage simple_mode_page;
 static SettingsPage main_page;
+static SettingsPage battery_page;
+static SettingsPage homegames_page;
+static SettingsPage keys_page;
+static SettingsPage controls_page;
+static SettingsPage ingame_page;
+static SettingsPage statusbar_page;
 
 /* WiFi/BT/LED pages (created upfront in build_menu_tree) */
 static SettingsPage* wifi_page_ptr = NULL;
@@ -1917,6 +1935,51 @@ static void reset_notify_page(void) {
 	settings_page_reset_all(&notify_page);
 }
 
+// ---- Brick OS (DESIGN.md 6.7): the new categories' resets, แถบสถานะ's toggles, ภาพเคลื่อนไหว ----
+#define BOS_RESET_PAGE(_fn, _page)          \
+	static void _fn(void) {                 \
+		if (!confirm_reset_page())          \
+			return;                         \
+		settings_page_reset_all(&(_page)); \
+	}
+BOS_RESET_PAGE(reset_battery_page, battery_page)
+BOS_RESET_PAGE(reset_homegames_page, homegames_page)
+BOS_RESET_PAGE(reset_controls_page, controls_page)
+BOS_RESET_PAGE(reset_ingame_page, ingame_page)
+BOS_RESET_PAGE(reset_statusbar_page, statusbar_page)
+
+#define BOS_STATUSBAR_BIT(_name, _bit)                                    \
+	static int get_sb_##_name(void) {                                     \
+		return (CFG_getStatusBar() & (_bit)) ? 1 : 0;                     \
+	}                                                                     \
+	static void set_sb_##_name(int v) {                                   \
+		int m = CFG_getStatusBar();                                       \
+		CFG_setStatusBar(v ? (m | (_bit)) : (m & ~(_bit)));               \
+	}                                                                     \
+	static void reset_sb_##_name(void) {                                  \
+		set_sb_##_name(1);                                                \
+	}
+BOS_STATUSBAR_BIT(music, STATUSBAR_MUSIC)
+BOS_STATUSBAR_BIT(bt, STATUSBAR_BT)
+BOS_STATUSBAR_BIT(mute, STATUSBAR_MUTE)
+BOS_STATUSBAR_BIT(wifi, STATUSBAR_WIFI)
+BOS_STATUSBAR_BIT(clock, STATUSBAR_CLOCK)
+BOS_STATUSBAR_BIT(percent, STATUSBAR_PERCENT)
+
+// ภาพเคลื่อนไหว: เต็ม = animations + transitions, น้อย = animations only (shorter tweens), ปิด = neither
+static const char* motion_labels[] = {"Full", "Reduced", "Off"};
+static int motion_values[] = {0, 1, 2};
+static int get_motion(void) {
+	return !CFG_getMenuAnimations() ? 2 : CFG_getMenuTransitions() ? 0 : 1;
+}
+static void set_motion(int v) {
+	CFG_setMenuAnimations(v != 2);
+	CFG_setMenuTransitions(v == 0);
+}
+static void reset_motion(void) {
+	set_motion(0);
+}
+
 static SettingItem* refresh_emulist_item = NULL;
 static void refresh_emulist(void) {
 	unlink(EMULIST_CACHE_PATH);
@@ -2115,64 +2178,37 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	init_page(&layouts_page, "Settings | Layouts", layouts_items, idx, 0);
 
 	// ============================
-	// Appearance page
+	// แถบสถานะ (DESIGN.md 5.1): one toggle each; the battery icon always shows
 	// ============================
 	idx = 0;
-	// Font selection removed — the UI always uses the MiSans-based font.
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Music playing", "♪ while music plays in the background",
+		on_off_labels, 2, on_off_values, get_sb_music, set_sb_music, reset_sb_music);
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Bluetooth", "While a Bluetooth device is connected",
+		on_off_labels, 2, on_off_values, get_sb_bt, set_sb_bt, reset_sb_bt);
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Mute", "While the volume is 0",
+		on_off_labels, 2, on_off_values, get_sb_mute, set_sb_mute, reset_sb_mute);
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("WiFi", "While WiFi is connected",
+		on_off_labels, 2, on_off_values, get_sb_wifi, set_sb_wifi, reset_sb_wifi);
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Clock", "",
+		on_off_labels, 2, on_off_values, get_sb_clock, set_sb_clock, reset_sb_clock);
+	statusbar_items[idx++] = (SettingItem)ITEM_CYCLE_INIT("Battery percentage", "The battery icon always shows",
+		on_off_labels, 2, on_off_values, get_sb_percent, set_sb_percent, reset_sb_percent);
+	statusbar_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
+		"Reset to defaults", "Resets all options in this menu to their default values.", reset_statusbar_page);
+	init_page(&statusbar_page, "Settings | Status bar", statusbar_items, idx, 0);
+
+	// ============================
+	// Appearance page (หน้าตา)
+	// ============================
+	idx = 0;
+	appearance_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
+		"Status bar", "What the bar at the top of every screen shows", &statusbar_page);
+	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Animations", "Full: every slide. Reduced: shorter. Off: no motion.",
+		motion_labels, 3, motion_values, get_motion, set_motion, reset_motion);
 	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Language", "Menu language",
 		lang_labels, 2, lang_values, get_lang, set_lang, reset_lang);
-	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"Main color", "The color used to render main UI elements.",
-		color_labels, COLOR_COUNT, (int*)color_values, get_color1, set_color1, reset_color1);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Main color opacity", "Lower values let the wallpaper show through main pills.",
-		opacity_labels, OPACITY_COUNT, (int*)opacity_values, get_color1_opacity, set_color1_opacity, reset_color1_opacity);
-	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"Primary accent color", "The color used to highlight important things in the UI.",
-		color_labels, COLOR_COUNT, (int*)color_values, get_color2, set_color2, reset_color2);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Primary accent opacity", "Lower values let the wallpaper show through the selection.",
-		opacity_labels, OPACITY_COUNT, (int*)opacity_values, get_color2_opacity, set_color2_opacity, reset_color2_opacity);
-	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"Secondary accent color", "A secondary highlight color.",
-		color_labels, COLOR_COUNT, (int*)color_values, get_color3, set_color3, reset_color3);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Secondary accent opacity", "Lower values let the wallpaper show through secondary elements.",
-		opacity_labels, OPACITY_COUNT, (int*)opacity_values, get_color3_opacity, set_color3_opacity, reset_color3_opacity);
-	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"Hint info color", "Color for button hints and info",
-		color_labels, COLOR_COUNT, (int*)color_values, get_color6, set_color6, reset_color6);
-	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"List text", "List text color",
-		color_labels, COLOR_COUNT, (int*)color_values, get_color4, set_color4, reset_color4);
-	appearance_items[idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"List text selected", "List selected text color",
-		color_labels, COLOR_COUNT, (int*)color_values, get_color5, set_color5, reset_color5);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show battery percentage", "Show battery level as percent in the status pill",
-		on_off_labels, 2, on_off_values, get_show_battery_percent, set_show_battery_percent, reset_show_battery_percent);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show clock", "Show clock in the status pill",
-		on_off_labels, 2, on_off_values, get_show_clock, set_show_clock, reset_show_clock);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show 24h time format", "Show clock in the 24hrs time format",
-		on_off_labels, 2, on_off_values, get_clock24h, set_clock24h, reset_clock24h);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show search hint", "Show the START search button hint on the main menu",
-		on_off_labels, 2, on_off_values, get_show_search_hint, set_show_search_hint, reset_show_search_hint);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show recent hint", "Show the SELECT recent games button hint on the main menu",
-		on_off_labels, 2, on_off_values, get_show_recent_hint, set_show_recent_hint, reset_show_recent_hint);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show netplay hint", "Show the Y netplay button hint in game lists and search",
-		on_off_labels, 2, on_off_values, get_show_netplay_hint, set_show_netplay_hint, reset_show_netplay_hint);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show menu animations", "Enable or disable menu animations",
-		on_off_labels, 2, on_off_values, get_menu_animations, set_menu_animations, reset_menu_animations);
-	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Show menu transitions", "Enable or disable animated transitions",
-		on_off_labels, 2, on_off_values, get_menu_transitions, set_menu_transitions, reset_menu_transitions);
 	appearance_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
 		"Bootlogo", "Change the device boot logo.",
 		launch_bootlogo);
@@ -2180,6 +2216,25 @@ static void build_menu_tree(const DeviceInfo* dev) {
 		"Reset to defaults", "Resets all options in this menu to their default values.",
 		reset_appearance_page);
 	init_page(&appearance_page, "Settings | Appearance", appearance_items, idx, 0);
+
+	// ============================
+	// Home & games (หน้าแรกและเกม)
+	// ============================
+	idx = 0;
+	homegames_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Default view", "The initial view to show on boot",
+		default_view_labels, DEFAULT_VIEW_COUNT, default_view_values, get_default_view, set_default_view,
+		reset_default_view);
+	homegames_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Game Switcher games", "Which recently played games appear in the Game Switcher.",
+		switcher_games_labels, SWITCHER_GAMES_COUNT, switcher_games_values, get_switcher_resumable_only,
+		set_switcher_resumable_only, reset_switcher_resumable_only);
+	homegames_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Extra info", "A game's play time and achievements, in the menus and the Game Switcher.",
+		hide_show_labels, 2, on_off_values, get_extra_info, set_extra_info, reset_extra_info);
+	homegames_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
+		"Reset to defaults", "Resets all options in this menu to their default values.", reset_homegames_page);
+	init_page(&homegames_page, "Settings | Home & games", homegames_items, idx, 0);
 
 	// ============================
 	// Display page
@@ -2212,83 +2267,117 @@ static void build_menu_tree(const DeviceInfo* dev) {
 			exposure_labels, EXPOSURE_LABEL_COUNT, exposure_values, get_exposure, set_exposure, reset_exposure);
 	}
 
+	if (has_power_mgmt(dev)) {
+		display_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+			"Screen timeout", "Period of inactivity before screen turns off (0-600s)",
+			screen_timeout_labels, SCREEN_TIMEOUT_COUNT, screen_timeout_values, get_screen_timeout, set_screen_timeout, reset_screen_timeout);
+	}
 	display_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
 		"Reset to defaults", "Resets all options in this menu to their default values.",
 		reset_display_page);
 	init_page(&display_page, "Settings | Display", display_items, idx, 0);
 
 	// ============================
-	// System page
+	// แบตเตอรี่ (Battery)
 	// ============================
 	idx = 0;
 	if (has_power_mgmt(dev)) {
-		system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-			"Screen timeout", "Period of inactivity before screen turns off (0-600s)",
-			screen_timeout_labels, SCREEN_TIMEOUT_COUNT, screen_timeout_values, get_screen_timeout, set_screen_timeout, reset_screen_timeout);
-		system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		battery_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 			"Suspend timeout", "Time before device goes to sleep after screen is off (5-600s)",
 			sleep_timeout_labels, SLEEP_TIMEOUT_COUNT, sleep_timeout_values, get_suspend_timeout, set_suspend_timeout, reset_suspend_timeout);
 	}
-	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Haptic feedback", "Enable or disable haptic feedback on certain actions in the OS",
-		on_off_labels, 2, on_off_values, get_haptics, set_haptics, reset_haptics);
-	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Vibration strength", "How hard the motor rumbles in games and for haptic feedback",
-		rumble_strength_labels, 3, rumble_strength_values, get_rumble_strength, set_rumble_strength, reset_rumble_strength);
-	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+	if (has_power_mgmt(dev) && (dev->platform == PLAT_TG5040 || dev->platform == PLAT_TG5050)) {
+		battery_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+			"Safe poweroff", "Bypasses the stock shutdown procedure to avoid the \"limbo bug\".",
+			on_off_labels, 2, on_off_values, get_power_off_protection, set_power_off_protection, reset_power_off_protection);
+	}
+	if (has_active_cooling(dev)) {
+		battery_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+			"Fan Speed", "Select the fan speed percentage (Quiet/Normal/Performance or 0-100%)",
+			fan_speed_labels, FAN_SPEED_COUNT, fan_speed_values, get_fan_speed, set_fan_speed, reset_fan_speed);
+	}
+	battery_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
+		"Reset to defaults", "Resets all options in this menu to their default values.", reset_battery_page);
+	init_page(&battery_page, "Settings | Battery", battery_items, idx, 0);
+
+	// ============================
+	// การควบคุม (Controls)
+	// ============================
+	idx = 0;
+	controls_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Button layout", "Xbox puts A at the bottom and B on the right. The quick menu (OSD) follows after a restart",
 		button_layout_labels, 2, button_layout_values, get_button_layout, set_button_layout, reset_button_layout);
-	hint_labels_item = &system_items[idx];
-	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+	hint_labels_item = &controls_items[idx];
+	controls_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Hint labels", "What the A/B/X/Y hints show when Xbox layout is on. Applies as soon as you leave Settings",
 		hint_labels_labels, 2, hint_labels_values, get_hint_labels, set_hint_labels, reset_hint_labels);
 	sync_hint_labels_visibility();
+	controls_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Haptic feedback", "Enable or disable haptic feedback on certain actions in the OS",
+		on_off_labels, 2, on_off_values, get_haptics, set_haptics, reset_haptics);
+	controls_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Vibration strength", "How hard the motor rumbles in games and for haptic feedback",
+		rumble_strength_labels, 3, rumble_strength_values, get_rumble_strength, set_rumble_strength, reset_rumble_strength);
+	controls_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
+		"Input Tester", "Test buttons, D-pad, and joystick inputs", launch_input_tester);
+	controls_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
+		"Reset to defaults", "Resets all options in this menu to their default values.", reset_controls_page);
+	init_page(&controls_page, "Settings | Controls", controls_items, idx, 0);
+
+	// ============================
+	// ในเกม (In-game)
+	// ============================
+	idx = 0;
+	ingame_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Save format", "The save format to use.",
+		save_format_labels, SAVE_FORMAT_COUNT, save_format_values, get_save_format, set_save_format, reset_save_format);
+	ingame_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Save state format", "The save state format to use.",
+		state_format_labels, STATE_FORMAT_COUNT, state_format_values, get_state_format, set_state_format, reset_state_format);
+	ingame_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Use extracted file name", "Use the extracted file name instead of the archive name.",
+		on_off_labels, 2, on_off_values, get_use_extracted_filename, set_use_extracted_filename, reset_use_extracted_filename);
+	ingame_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
+		"In-game Notifications", "Save state notifications", &notify_page);
+	ingame_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
+		"Reset to defaults", "Resets all options in this menu to their default values.", reset_ingame_page);
+	init_page(&ingame_page, "Settings | In-game", ingame_items, idx, 0);
+
+	// ============================
+	// ระบบ (System)
+	// ============================
+	idx = 0;
 	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Set time and date automatically", "Sync time via NTP (requires internet)",
 		on_off_labels, 2, on_off_values, get_ntp, set_ntp, reset_ntp);
 	system_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
 		"Set time and date manually", "Adjust date and time using the clock editor",
 		launch_clock_adjustment);
-
 	if (tz_count > 0) {
 		system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 			"Time zone", "Your time zone",
 			tz_labels, tz_count, tz_values, get_timezone, set_timezone, reset_timezone);
 	}
-
 	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Save format", "The save format to use.",
-		save_format_labels, SAVE_FORMAT_COUNT, save_format_values, get_save_format, set_save_format, reset_save_format);
-	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Save state format", "The save state format to use.",
-		state_format_labels, STATE_FORMAT_COUNT, state_format_values, get_state_format, set_state_format, reset_state_format);
-	system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		"Use extracted file name", "Use the extracted file name instead of the archive name.",
-		on_off_labels, 2, on_off_values, get_use_extracted_filename, set_use_extracted_filename, reset_use_extracted_filename);
-
-	if (has_power_mgmt(dev) && (dev->platform == PLAT_TG5040 || dev->platform == PLAT_TG5050)) {
-		system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-			"Safe poweroff", "Bypasses the stock shutdown procedure to avoid the \"limbo bug\".",
-			on_off_labels, 2, on_off_values, get_power_off_protection, set_power_off_protection, reset_power_off_protection);
-	}
-
+		"Show 24h time format", "Show clock in the 24hrs time format",
+		on_off_labels, 2, on_off_values, get_clock24h, set_clock24h, reset_clock24h);
+	system_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
+		"Simple Mode", "Simplified menu for children", &simple_mode_page);
 	if (has_stock_osd_restore(dev)) {
 		system_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
 			"Restore stock files", "Restores the console's factory OSD files and reverts NX boot patches, if any. The NX OSD is unaffected.",
 			restore_stock_osd);
 		restore_osd_item = &system_items[idx - 1];
 	}
-
-	if (has_active_cooling(dev)) {
-		system_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
-			"Fan Speed", "Select the fan speed percentage (Quiet/Normal/Performance or 0-100%)",
-			fan_speed_labels, FAN_SPEED_COUNT, fan_speed_values, get_fan_speed, set_fan_speed, reset_fan_speed);
-	}
-
 	system_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
 		"Refresh emulator/roms list", "Clears the cached emulator/roms list so it rescans on next launch.",
 		refresh_emulist);
 	refresh_emulist_item = &system_items[idx - 1];
+	dev_page_ptr = developer_page_create(dev->platform);
+	if (dev_page_ptr) {
+		system_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
+			"Developer", "Developer & debugging tools", dev_page_ptr);
+	}
 	system_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
 		"Reset to defaults", "Resets all options in this menu to their default values.",
 		reset_system_page);
@@ -2437,85 +2526,60 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	about_page.on_tick = updater_about_on_tick;
 
 	// ============================
-	// Main page (category list)
+	// Main page (category list, DESIGN.md 6.7)
 	// ============================
+	// Brick OS 2.0 draws one fixed look: the old Layouts page is gone, so keep what the new screens need
+	if (CFG_getHomeStyle() != HOMESTYLE_DEFAULT)
+		CFG_setHomeStyle(HOMESTYLE_DEFAULT);
+	if (!CFG_getShowEmulators())
+		CFG_setShowEmulators(true);
+	if (!CFG_getShowHome())
+		CFG_setShowHome(true);
+	if (CFG_getSwitcherLayout() != SWITCHER_LAYOUT_FULL)
+		CFG_setSwitcherLayout(SWITCHER_LAYOUT_FULL);
+
 	idx = 0;
-	if (has_display_hw(dev) || has_contrast_sat(dev) || has_exposure(dev)) {
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			"Display", "", &display_page);
-	}
-	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-		"Appearance", "UI customization", &appearance_page);
-	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-		"Layouts", "Menu styles, tabs, hints and boot view", &layouts_page);
-	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-		"In-game Notifications", "Save state notifications", &notify_page);
-
-	if (has_leds(dev)) {
-		led_page_ptr = led_page_create();
-		if (led_page_ptr) {
-			main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-				"LED Control", "Configure LED lighting effects", led_page_ptr);
-		}
-	}
-
 	if (has_wifi(dev)) {
 		wifi_page_ptr = wifi_page_create();
-		if (wifi_page_ptr) {
+		if (wifi_page_ptr)
 			main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Network", "", wifi_page_ptr);
-		}
 	}
-
 	if (has_bluetooth(dev)) {
 		bt_page_ptr = bt_page_create();
-		if (bt_page_ptr) {
+		if (bt_page_ptr)
 			main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Bluetooth", "", bt_page_ptr);
-		}
 	}
-
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Display", "", &display_page);
 	audio_page_ptr = audio_page_create();
-	if (audio_page_ptr) {
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			"Audio", "Output device and sample-rate policy", audio_page_ptr);
+	if (audio_page_ptr)
+		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Audio", "Output device and sample-rate policy", audio_page_ptr);
+	if (battery_page.item_count > 1)
+		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Battery", "", &battery_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Appearance", "", &appearance_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Home & games", "", &homegames_page);
+
+	// ปุ่มลัด: F1/F2 (hidden in simple mode, they launch tools), the FN switch, the in-game shortcuts (hidden in
+	// simple mode: a shortcut bound to A could reset or quit every game)
+	int nkeys = 0;
+	if (has_fn_keys(dev) && !get_simple_mode())
+		keys_items[nkeys++] = (SettingItem)ITEM_SUBMENU_INIT("F1 / F2 keys", "Launch a tool with the F1/F2 keys", &fn_keys_page);
+	if (has_fn_switch(dev))
+		keys_items[nkeys++] = (SettingItem)ITEM_SUBMENU_INIT("FN switch", "FN switch settings", &fn_switch_page);
+	if (!get_simple_mode())
+		keys_items[nkeys++] = (SettingItem)ITEM_SUBMENU_INIT("Emulator Shortcuts", "In-game shortcuts for every console", &shortcuts_page);
+	if (nkeys > 0) {
+		init_page(&keys_page, "Settings | Shortcuts", keys_items, nkeys, 0);
+		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Shortcuts", "", &keys_page);
 	}
-
-	if (has_fn_switch(dev)) {
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			"FN switch", "FN switch settings", &fn_switch_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Controls", "", &controls_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("In-game", "", &ingame_page);
+	if (has_leds(dev)) {
+		led_page_ptr = led_page_create();
+		if (led_page_ptr)
+			main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("LED Control", "Configure LED lighting effects", led_page_ptr);
 	}
-
-	// Hidden in simple mode along with the shortcuts themselves (they launch
-	// tools, which simple mode hides from the main menu).
-	if (has_fn_keys(dev) && !get_simple_mode()) {
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			"F1 / F2 keys", "Launch a tool with the F1/F2 keys", &fn_keys_page);
-	}
-
-	// Hidden in simple mode, like the in-game Options it replaces there: a
-	// shortcut bound to A could reset or quit every game.
-	if (!get_simple_mode()) {
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			"Emulator Shortcuts", "In-game shortcuts for every console", &shortcuts_page);
-	}
-
-	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-		"Simple Mode", "Simplified menu for children", &simple_mode_page);
-
-	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-		"System", "", &system_page);
-
-	dev_page_ptr = developer_page_create(dev->platform);
-	if (dev_page_ptr) {
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			"Developer", "Developer & debugging tools", dev_page_ptr);
-	}
-
-	main_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
-		"Input Tester", "Test buttons, D-pad, and joystick inputs",
-		launch_input_tester);
-
-	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-		"About", "", &about_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("System", "", &system_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("About", "", &about_page);
 
 	// Brick OS: the categories in their DESIGN.md 6.7 groups (a stable insertion sort)
 	for (int i = 1; i < idx; i++) {

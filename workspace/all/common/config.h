@@ -151,6 +151,7 @@ typedef struct
 
 	// UI
 	bool showClock;
+	int statusBar; // STATUSBAR_* bits: what the Brick OS status bar shows (ตั้งค่า › หน้าตา › แถบสถานะ)
 	bool clock24h;
 	bool showBatteryPercent;
 	bool showSearchHint;
@@ -248,6 +249,13 @@ typedef struct
 #define CFG_DEFAULT_COLOR6 0xdcdcdcffU
 #define CFG_DEFAULT_COLOR7 0x000000ffU
 #define CFG_DEFAULT_SHOWCLOCK false
+#define STATUSBAR_MUSIC 1
+#define STATUSBAR_BT 2
+#define STATUSBAR_MUTE 4
+#define STATUSBAR_WIFI 8
+#define STATUSBAR_CLOCK 16
+#define STATUSBAR_PERCENT 32
+#define CFG_DEFAULT_STATUSBAR 63 // all on
 #define CFG_DEFAULT_CLOCK24H true
 #define CFG_DEFAULT_SHOWBATTERYPERCENT false
 #define CFG_DEFAULT_SHOWSEARCHHINT true
@@ -359,6 +367,8 @@ bool CFG_getPowerOffProtection(void);
 void CFG_setPowerOffProtection(bool enable);
 // Show/hide clock in the status pill.
 bool CFG_getShowClock(void);
+int CFG_getStatusBar(void);
+void CFG_setStatusBar(int bits);
 void CFG_setShowClock(bool show);
 // Sets the time format to 12/24hrs.
 bool CFG_getClock24H(void);

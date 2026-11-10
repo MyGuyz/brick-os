@@ -59,6 +59,7 @@ void CFG_defaults(NextUISettings* cfg) {
 		.showFolderNamesAtRoot = CFG_DEFAULT_SHOWFOLDERNAMESATROOT,
 
 		.showClock = CFG_DEFAULT_SHOWCLOCK,
+		.statusBar = CFG_DEFAULT_STATUSBAR,
 		.clock24h = CFG_DEFAULT_CLOCK24H,
 		.showBatteryPercent = CFG_DEFAULT_SHOWBATTERYPERCENT,
 		.showSearchHint = CFG_DEFAULT_SHOWSEARCHHINT,
@@ -156,6 +157,10 @@ void CFG_init(FontLoad_callback_t cb, ColorSet_callback_t ccb) {
 			}
 			if (strncmp(line, "color", 5) == 0 && line[5] >= '1' && line[5] <= '7' && line[6] == '=') {
 				CFG_setColor(line[5] - '0', RGBA_parseHex(line + 7));
+				continue;
+			}
+			if (sscanf(line, "statusbar=%i", &temp_value) == 1) {
+				CFG_setStatusBar(temp_value);
 				continue;
 			}
 			if (sscanf(line, "showclock=%i", &temp_value) == 1) {
@@ -605,6 +610,15 @@ bool CFG_getPowerOffProtection(void) {
 
 void CFG_setPowerOffProtection(bool enable) {
 	settings.powerOffProtection = enable;
+	CFG_sync();
+}
+
+int CFG_getStatusBar(void) {
+	return settings.statusBar;
+}
+
+void CFG_setStatusBar(int bits) {
+	settings.statusBar = bits & CFG_DEFAULT_STATUSBAR;
 	CFG_sync();
 }
 
@@ -1292,6 +1306,8 @@ void CFG_get(const char* key, char* value) {
 		sprintf(value, "\"0x%08X\"", CFG_getColor(6));
 	} else if (strcmp(key, "color7") == 0) {
 		sprintf(value, "\"0x%08X\"", CFG_getColor(7));
+	} else if (strcmp(key, "statusbar") == 0) {
+		sprintf(value, "%i", CFG_getStatusBar());
 	} else if (strcmp(key, "showclock") == 0) {
 		sprintf(value, "%i", CFG_getShowClock());
 	} else if (strcmp(key, "clock24h") == 0) {
@@ -1423,6 +1439,7 @@ static int CFG_serialize(char* buf, size_t cap) {
 	EMIT("color5=0x%08X\n", settings.color5_255);
 	EMIT("color6=0x%08X\n", settings.color6_255);
 	EMIT("color7=0x%08X\n", settings.color7_255);
+	EMIT("statusbar=%i\n", settings.statusBar);
 	EMIT("showclock=%i\n", settings.showClock);
 	EMIT("clock24h=%i\n", settings.clock24h);
 	EMIT("batteryperc=%i\n", settings.showBatteryPercent);
@@ -1685,6 +1702,7 @@ void CFG_print(void) {
 	printf("\t\"color5\": \"0x%08X\",\n", settings.color5_255);
 	printf("\t\"color6\": \"0x%08X\",\n", settings.color6_255);
 	printf("\t\"color7\": \"0x%08X\",\n", settings.color7_255);
+	printf("\t\"statusbar\": %i,\n", settings.statusBar);
 	printf("\t\"showclock\": %i,\n", settings.showClock);
 	printf("\t\"clock24h\": %i,\n", settings.clock24h);
 	printf("\t\"batteryperc\": %i,\n", settings.showBatteryPercent);

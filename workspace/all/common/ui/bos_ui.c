@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "api.h"
+#include "config.h"
 #include "defines.h"
 #include "text_thai.h"
 #include "ui_draw.h"
@@ -183,7 +184,7 @@ void BOS_setMusicPlaying(bool playing) {
 	music_playing = playing;
 }
 
-static int battery(SDL_Surface* s, int right, int cy) { // draws right-aligned at `right`, returns its left edge
+static int battery(SDL_Surface* s, int right, int cy, bool percent) { // draws right-aligned at `right`, returns its left edge
 	int charging = 0, pct = 0;
 	PLAT_getBatteryStatusFine(&charging, &pct);
 	pct = pct < 0 ? 0 : pct > 100 ? 100 : pct;
@@ -197,11 +198,13 @@ static int battery(SDL_Surface* s, int right, int cy) { // draws right-aligned a
 	if (fill > 0)
 		BOS_rrect(s, bx + 2 * b, by + 2 * b, fill, bh - 4 * b, BOS_px(2), col);
 	BOS_rrect(s, bx + bw, cy - BOS_px(4), nub, BOS_px(8), BOS_px(2), col);
-	int x = bx - BOS_px(8);
-	char p[8];
-	snprintf(p, sizeof(p), "%d%%", pct);
-	x -= BOS_textW(p, BOS_FS_SMALL, 600);
-	BOS_textMid(s, p, BOS_FS_SMALL, 600, col, 1, x, cy);
+	int x = bx;
+	if (percent) {
+		char p[8];
+		snprintf(p, sizeof(p), "%d%%", pct);
+		x -= BOS_px(8) + BOS_textW(p, BOS_FS_SMALL, 600);
+		BOS_textMid(s, p, BOS_FS_SMALL, 600, col, 1, x, cy);
+	}
 	if (charging) { // never colour alone: the bolt says "charging"
 		x -= BOS_px(8) + BOS_px(26);
 		BOS_icon(s, "bolt", col, 1, x, cy - BOS_px(13), BOS_px(26));
@@ -215,29 +218,39 @@ void BOS_statusBar(SDL_Surface* s, const char* title) {
 	if (title)
 		BOS_textMid(s, title, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, pad, cy);
 
-	int x = battery(s, s->w - pad, cy) - BOS_px(22);
-	char clock[16];
-	time_t now = time(NULL);
-	strftime(clock, sizeof(clock), "%H:%M", localtime(&now));
-	x -= BOS_textW(clock, BOS_FS_SMALL, 600);
-	BOS_textMid(s, clock, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, x, cy);
+	int bits = CFG_getStatusBar(); // ตั้งค่า › หน้าตา › แถบสถานะ; the battery icon always shows
+	int x = battery(s, s->w - pad, cy, bits & STATUSBAR_PERCENT);
+	if (bits & STATUSBAR_CLOCK) {
+		char clock[16];
+		time_t now = time(NULL);
+		strftime(clock, sizeof(clock), CFG_getClock24H() ? "%H:%M" : "%I:%M", localtime(&now));
+		x -= BOS_px(22) + BOS_textW(clock, BOS_FS_SMALL, 600);
+		BOS_textMid(s, clock, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, x, cy);
+	}
 
 	// right to left: WiFi, mute, BT, music — each only while it is true (§5.1)
 	const char* shown[4];
 	int n = 0;
-	if (PLAT_wifiConnected())
+	if ((bits & STATUSBAR_WIFI) && PLAT_wifiConnected())
 		shown[n++] = "wifi";
-	if (GetSpeakerMute() || GetVolume() == 0)
+	if ((bits & STATUSBAR_MUTE) && (GetSpeakerMute() || GetVolume() == 0))
 		shown[n++] = "mute";
-	if (PLAT_btIsConnected())
+	if ((bits & STATUSBAR_BT) && PLAT_btIsConnected())
 		shown[n++] = "bt";
-	if (music_playing)
+	if ((bits & STATUSBAR_MUSIC) && music_playing)
 		shown[n++] = "music";
 	int is = BOS_px(BOS_STATUS_ICON);
 	for (int i = 0; i < n; i++) {
 		x -= BOS_px(22) + is;
 		BOS_icon(s, shown[i], BOS_C_TEXT, 1, x, cy - is / 2, is);
 	}
+}
+
+// ---- motion (§5.7): ภาพเคลื่อนไหว เต็ม 180 ms / น้อย 120 ms / ปิด (a cut) ----
+int BOS_tweenMs(void) {
+	if (!CFG_getMenuAnimations())
+		return 1; // t reaches 1 on the next frame
+	return CFG_getMenuTransitions() ? 180 : 120;
 }
 
 // ---- hint bar (§5.2) ----

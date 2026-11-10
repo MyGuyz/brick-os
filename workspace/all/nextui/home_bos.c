@@ -443,7 +443,7 @@ static float cpos;	 // carousel position shown (tweens to cfocus)
 static float cfrom;	 // tween start
 static uint32_t cstart; // tween start time (ms), 0 = idle
 static uint32_t menu_down; // when MENU went down (hold = switcher)
-#define TWEEN_MS 180
+#define TWEEN_MS BOS_tweenMs() // 180 ms, 120 on น้อย, a cut on ปิด
 
 static void build(void) {
 	freeCards();
