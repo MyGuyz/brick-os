@@ -325,6 +325,12 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 		}
 	}
 
+	// X on a button row with a clear action (ธีมสี's colour rows: back to the default)
+	if (!page->input_blocked && sel && sel->type == ITEM_BUTTON && sel->on_clear && PAD_justPressed(BTN_X)) {
+		sel->on_clear();
+		changed = 1;
+	}
+
 	// Snapshot the selected item before releasing the lock: on scanner
 	// pages the scanner thread may rewrite page->items[] the moment the
 	// wrlock becomes available, and the A-press below runs unlocked.

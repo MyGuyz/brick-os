@@ -261,7 +261,7 @@ static void wheelItem(SDL_Surface* s, BgConsole* c, int slot, int cx, int top) {
 	int bx = cx - bw / 2;
 	if (c->fav) { // ★ card: surface, radius 32, 62 % x 90 % of the box, the star half its height in warn
 		int w = bw * 62 / 100, h = bh * 90 / 100, x = cx - w / 2, y = top + (bh - h) / 2;
-		BOS_rrect(s, x, y, w, h, BOS_px(32), over(BOS_C_SURFACE, a));
+		BOS_rrect(s, x, y, w, h, BOS_px(32), over(BOS_theme()->surface, a));
 		int ic = h / 2;
 		BOS_icon(s, "star", BOS_C_WARN, a, cx - ic / 2, y + (h - ic) / 2, ic);
 		return;
@@ -275,7 +275,7 @@ static void wheelItem(SDL_Surface* s, BgConsole* c, int slot, int cx, int top) {
 	}
 	// no picture: the console's tag as a wordmark on a surface card (radius 28)
 	int h = bh * 60 / 100, y = top + (bh - h) / 2;
-	BOS_rrect(s, bx + bw / 10, y, bw * 8 / 10, h, BOS_px(28), over(BOS_C_SURFACE, a));
+	BOS_rrect(s, bx + bw / 10, y, bw * 8 / 10, h, BOS_px(28), over(BOS_theme()->surface, a));
 	const char* t = c->tag[0] ? c->tag : c->name;
 	int px = h * 30 / 100;
 	char fitted[64];
@@ -331,7 +331,7 @@ static void wheelRender(SDL_Surface* s) {
 		int x = (s->w - total) / 2, y = s->h - BOS_px(BOS_BAR_H) - BOS_px(12) - dw;
 		for (int i = 0; i < n; i++) {
 			int w = i == bg_sel ? cur : dw;
-			BOS_rrect(s, x, y, w, dw, dw / 2, i == bg_sel ? BOS_C_TEXT : BOS_C_SURFACE2);
+			BOS_rrect(s, x, y, w, dw, dw / 2, i == bg_sel ? BOS_C_TEXT : BOS_theme()->surface2);
 			x += w + gap;
 		}
 	}
@@ -361,7 +361,7 @@ static void gamePic(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r,
 		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
 		SDL_SetSurfaceAlphaMod(pic, 255);
 	} else {
-		BOS_rrect(s, x, y, w, h, r, over(BOS_C_SURFACE, a));
+		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
 		int ic = h / 3;
 		BOS_icon(s, e->type == ENTRY_DIR ? "folder" : "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
 	}

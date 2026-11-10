@@ -131,7 +131,7 @@ Appearance	หน้าตา
 Display	หน้าจอ
 Audio	เสียง
 Controller	ปุ่มควบคุม
-Network	เครือข่าย
+Network	WiFi
 WiFi	WiFi
 Bluetooth	Bluetooth
 System	ระบบ
@@ -560,3 +560,35 @@ Set time and date automatically	ตั้งเวลาอัตโนมัต
 F1 / F2 keys	ปุ่ม F1 / F2
 FN switch	สวิตช์ FN
 Choose	เลือก
+Theme colours	ธีมสี
+Highlight, main and icon colours	สีตอนเลือก สีหลัก และสีไอคอน
+Theme presets	ธีมสำเร็จรูป
+Left/Right picks a theme. X puts every colour back.	กดซ้าย/ขวาเลือกธีม กด X คืนสีทั้งหมดเป็นค่าเดิม
+Default	ค่าเริ่มต้น
+Blue	ฟ้า
+Pink	ชมพู
+Green	เขียว
+Orange	ส้ม
+Purple	ม่วง
+Customize by kind	ปรับเองตามชนิด
+Highlight colour	สีตอนเลือก
+The selected row, tile and the picture ring	แถว ไอคอน และกรอบภาพที่เลือกอยู่
+Main colour	สีหลัก
+Main colour · switches, buttons	สีหลัก · สวิตช์ ปุ่มหลัก
+Switches that are on and the main button	สวิตช์ที่เปิดอยู่และปุ่มหลัก
+Icon colour	สีไอคอน
+App tiles on Home and the icons here	ไอคอนแอปในหน้าแรกและไอคอนในหน้านี้
+Per category	ตามหมวด
+White	ขาว
+Black	ดำ
+Theme colour	สีธีม
+Hint button colour	สีปุ่มแถบล่าง
+The A B X Y keys in the bar at the bottom	ปุ่ม A B X Y ในแถบล่าง
+Dark grey	เทาเข้ม
+Restore default	คืนค่าเดิม
+Custom	กำหนดเอง
+Text	ตัวหนังสือ
+Preview of a selected row	ตัวอย่างแถวที่เลือก
+Easy to read	อ่านง่าย
+Hard to read	อ่านยาก
+Use this colour	ใช้สีนี้

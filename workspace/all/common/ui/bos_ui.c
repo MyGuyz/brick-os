@@ -2,6 +2,7 @@
 
 #include "bos_ui.h"
 
+#include <math.h>
 #include <msettings.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,9 +20,50 @@ int BOS_px(float v) {
 	return (int)(v * (FIXED_WIDTH / 1024.0f) + 0.5f);
 }
 
-static BosTheme theme = {BOS_C_FOCUS, BOS_C_ONFOCUS, BOS_C_PRIMARY, BOS_C_FOCUS, BOS_C_BG};
+// ---- theme: ธีมสี (DESIGN.md §6.8), read from the shared config on every call so a change shows at once ----
+static double lum(uint32_t c) { // WCAG relative luminance
+	double v[3];
+	for (int i = 0; i < 3; i++) {
+		double x = ((c >> (16 - 8 * i)) & 255) / 255.0;
+		v[i] = x <= 0.03928 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
+	}
+	return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+
+double BOS_contrast(uint32_t a, uint32_t b) {
+	double la = lum(a), lb = lum(b);
+	return la > lb ? (la + 0.05) / (lb + 0.05) : (lb + 0.05) / (la + 0.05);
+}
+
+uint32_t BOS_textOn(uint32_t bg, int mode) {
+	if (mode == 1)
+		return 0xFFFFFF;
+	if (mode == 2)
+		return BOS_C_ONFOCUS;
+	return BOS_contrast(bg, BOS_C_ONFOCUS) >= BOS_contrast(bg, 0xFFFFFF) ? BOS_C_ONFOCUS : 0xFFFFFF;
+}
+
+static BosTheme theme;
 const BosTheme* BOS_theme(void) {
-	return &theme; // ธีมสี (DESIGN.md §6.8) will fill this from the shared config
+	int f = CFG_getTheme(THEME_FOCUS), p = CFG_getTheme(THEME_PRIMARY), h = CFG_getTheme(THEME_HINT);
+	theme.focus = f < 0 ? BOS_C_FOCUS : (uint32_t)f & 0xFFFFFF;
+	theme.onfocus = BOS_textOn(theme.focus, CFG_getTheme(THEME_FOCUS_TEXT));
+	theme.primary = p < 0 ? BOS_C_PRIMARY : (uint32_t)p & 0xFFFFFF;
+	theme.onprimary = BOS_textOn(theme.primary, CFG_getTheme(THEME_PRIMARY_TEXT));
+	theme.hint_cap = h < 0 ? BOS_C_FOCUS : (uint32_t)h & 0xFFFFFF;
+	theme.onhint = BOS_textOn(theme.hint_cap, CFG_getTheme(THEME_HINT_TEXT));
+	theme.icon_mode = CFG_getTheme(THEME_ICON);
+	// พื้นหลังเทาเข้ม lifts the groups and their controls one step, so they still stand off the page
+	bool grey = CFG_getTheme(THEME_BG) == 1;
+	theme.bg = grey ? BOS_C_SURFACE : BOS_C_BG;
+	theme.surface = grey ? BOS_C_SURFACE2 : BOS_C_SURFACE;
+	theme.surface2 = grey ? 0x3A3A3E : BOS_C_SURFACE2;
+	return &theme;
+}
+
+uint32_t BOS_iconColor(uint32_t own) {
+	int m = BOS_theme()->icon_mode;
+	return m == 1 ? 0xFFFFFF : m == 2 ? theme.primary : own;
 }
 
 // ---- fonts ----
@@ -337,7 +379,7 @@ static int battery(SDL_Surface* s, int right, int cy, bool percent) { // draws r
 
 void BOS_statusBar(SDL_Surface* s, const char* title) {
 	int h = BOS_px(BOS_BAR_H), cy = h / 2, pad = BOS_px(BOS_BAR_PAD);
-	SDL_FillRect(s, &(SDL_Rect){0, 0, s->w, h}, BOS_map(s, theme.bg));
+	SDL_FillRect(s, &(SDL_Rect){0, 0, s->w, h}, BOS_map(s, BOS_theme()->bg));
 	if (title)
 		BOS_textMid(s, title, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, pad, cy);
 
@@ -393,19 +435,19 @@ static void hint(SDL_Surface* s, const BosHint* h, int x, int cy) {
 		cw = ch;
 		BOS_rrect(s, x, cy - ch / 2, cw, ch, ch / 2, theme.hint_cap);
 		int tw = BOS_textW(h->btn, BOS_FS_HINT_FACE, 700);
-		BOS_textMid(s, h->btn, BOS_FS_HINT_FACE, 700, theme.onfocus, 1, x + (cw - tw) / 2, cy);
+		BOS_textMid(s, h->btn, BOS_FS_HINT_FACE, 700, theme.onhint, 1, x + (cw - tw) / 2, cy);
 	} else {
 		int tw = BOS_textW(h->btn, BOS_FS_HINT_WORD, 700);
 		cw = tw + 2 * BOS_px(12);
 		BOS_rrect(s, x, cy - ch / 2, cw, ch, BOS_px(12), theme.hint_cap);
-		BOS_textMid(s, h->btn, BOS_FS_HINT_WORD, 700, theme.onfocus, 1, x + BOS_px(12), cy);
+		BOS_textMid(s, h->btn, BOS_FS_HINT_WORD, 700, theme.onhint, 1, x + BOS_px(12), cy);
 	}
 	BOS_textMid(s, h->label, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, x + cw + BOS_px(12), cy);
 }
 
 void BOS_hintBar(SDL_Surface* s, const BosHint* right, int nright, const BosHint* left, int nleft) {
 	int h = BOS_px(BOS_BAR_H), top = s->h - h, cy = top + h / 2, pad = BOS_px(BOS_BAR_PAD);
-	SDL_FillRect(s, &(SDL_Rect){0, top, s->w, h}, BOS_map(s, theme.bg));
+	SDL_FillRect(s, &(SDL_Rect){0, top, s->w, h}, BOS_map(s, BOS_theme()->bg));
 	int x = pad;
 	for (int i = 0; i < nleft && i < 2; i++) {
 		hint(s, &left[i], x, cy);

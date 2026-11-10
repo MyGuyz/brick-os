@@ -1467,6 +1467,7 @@ static SettingItem keys_items[MAX_KEYS_ITEMS];
 static SettingItem controls_items[MAX_CONTROLS_ITEMS];
 static SettingItem ingame_items[MAX_INGAME_ITEMS];
 static SettingItem statusbar_items[MAX_STATUSBAR_ITEMS];
+static SettingItem theme_items[6];
 
 static SettingsPage appearance_page;
 static SettingsPage layouts_page;
@@ -1486,6 +1487,7 @@ static SettingsPage keys_page;
 static SettingsPage controls_page;
 static SettingsPage ingame_page;
 static SettingsPage statusbar_page;
+static SettingsPage theme_page;
 
 /* WiFi/BT/LED pages (created upfront in build_menu_tree) */
 static SettingsPage* wifi_page_ptr = NULL;
@@ -1981,6 +1983,73 @@ static void reset_motion(void) {
 	set_motion(0);
 }
 
+// ธีมสี (DESIGN.md 6.8): a preset sets สีตอนเลือก, สีหลัก and สีปุ่มแถบล่าง together (text colours back to auto);
+// each colour row opens the colour sheet; X puts that one thing back to its default
+static const char* theme_preset_labels[] = {"Default", "Blue", "Pink", "Green", "Orange", "Purple"};
+static int theme_preset_values[] = {0, 1, 2, 3, 4, 5};
+static int get_theme_preset(void) {
+	int f = CFG_getTheme(THEME_FOCUS), p = CFG_getTheme(THEME_PRIMARY), h = CFG_getTheme(THEME_HINT);
+	if (CFG_getTheme(THEME_FOCUS_TEXT) || CFG_getTheme(THEME_PRIMARY_TEXT) || CFG_getTheme(THEME_HINT_TEXT))
+		return -1;
+	if (f < 0 && p < 0 && h < 0)
+		return 0;
+	for (int i = 1; i < 6; i++) {
+		uint32_t pf, pp;
+		SettingsBos_preset(i, &pf, &pp);
+		if (f == (int)pf && p == (int)pp && h == (int)pf)
+			return i;
+	}
+	return -1; // a custom mix
+}
+static void set_theme_preset(int i) {
+	uint32_t pf, pp;
+	SettingsBos_preset(i, &pf, &pp);
+	CFG_setTheme(THEME_FOCUS, i ? (int)pf : -1);
+	CFG_setTheme(THEME_PRIMARY, i ? (int)pp : -1);
+	CFG_setTheme(THEME_HINT, i ? (int)pf : -1);
+	CFG_setTheme(THEME_FOCUS_TEXT, 0);
+	CFG_setTheme(THEME_PRIMARY_TEXT, 0);
+	CFG_setTheme(THEME_HINT_TEXT, 0);
+}
+static void reset_theme_all(void) {
+	set_theme_preset(0);
+	CFG_setTheme(THEME_ICON, 0);
+	CFG_setTheme(THEME_BG, 0);
+}
+#define THEME_COLOR_ROW(_name, _slot, _title)               \
+	static void open_##_name(void) {                         \
+		SettingsBos_colorSheetOpen(_slot, _title);           \
+	}                                                        \
+	static void clear_##_name(void) {                        \
+		CFG_setTheme(_slot, -1);                             \
+		CFG_setTheme(_slot + 1, 0);                          \
+	}
+THEME_COLOR_ROW(theme_focus, THEME_FOCUS, "Highlight colour")
+THEME_COLOR_ROW(theme_primary, THEME_PRIMARY, "Main colour")
+THEME_COLOR_ROW(theme_hint, THEME_HINT, "Hint button colour")
+static const char* theme_icon_labels[] = {"Per category", "White", "Theme colour"};
+static int theme_icon_values[] = {0, 1, 2};
+static int get_theme_icon(void) {
+	return CFG_getTheme(THEME_ICON);
+}
+static void set_theme_icon(int v) {
+	CFG_setTheme(THEME_ICON, v);
+}
+static void reset_theme_icon(void) {
+	set_theme_icon(0);
+}
+static const char* theme_bg_labels[] = {"Black", "Dark grey"};
+static int theme_bg_values[] = {0, 1};
+static int get_theme_bg(void) {
+	return CFG_getTheme(THEME_BG);
+}
+static void set_theme_bg(int v) {
+	CFG_setTheme(THEME_BG, v);
+}
+static void reset_theme_bg(void) {
+	set_theme_bg(0);
+}
+
 static SettingItem* refresh_emulist_item = NULL;
 static void refresh_emulist(void) {
 	unlink(EMULIST_CACHE_PATH);
@@ -2199,9 +2268,45 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	init_page(&statusbar_page, "Settings | Status bar", statusbar_items, idx, 0);
 
 	// ============================
+	// ธีมสี (DESIGN.md 6.8)
+	// ============================
+	idx = 0;
+	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Theme presets", "Left/Right picks a theme. X puts every colour back.",
+		theme_preset_labels, 6, theme_preset_values, get_theme_preset, set_theme_preset, NULL);
+	theme_items[idx].custom_draw = SettingsBos_themeCards;
+	theme_items[idx].height = 310;
+	theme_items[idx].header = "Theme presets";
+	theme_items[idx].on_clear = reset_theme_all;
+	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Highlight colour", "The selected row, tile and the picture ring", open_theme_focus);
+	theme_items[idx].header = "Customize by kind";
+	theme_items[idx].color_slot = 1 + THEME_FOCUS;
+	theme_items[idx].on_clear = clear_theme_focus;
+	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Main colour · switches, buttons", "Switches that are on and the main button", open_theme_primary);
+	theme_items[idx].color_slot = 1 + THEME_PRIMARY;
+	theme_items[idx].on_clear = clear_theme_primary;
+	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Icon colour", "App tiles on Home and the icons here",
+		theme_icon_labels, 3, theme_icon_values, get_theme_icon, set_theme_icon, reset_theme_icon);
+	theme_items[idx].on_clear = reset_theme_icon;
+	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Hint button colour", "The A B X Y keys in the bar at the bottom", open_theme_hint);
+	theme_items[idx].color_slot = 1 + THEME_HINT;
+	theme_items[idx].on_clear = clear_theme_hint;
+	theme_items[idx++].clear_label = "Restore default";
+	theme_items[idx] = (SettingItem)ITEM_CYCLE_INIT("Background", "",
+		theme_bg_labels, 2, theme_bg_values, get_theme_bg, set_theme_bg, reset_theme_bg);
+	theme_items[idx].on_clear = reset_theme_bg;
+	theme_items[idx++].clear_label = "Restore default";
+	init_page(&theme_page, "Settings | Theme colours", theme_items, idx, 0);
+
+	// ============================
 	// Appearance page (หน้าตา)
 	// ============================
 	idx = 0;
+	appearance_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
+		"Theme colours", "Highlight, main and icon colours", &theme_page);
 	appearance_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
 		"Status bar", "What the bar at the top of every screen shows", &statusbar_page);
 	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(

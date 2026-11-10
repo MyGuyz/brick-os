@@ -152,6 +152,7 @@ typedef struct
 	// UI
 	bool showClock;
 	int statusBar; // STATUSBAR_* bits: what the Brick OS status bar shows (ตั้งค่า › หน้าตา › แถบสถานะ)
+	int theme[8]; // ธีมสี (DESIGN §6.8), indexed by THEME_*: a colour 0xRRGGBB or -1 = default; a text/icon/bg mode
 	bool clock24h;
 	bool showBatteryPercent;
 	bool showSearchHint;
@@ -256,6 +257,17 @@ typedef struct
 #define STATUSBAR_CLOCK 16
 #define STATUSBAR_PERCENT 32
 #define CFG_DEFAULT_STATUSBAR 63 // all on
+// ธีมสี slots: three colours, each with the text colour drawn on it (0 auto, 1 white, 2 black), the icon mode
+// (0 per category, 1 white, 2 theme colour) and the background (0 black, 1 dark grey)
+#define THEME_FOCUS 0
+#define THEME_FOCUS_TEXT 1
+#define THEME_PRIMARY 2
+#define THEME_PRIMARY_TEXT 3
+#define THEME_HINT 4
+#define THEME_HINT_TEXT 5
+#define THEME_ICON 6
+#define THEME_BG 7
+#define THEME_SLOTS 8
 #define CFG_DEFAULT_CLOCK24H true
 #define CFG_DEFAULT_SHOWBATTERYPERCENT false
 #define CFG_DEFAULT_SHOWSEARCHHINT true
@@ -369,6 +381,8 @@ void CFG_setPowerOffProtection(bool enable);
 bool CFG_getShowClock(void);
 int CFG_getStatusBar(void);
 void CFG_setStatusBar(int bits);
+int CFG_getTheme(int slot);
+void CFG_setTheme(int slot, int value);
 void CFG_setShowClock(bool show);
 // Sets the time format to 12/24hrs.
 bool CFG_getClock24H(void);

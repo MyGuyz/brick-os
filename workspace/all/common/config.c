@@ -36,6 +36,9 @@ uint32_t THEME_COLOR5_255;
 uint32_t THEME_COLOR6_255;
 uint32_t THEME_COLOR7_255;
 
+static const char* THEME_KEYS[THEME_SLOTS] = {"themefocus", "themefocustext", "themeprimary", "themeprimarytext",
+											   "themehint", "themehinttext", "themeicon", "themebg"};
+
 void CFG_defaults(NextUISettings* cfg) {
 	if (!cfg)
 		return;
@@ -60,6 +63,7 @@ void CFG_defaults(NextUISettings* cfg) {
 
 		.showClock = CFG_DEFAULT_SHOWCLOCK,
 		.statusBar = CFG_DEFAULT_STATUSBAR,
+		.theme = {-1, 0, -1, 0, -1, 0, 0, 0},
 		.clock24h = CFG_DEFAULT_CLOCK24H,
 		.showBatteryPercent = CFG_DEFAULT_SHOWBATTERYPERCENT,
 		.showSearchHint = CFG_DEFAULT_SHOWSEARCHHINT,
@@ -158,6 +162,18 @@ void CFG_init(FontLoad_callback_t cb, ColorSet_callback_t ccb) {
 			if (strncmp(line, "color", 5) == 0 && line[5] >= '1' && line[5] <= '7' && line[6] == '=') {
 				CFG_setColor(line[5] - '0', RGBA_parseHex(line + 7));
 				continue;
+			}
+			{ // themefocus=…, themeprimary=… (ธีมสี)
+				int slot = -1, n = 0;
+				for (int t = 0; t < THEME_SLOTS && slot < 0; t++) {
+					int l = (int)strlen(THEME_KEYS[t]);
+					if (!strncmp(line, THEME_KEYS[t], l) && line[l] == '=')
+						slot = t, n = l + 1;
+				}
+				if (slot >= 0) {
+					settings.theme[slot] = (int)strtol(line + n, NULL, 0);
+					continue;
+				}
 			}
 			if (sscanf(line, "statusbar=%i", &temp_value) == 1) {
 				CFG_setStatusBar(temp_value);
@@ -610,6 +626,17 @@ bool CFG_getPowerOffProtection(void) {
 
 void CFG_setPowerOffProtection(bool enable) {
 	settings.powerOffProtection = enable;
+	CFG_sync();
+}
+
+int CFG_getTheme(int slot) {
+	return slot >= 0 && slot < THEME_SLOTS ? settings.theme[slot] : 0;
+}
+
+void CFG_setTheme(int slot, int value) {
+	if (slot < 0 || slot >= THEME_SLOTS)
+		return;
+	settings.theme[slot] = value;
 	CFG_sync();
 }
 
@@ -1440,6 +1467,8 @@ static int CFG_serialize(char* buf, size_t cap) {
 	EMIT("color6=0x%08X\n", settings.color6_255);
 	EMIT("color7=0x%08X\n", settings.color7_255);
 	EMIT("statusbar=%i\n", settings.statusBar);
+	for (int t = 0; t < THEME_SLOTS; t++)
+		EMIT("%s=%i\n", THEME_KEYS[t], settings.theme[t]);
 	EMIT("showclock=%i\n", settings.showClock);
 	EMIT("clock24h=%i\n", settings.clock24h);
 	EMIT("batteryperc=%i\n", settings.showBatteryPercent);
@@ -1703,6 +1732,8 @@ void CFG_print(void) {
 	printf("\t\"color6\": \"0x%08X\",\n", settings.color6_255);
 	printf("\t\"color7\": \"0x%08X\",\n", settings.color7_255);
 	printf("\t\"statusbar\": %i,\n", settings.statusBar);
+	for (int t = 0; t < THEME_SLOTS; t++)
+		printf("\t\"%s\": %i,\n", THEME_KEYS[t], settings.theme[t]);
 	printf("\t\"showclock\": %i,\n", settings.showClock);
 	printf("\t\"clock24h\": %i,\n", settings.clock24h);
 	printf("\t\"batteryperc\": %i,\n", settings.showBatteryPercent);

@@ -77,6 +77,12 @@ typedef struct SettingItem {
 						int x, int y, int w, int h, int selected);
 	void* user_data; // for custom items (network/device info)
 	int name_check;	 // 1 = a check mark right after the name (the connected WiFi network)
+	// Brick OS layout (DESIGN §6.8): a free block drawn by custom_draw outside the group, a group header above a row,
+	// a ธีมสี colour row (1 + THEME_FOCUS / PRIMARY / HINT: a dot from the theme; A opens the colour sheet), X's label
+	int height;				 // mockup px of a free block (0 = a normal row)
+	const char* header;		 // starts a new group with this small title above it
+	int color_slot;
+	const char* clear_label; // X's hint (default "Clear")
 } SettingItem;
 
 // ============================================

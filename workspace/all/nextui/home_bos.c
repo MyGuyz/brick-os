@@ -491,8 +491,13 @@ static float easeOut(float t) {
 }
 
 // a colour drawn at `a` alpha over the black page
-static uint32_t over(uint32_t c, float a) {
-	return ((uint32_t)(((c >> 16) & 255) * a) << 16) | ((uint32_t)(((c >> 8) & 255) * a) << 8) | (uint32_t)((c & 255) * a);
+static uint32_t over(uint32_t c, float a) { // c at alpha a over the page (พื้นหลัง: black or dark grey)
+	uint32_t bg = BOS_theme()->bg, o = 0;
+	for (int sh = 0; sh <= 16; sh += 8) {
+		float x = (c >> sh) & 255, b = (bg >> sh) & 255;
+		o |= (uint32_t)(b + (x - b) * a + 0.5f) << sh;
+	}
+	return o;
 }
 
 // a centred name on one line: centred when it fits, else scrolling across the page's width (BOS_textMarquee)
@@ -519,7 +524,7 @@ static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int
 		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
 		SDL_SetSurfaceAlphaMod(pic, 255);
 	} else
-		BOS_rrect(s, x, y, w, h, r, over(BOS_C_SURFACE, a * gdim));
+		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a * gdim));
 }
 
 static int sectionLabel(SDL_Surface* s, int y, const char* t) { // 30/600 text2, padding 8 40 10
@@ -530,7 +535,7 @@ static int sectionLabel(SDL_Surface* s, int y, const char* t) { // 30/600 text2,
 static void pill(SDL_Surface* s, int x, int cy, const char* label, uint32_t dot) { // §5.4: 44 high, padding 0 18
 	int h = BOS_px(44), d = dot ? BOS_px(12) : 0, gap = dot ? BOS_px(8) : 0;
 	int w = 2 * BOS_px(18) + d + gap + BOS_textW(label, BOS_FS_BADGE, 600);
-	BOS_rrect(s, x, cy - h / 2, w, h, h / 2, BOS_C_SURFACE2);
+	BOS_rrect(s, x, cy - h / 2, w, h, h / 2, BOS_theme()->surface2);
 	if (dot)
 		BOS_rrect(s, x + BOS_px(18), cy - d / 2, d, d, d / 2, dot);
 	BOS_textMid(s, label, BOS_FS_BADGE, 600, BOS_C_TEXT, 1, x + BOS_px(18) + d + gap, cy);
@@ -547,7 +552,7 @@ static int carousel(SDL_Surface* s, int top) {
 	float c1 = cw / 2.0f + gap + sw / 2.0f, c2 = cw / 2.0f + gap + sw + gap + ow / 2.0f; // slot centre offsets
 	bool focused = row == 0;
 	if (ncards == 0) {
-		BOS_rrect(s, (s->w - cw) / 2, top, cw, ch, BOS_px(24), BOS_C_SURFACE);
+		BOS_rrect(s, (s->w - cw) / 2, top, cw, ch, BOS_px(24), BOS_theme()->surface);
 		const char* t = I18N_text("Nothing to continue"); // ว่าง, large in the box
 		BOS_textMid(s, t, BOS_FS_TITLE, 600, BOS_C_TEXTOFF, 1, (s->w - BOS_textW(t, BOS_FS_TITLE, 600)) / 2, top + ch / 2);
 		return ch;
@@ -609,8 +614,8 @@ static SDL_Rect appTile(SDL_Surface* s, int cx, int top, const char* icon, const
 	int size = (int)(BOS_px(BOS_TILE) * k2 + 0.5f), r = (int)(BOS_px(BOS_TILE_RADIUS) * k2 + 0.5f);
 	int ic = (int)(BOS_px(BOS_ICON) * k2 + 0.5f), box = (int)(label_box * k2 + 0.5f);
 	int y = top + (BOS_px(BOS_TILE) - size) / 2; // grow about the tile's centre
-	BOS_rrect(s, cx - size / 2, y, size, size, r, focused ? BOS_theme()->focus : over(BOS_C_SURFACE, a));
-	BOS_icon(s, icon, focused ? BOS_theme()->onfocus : col, a, cx - ic / 2, y + (size - ic) / 2, ic);
+	BOS_rrect(s, cx - size / 2, y, size, size, r, focused ? BOS_theme()->focus : over(BOS_theme()->surface, a));
+	BOS_icon(s, icon, focused ? BOS_theme()->onfocus : BOS_iconColor(col), a, cx - ic / 2, y + (size - ic) / 2, ic);
 	char t[96];
 	BOS_fit(label, BOS_FS_SMALL, focused ? 600 : 500, box, t, sizeof(t));
 	BOS_text(s, t, BOS_FS_SMALL, focused ? 600 : 500, BOS_C_TEXT, a, cx - BOS_textW(t, BOS_FS_SMALL, focused ? 600 : 500) / 2,
@@ -927,7 +932,7 @@ static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, int x, int y, i
 		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
 		SDL_SetSurfaceAlphaMod(pic, 255);
 	} else {
-		BOS_rrect(s, x, y, w, h, r, over(BOS_C_SURFACE, a));
+		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
 		int ic = h / 3;
 		BOS_icon(s, "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
 	}
