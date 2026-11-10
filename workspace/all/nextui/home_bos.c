@@ -221,6 +221,7 @@ typedef struct {
 	Entry* entry;
 	char tag[32];
 	bool resume; // has a resume state (the เล่นต่อ pill)
+	char preview[MAX_PATH]; // its resume frame, "" for none (the picture, as สลับเกม shows it)
 } Card;
 static Card cards[MAX_CARDS];
 static int ncards;
@@ -458,6 +459,9 @@ static void build(void) {
 		tagOf(e->path, c->tag, sizeof(c->tag));
 		readyResume(e);
 		c->resume = resume.can_resume;
+		c->preview[0] = '\0';
+		if (resume.can_resume && resume.has_preview)
+			snprintf(c->preview, sizeof(c->preview), "%s", resume.preview_path);
 	}
 	buildApps();
 	if (cfocus >= ncards)
@@ -496,7 +500,7 @@ static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int
 		BOS_rrect(s, x - o, y - o, w + 2 * o, h + 2 * o, r + o, BOS_theme()->bg);
 	}
 	SDL_Surface* pic = NULL;
-	HomeArtState st = HomeArt_continue(c->entry->path, NULL, w, h, r, &pic);
+	HomeArtState st = HomeArt_continue(c->entry->path, c->preview[0] ? c->preview : NULL, w, h, r, &pic);
 	if (st == HOMEART_LOADING)
 		pending = true;
 	if (st == HOMEART_READY && pic) {
