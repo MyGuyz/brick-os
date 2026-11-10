@@ -249,8 +249,19 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	int ar = BOS_px(28), ag = BOS_px(4), arw = arrows ? 2 * (ar + ag) : 0;
 	int chevw = it->type == ITEM_SUBMENU ? BOS_px(28 + 10) : 0;
 	int room = right - chevw - lx; // the label's width with nothing beside it
-	// the name is never cut for its value: when both don't fit on one line the value goes under the name
-	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, weight) + BOS_px(16) + cw + arw > room;
+	// the name is never cut for its value: when both don't fit on one line the value goes under the name. Decided
+	// from the widest choice, the focused weight and the arrows, so the row never jumps between one and two lines
+	// when its value changes or it gains focus (DESIGN §6.6)
+	int widest = cw;
+	if (k == V_TEXT && (it->type == ITEM_CYCLE || it->type == ITEM_COLOR) && it->labels)
+		for (int i = 0; i < it->label_count; i++)
+			if (it->labels[i]) {
+				int lw = BOS_textW(I18N_text(it->labels[i]), BOS_FS_SMALL, 400);
+				if (lw > widest)
+					widest = lw;
+			}
+	int arw_max = SettingsBos_isPickable(it) ? 2 * (ar + ag) : 0;
+	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, 600) + BOS_px(16) + widest + arw_max > room;
 	if (two && k == V_TEXT && cw + arw > room && hot)
 		cw = room - arw; // the whole value, scrolling in that room
 	else if (two && k == V_TEXT && cw + arw > room)
@@ -263,6 +274,13 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	int ly = two ? y + h * 32 / 100 : cy, vy = two ? y + h * 73 / 100 : cy;
 	char label[160];
 	int label_room = two || k == V_NONE ? room : k == V_TOGGLE ? room - cw - BOS_px(16) : room - cw - arw - BOS_px(16);
+	if (it->name_check) { // ✓ right after the name (the connected network), always in view
+		int ck = BOS_px(34), gap = BOS_px(10);
+		label_room -= ck + gap;
+		int nw = BOS_textW(name, BOS_FS_BODY, weight);
+		BOS_icon(s, "check", hot ? fg : BOS_theme()->primary, 1, lx + (nw < label_room ? nw : label_room) + gap,
+				 ly - ck / 2, ck);
+	}
 	if (hot)
 		BOS_textMarquee(s, name, BOS_FS_BODY, weight, fg, a, lx, ly, label_room);
 	else {

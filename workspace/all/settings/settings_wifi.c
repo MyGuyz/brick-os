@@ -7,6 +7,7 @@
 #include "settings_wifi.h"
 #include "defines.h"
 #include "api.h"
+#include "i18n.h"
 #include "ui_accent.h"
 #include "ui_list.h"
 #include "ui_keyboard.h"
@@ -495,9 +496,9 @@ static void* wifi_scanner(void* arg) {
 
 			// Hint for the connected row: append the current IP when we have one.
 			if (has_conn && conn.ip[0])
-				snprintf(wifi_conn_desc, sizeof(wifi_conn_desc), "Connected, IP %s", conn.ip);
+				snprintf(wifi_conn_desc, sizeof(wifi_conn_desc), "%s · IP %s", I18N_text("Connected"), conn.ip);
 			else
-				snprintf(wifi_conn_desc, sizeof(wifi_conn_desc), "Connected");
+				snprintf(wifi_conn_desc, sizeof(wifi_conn_desc), "%s", I18N_text("Connected"));
 
 			int dyn_start = page->dynamic_start;
 			if (dyn_start < 0)
@@ -522,6 +523,7 @@ static void* wifi_scanner(void* arg) {
 					.on_press = wifi_network_press,
 					.custom_draw = wifi_network_draw,
 					.user_data = ninfo,
+					.name_check = ninfo->connected,
 				};
 				item_idx++;
 			}

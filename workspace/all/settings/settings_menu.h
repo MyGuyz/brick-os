@@ -76,6 +76,7 @@ typedef struct SettingItem {
 	void (*custom_draw)(SDL_Surface* screen, struct SettingItem* item,
 						int x, int y, int w, int h, int selected);
 	void* user_data; // for custom items (network/device info)
+	int name_check;	 // 1 = a check mark right after the name (the connected WiFi network)
 } SettingItem;
 
 // ============================================
