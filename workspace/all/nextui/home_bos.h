@@ -26,7 +26,7 @@ Entry* HomeBos_focusedGame(void); // the เล่นต่อ card in focus, NU
 
 
 
-// Game Switcher (DESIGN.md 6.2)
+// สลับเกม (DESIGN.md 6.5)
 #include <time.h>
 typedef struct {
 	char path[512];	   // the ROM
@@ -34,9 +34,10 @@ typedef struct {
 	char preview[512]; // its resume frame, "" for none
 	int seconds;	   // play time, 0 unknown
 } BosSwitchCard;
-void BosSwitcher_render(SDL_Surface* screen, const BosSwitchCard* prev, const BosSwitchCard* cur,
-						const BosSwitchCard* next, int sel, int count, bool playing, time_t saved_at);
-bool BosSwitcher_pending(void);
+// cards: sel-2 .. sel+2 (NULL where there is none); count 0 draws the empty state
+void BosSwitcher_render(SDL_Surface* screen, const BosSwitchCard* const cards[5], int sel, int count, bool playing,
+						time_t saved_at, bool from_game);
+bool BosSwitcher_animating(void);
 
 // เกม (DESIGN.md 6.3): the Consoles tab drawn as consoles | games
 typedef enum { BOSGAMES_UNHANDLED, BOSGAMES_HANDLED, BOSGAMES_SEARCH, BOSGAMES_HOME, BOSGAMES_OPTIONS, BOSGAMES_SWITCHER } BosGamesInput;

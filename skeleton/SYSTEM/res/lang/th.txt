@@ -522,3 +522,8 @@ Arrange	จัดเรียง
 No games yet	ยังไม่มีเกม
 %d games · Sorted A-Z	%d เกม · เรียง A–Z
 Favorite	โปรด
+Open games	เกมที่เปิดค้าง
+%d games · Recent first	%d เกม · ล่าสุดก่อน
+No open games	ยังไม่มีเกมที่เปิดค้าง
+Remove	ลบ
+Saved at %s	บันทึกเมื่อ %s

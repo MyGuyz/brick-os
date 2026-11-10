@@ -453,6 +453,8 @@ int main(int argc, char* argv[]) {
 			(GameList_pillAnimating() || GameList_artWaiting() || Home_animating() || (BosGames_active() && BosGames_animating()) || GridView_animating() ||
 			 RowView_animating() || MinView_animating()))
 			dirty = true;
+		if (drawScreen == SCREEN_GAMESWITCHER && GameSwitcher_isBos() && BosSwitcher_animating())
+			dirty = true; // สลับเกม: the cover row slides, a picture loads
 
 		if (dirty) {
 			SDL_Surface* tmpOldScreen = NULL;

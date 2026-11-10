@@ -495,14 +495,24 @@ static void gs_card(int i, BosSwitchCard* c) {
 }
 
 static void gs_renderBos(void) {
-	static BosSwitchCard prev, cur, next;
-	gs_card(switcher_selected, &cur);
-	bool has_prev = gs_count > 2 || (gs_count == 2 && switcher_selected == 1);
-	bool has_next = gs_count > 2 || (gs_count == 2 && switcher_selected == 0);
-	if (has_prev)
-		gs_card((switcher_selected + gs_count - 1) % gs_count, &prev);
-	if (has_next)
-		gs_card((switcher_selected + 1) % gs_count, &next);
+	static BosSwitchCard cards[5];
+	const BosSwitchCard* shown[5] = {0};
+	if (gs_count <= 0) {
+		BosSwitcher_render(screen, shown, 0, 0, false, 0, gs_from_game);
+		return;
+	}
+	// sel-2 .. sel+2, wrapping round when there are enough games that no card shows twice
+	for (int o = -2; o <= 2; o++) {
+		int i = switcher_selected + o;
+		if (gs_count >= 5)
+			i = (i % gs_count + gs_count) % gs_count;
+		else if (gs_count >= 3 && (o == -1 || o == 1))
+			i = (i + gs_count) % gs_count;
+		if (i < 0 || i >= gs_count || (gs_count <= 3 && (o == -2 || o == 2)))
+			continue;
+		gs_card(i, &cards[o + 2]);
+		shown[o + 2] = &cards[o + 2];
+	}
 	Entry* e = Recents_entryFromRecent(Recents_at(gs_indices[switcher_selected]));
 	readyResume(e); // A reads it
 	Entry_free(e);
@@ -510,13 +520,13 @@ static void gs_renderBos(void) {
 	struct stat st;
 	if (resume.can_resume && stat(resume.slot_path, &st) == 0)
 		saved = st.st_mtime;
-	BosSwitcher_render(screen, has_prev ? &prev : NULL, &cur, has_next ? &next : NULL, switcher_selected, gs_count,
-					   gs_from_game && switcher_selected == 0, saved);
+	BosSwitcher_render(screen, shown, switcher_selected, gs_count, gs_from_game && switcher_selected == 0, saved,
+					   gs_from_game);
 }
 
 static void GameSwitcher_render_(int lastScreen, SDL_Surface* blackBG, int gsanimdir, int status_w) {
 	GFX_clearLayers(LAYER_ALL);
-	if (gs_bos() && gs_count > 0) {
+	if (gs_bos()) {
 		gs_renderBos();
 		GFX_flipHidden();
 		return;
