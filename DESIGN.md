@@ -325,7 +325,10 @@ Nothing on screen is smaller than 22.
 
 The network category is labelled "WiFi" in Thai too (user, 2026-11-11), not "เครือข่าย".
 
-**Built so far (2026-11-11):** every category above except: แอปที่ปักหมุด, ภาพปก and ตั้งค่าแยกเครื่อง (not built yet); อัปเดต (still the Updater row inside เกี่ยวกับ).
+**Built so far (2026-11-12):** every category above except ภาพปก (not built yet). อัปเดต (§6.7a), แอปที่ปักหมุด (§6.7b) and ตั้งค่าแยกเครื่อง (§6.7c) were built 2026-11-12 and checked on the device.
+- The Emulator Settings app is gone from the app list (`bos_apps.c` MERGED); its pak stays, since a game's ตัวเลือกเกม still opens options.elf per game.
+- Thai for core options so far: GBA (gpSP), PS, N64, PSP, DC — the consoles the user has games for. The other cores
+  show English until their batch is written. FC/FDS (fceumm) and FBNeo have no options until one game has run.
 - ภาพเคลื่อนไหว maps onto v1's two flags: เต็ม = animations + transitions, น้อย = animations only, ปิด = neither.
 - Settings sets the values the new screens need, since the Layouts page that could change them is gone: Home layout Grid, Consoles tab on, Home tab on, Game Switcher full screen.
 
@@ -559,6 +562,53 @@ User request: "like the theme colour page, with colour choice and a colour code"
 - The launcher runs `/tmp/bos_action` from its main loop (and at start).
 - minarch sees it, saves and quits (leaving the file); the launcher then runs it.
 - Settings sees it and closes (leaving the file).
+
+### 6.7a ตั้งค่า › อัปเดต (own category; board v2-SettingsUpdate; user approved 2026-11-12)
+- Group 6, between ระบบ and เกี่ยวกับ, squircle `update` `#0A84FF`. The Updater row leaves เกี่ยวกับ.
+- Large title "อัปเดต", one group:
+  - เวอร์ชันนี้ — the installed version, `text2`, no chevron.
+  - The updater row. It checks by itself each time the page opens (once per Settings session, as before):
+    - checking: "กำลังตรวจหาอัปเดต…" (not pressable)
+    - up to date: "เป็นเวอร์ชันล่าสุดแล้ว" (not pressable)
+    - available: "อัปเดตเป็น <version>" with a `primary` pill "ใหม่" and a chevron; **A** อัปเดต starts the existing updater flow.
+    - no WiFi / error: "ตรวจหาอัปเดต" with the reason as its description; **A** tries again.
+- Description: "ตรวจหาอัปเดตเองทุกครั้งที่เปิดหน้านี้ · ต้องต่อ WiFi".
+- Hint bar: **B** กลับ · **A** อัปเดต (only when pressable).
+
+### 6.7b ตั้งค่า › หน้าแรกและเกม › แอปที่ปักหมุด (boards v2-SettingsHomeGames, v2-SettingsPins, -PinsMove, -PinsOther)
+- หน้าแรกและเกม gets a first group: แอปที่ปักหมุด › "<N> แอป", ภาพปก ›. The old rows follow under "การแสดงผล".
+- The page: large title, "<N> แอปบนหน้าแรก · เรียงตามนี้" under it.
+  - Group "บนหน้าแรก": the pinned apps in pin order. Each row: the app's 60 px tile (its icon on `surface2`), name, its
+    place number (1, 2, …) in `text2`, a switch (on).
+  - Group "แอปอื่น · ก–ฮ": every other app, switch off.
+  - The same list and file as Home (`bos_home_pins.txt`): a change here shows on Home and in แอปทั้งหมด.
+- **A** flips the pin. Pinning adds the app at the end; the row moves to its new group and the focus follows it.
+- **X จัดเรียง** (pinned rows only): the row lifts 12 px (as Home's จัดเรียง, no ring, no wobble) and shows ▲▼ in place
+  of its switch. ▲/▼ swap it with its neighbour; **A** เสร็จ saves, **B** ยกเลิก restores.
+- Hint bar: pinned row **X** จัดเรียง · **B** กลับ · **A** เลิกปักหมุด; other row **B** กลับ · **A** ปักหมุด.
+- Description under the list: "ปักหมุดได้ไม่จำกัด · เกิน 6 แอป แถวหน้าแรกเลื่อนได้".
+
+### 6.7c ตั้งค่า › ในเกม › ตั้งค่าแยกเครื่อง (boards v2-SettingsInGame, v2-SettingsEmuList, v2-SettingsEmuOptions)
+- Replaces the Emulator Settings app (options.elf `--pick`), drawn by Settings itself.
+- ในเกม gets a first group: ตั้งค่าแยกเครื่อง › "<N> เครื่อง". The old rows follow under "เซฟ".
+- **Console list:** title "ตั้งค่าแยกเครื่อง", "เครื่องที่มีเกม · ก–ฮ" under it. Only consoles that have games and an
+  `options.sh`. Each row: console name, the emulator's name on the right (the core, from the pak's `# NAME:` line) and a
+  chevron.
+- **A console's page:** title = console, "<emulator> · มีผลตอนเปิดเกมครั้งถัดไป" under it.
+  - One group per schema section (section name as the group header when there is more than one).
+  - Every option is a value row (`‹ value ›`, §6.6): Left/Right steps it, **A** opens the value list.
+  - **X** คืนค่าเดิม puts the focused option back to its default.
+  - The focused option's description shows under the group (wraps to two lines; Y shows it in full).
+  - Saved when the page closes, with the same files and rules as options.elf (`opts_minarch_save`): the console file
+    `<userdata>/<TAG>-<core>/minarch[-DEVICE].cfg`, only keys that changed. Locked keys stay hidden.
+  - The schema cache is made as options.sh makes it (`minarch.elf --dump-options`, when missing or older than the core
+    or the BIOS folder). A core with no schema yet (FBNeo before its first game) shows "ยังตั้งค่าไม่ได้ · เปิดเกมของเครื่องนี้ก่อน 1 ครั้ง".
+- **Thai (user, 2026-11-12):** option names, value names and descriptions are shown in Thai.
+  - The text comes from the cores (English, ~thousands of strings), so the Thai is a shipped table
+    `res/lang/th-coreopts.txt` keyed by option key (`<key>`, `<key>.desc`, `<key>=<value>`), written per core.
+  - Common values are shared: enabled เปิด, disabled ปิด, auto อัตโนมัติ, On เปิด, Off ปิด.
+  - Anything missing from the table shows the core's English.
+- The game's own options (per game) stay in ตัวเลือกเกม (§6.10) for now.
 
 ### 6.10 ตัวเลือกเกม (MENU on a game; board v2-GameOptions)
 - v1's game context menu (`romItems()` in `gamelist.c`), restyled. It opens from Home's เล่นต่อ, the cover mode and the list mode.

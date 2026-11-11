@@ -1,0 +1,957 @@
+# Brick OS: Thai for the emulator (core) options in ตั้งค่า › ในเกม › ตั้งค่าแยกเครื่อง (DESIGN 6.7c).
+# <key>	option name · <key>.desc	description · <key>=<value>	value name. Missing lines show the core's English.
+# ---- GBA (gpSP) ----
+gpsp_bios	BIOS
+gpsp_bios.desc	เลือก BIOS ที่ใช้ · BIOS ของแท้ต้องหามาใส่เอง · BIOS ที่ไม่ใช่ของแท้ (หรือตัวในตัว) อาจทำให้บางเกมมีปัญหา ใช้ BIOS ของ Nintendo จะได้ผลดีที่สุด
+gpsp_bios=auto	เลือกอัตโนมัติ
+gpsp_bios=builtin	BIOS ในตัว
+gpsp_bios=official	BIOS ของแท้
+gpsp_boot_mode	การเริ่มเครื่อง
+gpsp_boot_mode.desc	เปิด BIOS ก่อนเข้าเกมหรือไม่ · สองแบบนี้แทบไม่ต่างกัน
+gpsp_boot_mode=game	เข้าเกมเลย
+gpsp_boot_mode=bios	เปิด BIOS ก่อน
+gpsp_drc	ตัวแปลโค้ดเร็ว (Dynarec)
+gpsp_drc.desc	แปลคำสั่ง CPU ของเกมเป็นคำสั่งของเครื่องนี้ · เร็วขึ้นมาก แต่อาจแม่นยำน้อยลง
+gpsp_sprlim	ไม่จำกัดสไปรต์
+gpsp_sprlim.desc	เอาขีดจำกัดสไปรต์ต่อบรรทัดของเครื่องจริงออก · บางเกมอาศัยขีดจำกัดนี้ซ่อนสไปรต์ เปิดแล้วอาจแสดงผิด
+gpsp_rtc	นาฬิกาในตลับ (RTC)
+gpsp_rtc.desc	นาฬิกาในตลับเกม · อัตโนมัติใช้ฐานข้อมูลที่ตรงกับเกมขายส่วนใหญ่ · เกมทำเองหรือ ROM แฮ็กอาจต้องบังคับเปิด
+gpsp_rtc_time_source	เวลาของนาฬิกาในตลับ
+gpsp_rtc_time_source.desc	นาฬิกาที่ตลับใช้ · คงที่: เดินตามเฟรมของเกมและเก็บในเซฟสเตต · นาฬิกาเครื่อง: ตามเวลาจริง รวมช่วงที่ไม่ได้เล่น
+gpsp_rtc_time_source=deterministic	คงที่
+gpsp_rtc_time_source=system	นาฬิกาเครื่อง
+gpsp_serial	สายลิงก์
+gpsp_serial.desc	การเชื่อมต่อสายลิงก์ · อัตโนมัติเลือกแบบที่เหมาะกับเกมส่วนใหญ่ให้
+gpsp_serial=auto	อัตโนมัติ
+gpsp_serial=rfu	อะแดปเตอร์ไร้สาย GBA
+gpsp_serial=mul_poke	สายลิงก์ · โหมดโปเกมอนเจน 3
+gpsp_serial=mul_aw1	สายลิงก์ · โหมด Advance Wars 1
+gpsp_serial=mul_aw2	สายลิงก์ · โหมด Advance Wars 2
+gpsp_serial=lockstep	สายลิงก์จริง (USB เท่านั้น)
+gpsp_rumble	การสั่น
+gpsp_rumble.desc	การสั่นของตลับ · อัตโนมัติใช้ฐานข้อมูลที่ตรงกับเกมขายส่วนใหญ่ · เกมทำเองหรือ ROM แฮ็กอาจต้องบังคับเปิด · หรือปิดไปเลยก็ได้
+gpsp_sound_rate	อัตราเสียง (Hz)
+gpsp_sound_rate.desc	อัตราสร้างเสียงภายใน · จังหวะเสียงตรงทั้งสองค่า · 65536 เสียงเต็มย่าน · 32768 เท่าเครื่องจริงและใช้แรงเครื่องครึ่งเดียว
+gpsp_frameskip	ข้ามเฟรม
+gpsp_frameskip.desc	ข้ามเฟรมกันเสียงแตก · ลื่นขึ้นแต่ภาพกระตุกบ้าง · อัตโนมัติ: ข้ามเมื่อระบบบอก · อัตโนมัติ (เกณฑ์): ตาม "เกณฑ์ข้ามเฟรม" · ช่วงคงที่: ตาม "ช่วงข้ามเฟรม"
+gpsp_frameskip=auto_threshold	อัตโนมัติ (เกณฑ์)
+gpsp_frameskip=fixed_interval	ช่วงคงที่
+gpsp_frameskip_threshold	เกณฑ์ข้ามเฟรม (%)
+gpsp_frameskip_threshold.desc	ใช้เมื่อข้ามเฟรมเป็น "อัตโนมัติ (เกณฑ์)" · บัฟเฟอร์เสียงต่ำกว่าค่านี้จะข้ามเฟรม · ค่าสูงเสียงแตกน้อยลงแต่ข้ามเฟรมบ่อยขึ้น
+gpsp_frameskip_interval	ช่วงข้ามเฟรม
+gpsp_frameskip_interval.desc	ใช้เมื่อข้ามเฟรมเป็น "ช่วงคงที่" · จำนวนเฟรมที่ข้ามหลังวาด 1 เฟรม · 0 = 60fps, 1 = 30fps, 2 = 15fps
+gpsp_color_correction	ปรับสีให้เหมือนจอจริง
+gpsp_color_correction.desc	ปรับสีให้ตรงกับจอของเครื่อง GBA จริง
+gpsp_frame_mixing	ผสมเฟรม
+gpsp_frame_mixing.desc	จำลองภาพค้างของจอ LCD โดยผสมเฟรมนี้กับเฟรมก่อนครึ่งต่อครึ่ง · จำเป็นกับเกมที่ใช้ภาพค้างทำเอฟเฟกต์โปร่งใส (F-Zero, Boktai)
+gpsp_turbo_period	ความถี่ปุ่มเทอร์โบ
+gpsp_turbo_period.desc	ช่วงกดซ้ำ (เป็นเฟรม) ตอนกดค้างปุ่มเทอร์โบ A/B
+# ---- PS (PCSX-ReARMed) ----
+pcsx_rearmed_show_input_settings	แสดงตั้งค่าอุปกรณ์ควบคุม
+pcsx_rearmed_show_input_settings.desc	แสดงตัวเลือกของอุปกรณ์ควบคุมทั้งหมด: การตอบสนองอนาล็อก มัลติแทป ปืน ฯลฯ
+pcsx_rearmed_region	โซน
+pcsx_rearmed_region.desc	โซนของเครื่อง · NTSC = 60 Hz, PAL = 50 Hz · อัตโนมัติดูจากเกม · เลือกผิดเกมจะเร็วหรือช้ากว่าปกติ
+pcsx_rearmed_bios	BIOS
+pcsx_rearmed_bios.desc	เลือก BIOS · อัตโนมัติ: ใช้ไฟล์ BIOS จริงในโฟลเดอร์ Bios ถ้าไม่มีใช้ตัวจำลอง (HLE) · แนะนำ BIOS ของแท้ เข้ากับเกมได้ดีกว่า
+pcsx_rearmed_bios=HLE	จำลอง (HLE)
+pcsx_rearmed_show_bios_bootlogo	โลโก้ตอนเปิดเครื่อง
+pcsx_rearmed_show_bios_bootlogo.desc	ใช้ BIOS ของแท้แล้วแสดงโลโก้ PlayStation ตอนเริ่ม · ระวัง: อาจทำให้บางเกมเข้ากันไม่ได้
+pcsx_rearmed_show_bios_bootlogo=enabled_no_pcsx	เปิด ไม่มี PCSX
+pcsx_rearmed_memcard2	เมมการ์ดใบที่ 2 (ใช้ร่วม)
+pcsx_rearmed_memcard2.desc	จำลองเมมการ์ดช่องที่ 2 · ทุกเกมใช้ใบเดียวกัน
+pcsx_rearmed_cd_readahead	อ่านแผ่นล่วงหน้า
+pcsx_rearmed_cd_readahead.desc	อ่านข้อมูลแผ่นล่วงหน้าเพื่อไม่ให้สะดุดทีหลัง · 333000 อ่านทั้งแผ่น (ใช้ RAM เพิ่ม 750MB)
+pcsx_rearmed_drc	ตัวแปลโค้ดเร็ว (Dynarec)
+pcsx_rearmed_drc.desc	แปลคำสั่ง CPU ของ PS เป็นคำสั่งของเครื่องนี้ · เร็วกว่ามาก แต่บางเกมอาจแม่นยำน้อยลง
+pcsx_rearmed_drc_thread	Dynarec แยกเธรด
+pcsx_rearmed_drc_thread.desc	รันตัวแปลโค้ดบนอีกเธรดหนึ่ง
+pcsx_rearmed_psxclock	ความเร็ว CPU ของ PS (%)
+pcsx_rearmed_psxclock.desc	โอเวอร์คล็อกหรือลดความเร็ว CPU ของ PS · ปกติควรเป็นอัตโนมัติ ไม่อย่างนั้นภาพเพี้ยนหรือค้างได้
+pcsx_rearmed_dithering	ดิทเธอริง
+pcsx_rearmed_dithering.desc	จำลองการเกลี่ยสีแบบเครื่อง PS ให้ไล่สีเนียน · บังคับ: เปิดแม้เกมปิดไว้ · ใช้แรงเครื่องมากขึ้น
+pcsx_rearmed_dithering=force	บังคับ
+pcsx_rearmed_gpu_thread_rendering	วาดภาพแยกเธรด
+pcsx_rearmed_gpu_thread_rendering.desc	ทำงานของ GPU บนอีกเธรดหนึ่ง
+pcsx_rearmed_frameskip_type	ข้ามเฟรม
+pcsx_rearmed_frameskip_type.desc	ข้ามเฟรมกันเสียงแตก · ลื่นขึ้นแต่ภาพกระตุกบ้าง · อัตโนมัติ: ข้ามเมื่อระบบบอก · อัตโนมัติ (เกณฑ์): ตาม "เกณฑ์ข้ามเฟรม" · ช่วงคงที่: ตาม "ช่วงข้ามเฟรม"
+pcsx_rearmed_frameskip_type=auto_threshold	อัตโนมัติ (เกณฑ์)
+pcsx_rearmed_frameskip_type=fixed_interval	ช่วงคงที่
+pcsx_rearmed_frameskip_threshold	เกณฑ์ข้ามเฟรม (%)
+pcsx_rearmed_frameskip_threshold.desc	ใช้เมื่อข้ามเฟรมเป็น "อัตโนมัติ (เกณฑ์)" · บัฟเฟอร์เสียงต่ำกว่าค่านี้จะข้ามเฟรม · ค่าสูงเสียงแตกน้อยลงแต่ข้ามเฟรมบ่อยขึ้น
+pcsx_rearmed_frameskip_interval	ช่วงข้ามเฟรม
+pcsx_rearmed_frameskip_interval.desc	จำนวนเฟรมมากสุดที่ข้ามได้ก่อนวาดเฟรมใหม่
+pcsx_rearmed_display_fps_v2	แสดง FPS ภายใน
+pcsx_rearmed_display_fps_v2.desc	แสดงอัตราเฟรมที่เครื่อง PS จำลองกำลังวาด
+pcsx_rearmed_display_fps_v2=extra	แบบละเอียด
+pcsx_rearmed_fractional_framerate	อัตราเฟรมแบบทศนิยม
+pcsx_rearmed_fractional_framerate.desc	เครื่องจริงวิ่งราว 49.75/59.81fps ไม่ใช่ 50/60 พอดี · ปกติใช้ค่าปัดเพื่อให้เข้ากับจอ แต่บางเกม (DDR, Spyro 2) ภาพกับเสียงอาจไม่ตรงกัน ลองเปิดตัวนี้
+pcsx_rearmed_rgb32_output	สี 32 บิต
+pcsx_rearmed_rgb32_output.desc	สีละเอียดขึ้นในโหมดสีเต็ม (คัตซีนส่วนใหญ่) · ใช้แรง CPU มากขึ้น · มีผลเมื่อโหลดเกมใหม่
+pcsx_rearmed_scale_hires	ย่อภาพความละเอียดสูง
+pcsx_rearmed_scale_hires.desc	เกมที่ใช้โหมดความละเอียดสูง (480i, 512i) ย่อเป็น 320x240 โดยข้ามบรรทัด · ใช้กับเครื่องจอ 240p ที่ย่อภาพไม่เก่ง
+pcsx_rearmed_gpu_slow_llists	(GPU) ประมวลรายการแบบช้า
+pcsx_rearmed_gpu_slow_llists.desc	ช้าลงแต่แม่นขึ้น · มีไม่กี่เกมที่ต้องใช้ เช่น Vampire Hunter D · ส่วนใหญ่ตรวจให้อัตโนมัติ
+pcsx_rearmed_show_overscan	(GPU) ขอบภาพแนวนอน
+pcsx_rearmed_show_overscan.desc	แสดงภาพที่เกมวาดเลยไปถึงขอบซ้ายขวา · อาจได้ความละเอียดแปลกๆ · แบบแฮ็กใช้กับแฮ็กจอกว้าง
+pcsx_rearmed_show_overscan=hack	แฮ็ก
+pcsx_rearmed_screen_centering	(GPU) จัดภาพกลางจอ
+pcsx_rearmed_screen_centering.desc	บางเกม (ส่วนใหญ่ PAL) ภาพเยื้องและขอบไม่เท่ากัน · อัตโนมัติ: แก้ให้เอง · ตามเกม: ใช้ค่าของเกม · กำหนดเอง: ใช้ค่าด้านล่าง
+pcsx_rearmed_screen_centering=game	ตามเกม
+pcsx_rearmed_screen_centering=borderless	ไม่มีขอบ
+pcsx_rearmed_screen_centering=manual	กำหนดเอง
+pcsx_rearmed_screen_centering_x	(GPU) ตำแหน่ง X
+pcsx_rearmed_screen_centering_x.desc	เลื่อนภาพแนวนอน · ใช้เมื่อจัดภาพกลางจอเป็น "กำหนดเอง"
+pcsx_rearmed_screen_centering_y	(GPU) ตำแหน่ง Y
+pcsx_rearmed_screen_centering_y.desc	เลื่อนภาพแนวตั้ง · ใช้เมื่อจัดภาพกลางจอเป็น "กำหนดเอง"
+pcsx_rearmed_screen_centering_h_adj	(GPU) ปรับความสูง
+pcsx_rearmed_screen_centering_h_adj.desc	ปรับความสูงภาพ · ใช้เมื่อจัดภาพกลางจอเป็น "กำหนดเอง"
+pcsx_rearmed_neon_interlace_enable_v2	ภาพแบบอินเทอร์เลซ
+pcsx_rearmed_neon_interlace_enable_v2.desc	เกมความละเอียดสูง (480i, 512i) ส่งภาพแบบอินเทอร์เลซ · ถูกต้องบนทีวีจอแก้ว แต่จอสมัยใหม่จะเห็นรอยเส้น · บางเกมต้องเปิดไว้
+pcsx_rearmed_neon_enhancement_enable	เพิ่มความละเอียด
+pcsx_rearmed_neon_enhancement_enable.desc	วาดเกมที่ความละเอียด 2 เท่า · โมเดล 3D คมขึ้น แต่ใช้แรงเครื่องมากขึ้น · ภาพ 2D แทบไม่ต่าง
+pcsx_rearmed_neon_enhancement_no_main	เพิ่มความละเอียด: แฮ็กความเร็ว
+pcsx_rearmed_neon_enhancement_no_main.desc	(สำหรับเพิ่มความละเอียด) เร็วขึ้นแต่เข้ากับเกมได้น้อยลง ภาพอาจผิด
+pcsx_rearmed_neon_enhancement_tex_adj_v2	เพิ่มความละเอียด: แก้พื้นผิว
+pcsx_rearmed_neon_enhancement_tex_adj_v2.desc	(สำหรับเพิ่มความละเอียด) แก้พื้นผิวเพี้ยนในบางเกม · ช้าลงนิดหน่อย
+pcsx_rearmed_spu_reverb	เสียงก้อง
+pcsx_rearmed_spu_reverb.desc	จำลองเสียงก้องของชิปเสียง PS · ปิดได้เพื่อให้เร็วขึ้น แต่เสียงจะไม่เหมือนต้นฉบับ
+pcsx_rearmed_spu_interpolation	การเกลี่ยเสียง
+pcsx_rearmed_spu_interpolation.desc	Gaussian ใกล้เครื่องจริงที่สุด · Simple เร็วแต่คุณภาพลด · Cubic ชัดที่สุดแต่ใช้แรงที่สุด · ปิดได้เพื่อความเร็วสูงสุด
+pcsx_rearmed_spu_interpolation=simple	ธรรมดา (Simple)
+pcsx_rearmed_spu_interpolation=gaussian	Gaussian
+pcsx_rearmed_spu_interpolation=cubic	Cubic
+pcsx_rearmed_nocdaudio	เสียงจากแผ่น (CD Audio)
+pcsx_rearmed_nocdaudio.desc	เล่นแทร็กเพลงจากแผ่น · ปิดได้เพื่อให้เร็วขึ้น แต่เพลงจะหายไป
+pcsx_rearmed_noxadecoding	เสียง XA
+pcsx_rearmed_noxadecoding.desc	เล่นเสียงแบบ XA · ปิดได้เพื่อให้เร็วขึ้น แต่เพลงจะหายไป
+pcsx_rearmed_spu_thread	เสียงแยกเธรด
+pcsx_rearmed_spu_thread.desc	จำลองชิปเสียงบนอีกเธรดหนึ่ง · บางเกมเสียงอาจเพี้ยน
+pcsx_rearmed_analog_axis_modifier	ขอบเขตอนาล็อก
+pcsx_rearmed_analog_axis_modifier.desc	ขอบเขตของสติกอนาล็อก · สี่เหลี่ยม: ตอบสนองดีขึ้นกับจอยที่ดันแนวเฉียงไม่สุด
+pcsx_rearmed_analog_axis_modifier=circle	วงกลม
+pcsx_rearmed_analog_axis_modifier=square	สี่เหลี่ยม
+pcsx_rearmed_vibration	การสั่น
+pcsx_rearmed_vibration.desc	สั่นเมื่ออุปกรณ์เป็น DualShock
+pcsx_rearmed_analog_combo	ปุ่มสลับโหมดอนาล็อก DualShock
+pcsx_rearmed_analog_combo.desc	ปุ่มที่ใช้สลับ DualShock ระหว่างโหมดดิจิทัลกับอนาล็อก เหมือนเครื่องจริง
+pcsx_rearmed_multitap	มัลติแทป
+pcsx_rearmed_multitap.desc	ต่อมัลติแทปที่พอร์ต 1 หรือ 2 เล่นได้ 5 คน หรือทั้งสองพอร์ตเล่นได้ 8 คน · ต้องเป็นเกมที่รองรับ
+pcsx_rearmed_multitap=port 1	พอร์ต 1
+pcsx_rearmed_multitap=port 2	พอร์ต 2
+pcsx_rearmed_multitap=ports 1 and 2	พอร์ต 1 และ 2
+pcsx_rearmed_negcon_deadzone	ระยะไม่ตอบสนอง NegCon
+pcsx_rearmed_negcon_deadzone.desc	ระยะไม่ตอบสนองของสติกซ้ายเมื่อจำลองการบิดของจอย neGcon · กันค่าไหล
+pcsx_rearmed_negcon_response	การตอบสนอง NegCon
+pcsx_rearmed_negcon_response.desc	รูปแบบการตอบสนองของสติกซ้ายเมื่อจำลองการบิดของจอย neGcon
+pcsx_rearmed_negcon_response=linear	เส้นตรง
+pcsx_rearmed_negcon_response=quadratic	กำลังสอง
+pcsx_rearmed_negcon_response=cubic	กำลังสาม
+pcsx_rearmed_input_sensitivity	ความไวเมาส์
+pcsx_rearmed_input_sensitivity.desc	ความไวของเมาส์ที่จำลอง
+pcsx_rearmed_crosshair1	เป้าปืน ผู้เล่น 1
+pcsx_rearmed_crosshair1.desc	เป้าของปืน Guncon หรือ Konami ผู้เล่น 1 · ใช้ได้เมื่อปิดสี 32 บิต
+pcsx_rearmed_crosshair1=blue	น้ำเงิน
+pcsx_rearmed_crosshair1=green	เขียว
+pcsx_rearmed_crosshair1=red	แดง
+pcsx_rearmed_crosshair1=white	ขาว
+pcsx_rearmed_crosshair2	เป้าปืน ผู้เล่น 2
+pcsx_rearmed_crosshair2.desc	เป้าของปืน Guncon หรือ Konami ผู้เล่น 2 · ใช้ได้เมื่อปิดสี 32 บิต
+pcsx_rearmed_crosshair2=blue	น้ำเงิน
+pcsx_rearmed_crosshair2=green	เขียว
+pcsx_rearmed_crosshair2=red	แดง
+pcsx_rearmed_crosshair2=white	ขาว
+pcsx_rearmed_konamigunadjustx	ปืน Konami: เลื่อนแกน X
+pcsx_rearmed_konamigunadjustx.desc	เลื่อนเป้าปืน Konami แนวนอน · ใช้แก้เล็งไม่ตรง
+pcsx_rearmed_konamigunadjusty	ปืน Konami: เลื่อนแกน Y
+pcsx_rearmed_konamigunadjusty.desc	เลื่อนเป้าปืน Konami แนวตั้ง · ใช้แก้เล็งไม่ตรง
+pcsx_rearmed_gunconadjustx	Guncon: เลื่อนแกน X
+pcsx_rearmed_gunconadjustx.desc	เลื่อนเป้า Guncon แนวนอน · ใช้แก้เล็งไม่ตรง
+pcsx_rearmed_gunconadjusty	Guncon: เลื่อนแกน Y
+pcsx_rearmed_gunconadjusty.desc	เลื่อนเป้า Guncon แนวตั้ง · ใช้แก้เล็งไม่ตรง
+pcsx_rearmed_gunconadjustratiox	Guncon: การตอบสนองแกน X
+pcsx_rearmed_gunconadjustratiox.desc	ปรับระยะขยับแนวนอนของ Guncon · ใช้แก้เล็งไม่ตรง
+pcsx_rearmed_gunconadjustratioy	Guncon: การตอบสนองแกน Y
+pcsx_rearmed_gunconadjustratioy.desc	ปรับระยะขยับแนวตั้งของ Guncon · ใช้แก้เล็งไม่ตรง
+pcsx_rearmed_icache_emulation	จำลองแคชคำสั่ง
+pcsx_rearmed_icache_emulation.desc	จำลองแคชคำสั่งของ CPU · แม่นขึ้นแต่ช้าลง · จำเป็นกับเกม Formula One 2001, Formula One Arcade, Formula One 99
+pcsx_rearmed_exception_emulation	จำลองข้อผิดพลาดและจุดหยุด
+pcsx_rearmed_exception_emulation.desc	สำหรับนักพัฒนาเกมทำเองและ ROM แฮ็กเท่านั้น · ช้าลงและไม่มีประโยชน์กับการเล่นเกม
+pcsx_rearmed_nocompathacks	ปิดแฮ็กความเข้ากันอัตโนมัติ
+pcsx_rearmed_nocompathacks.desc	ปกติตัวจำลองใส่แฮ็กแก้ปัญหาให้แต่ละเกมเอง · จำเป็นต่อการเล่นให้ถูกต้อง แต่ปิดได้ถ้าต้องการ
+pcsx_rearmed_cd_turbo	แผ่นเร็วพิเศษ
+pcsx_rearmed_cd_turbo.desc	อ่านแผ่นเร็วมาก ลดเวลาโหลดบางเกม · ระวัง: หลายเกมไม่ได้ทำมาให้เร็วขนาดนี้ เกมหรือตัวจำลองอาจค้างได้ทุกเมื่อ
+pcsx_rearmed_nosmccheck	ปิดการตรวจ SMC
+pcsx_rearmed_nosmccheck.desc	จะทำให้ค้างตอนโหลด และเมมการ์ดเสีย
+pcsx_rearmed_gteregsunneeded	ถือว่าไม่ต้องใช้รีจิสเตอร์ GTE
+pcsx_rearmed_gteregsunneeded.desc	อาจทำให้ภาพผิด
+pcsx_rearmed_nogteflags	ปิดแฟล็ก GTE
+pcsx_rearmed_nogteflags.desc	จะทำให้ภาพผิด
+pcsx_rearmed_nostalls	ปิดการหน่วง CPU/GTE
+pcsx_rearmed_nostalls.desc	บางเกมจะเร็วเกินไป · เกือบทุกกรณีควรปิดไว้
+# ---- N64 (Mupen64Plus-Next) ----
+mupen64plus-rdp-plugin	ตัววาดภาพ (RDP)
+mupen64plus-rdp-plugin.desc	เลือกตัววาดภาพ · Angrylion (ถ้ามี) เข้ากับเกมได้ดีที่สุด · GLideN64 เร็วที่สุด
+mupen64plus-cpucore	แกน CPU
+mupen64plus-cpucore.desc	วิธีจำลอง CPU · ตัวแปลทีละคำสั่ง (Interpreter) เข้ากับเกมได้ดีที่สุด · Dynarec เร็วที่สุด
+mupen64plus-cpucore=pure_interpreter	แปลทีละคำสั่ง
+mupen64plus-cpucore=cached_interpreter	แปลทีละคำสั่ง (มีแคช)
+mupen64plus-cpucore=dynamic_recompiler	Dynarec
+mupen64plus-rsp-plugin	ตัวประมวลผลสัญญาณ (RSP)
+mupen64plus-rsp-plugin.desc	HLE เร็วที่สุด · ParaLLEl เร็วที่สุดในแบบ LLE · CXD4 เป็น LLE สำรอง
+mupen64plus-FrameDuping	ทำซ้ำเฟรม
+mupen64plus-FrameDuping.desc	ทำซ้ำเฟรมให้ภาพลื่นขึ้นบนเครื่องแรงน้อย · ไม่เหมือนการข้ามเฟรม
+mupen64plus-Framerate	อัตราเฟรม
+mupen64plus-Framerate.desc	เต็มความเร็ว: บังคับค่า Count per Op 1 และการจำลองเฟรมบัฟเฟอร์ · บางเกมจะเสีย
+mupen64plus-Framerate=Original	ตามต้นฉบับ
+mupen64plus-Framerate=Fullspeed	เต็มความเร็ว
+mupen64plus-virefresh	รีเฟรช VI (โอเวอร์คล็อก)
+mupen64plus-virefresh.desc	อัตรารีเฟรชของ VI · อัตโนมัติไม่เปลี่ยนอะไร · ค่าอื่นจะแทนที่ CountPerScanline
+mupen64plus-ForceDisableExtraMem	ปิด Expansion Pak
+mupen64plus-ForceDisableExtraMem.desc	บังคับปิดหน่วยความจำเสริม · บางเกมเร็วขึ้นแต่แม่นน้อยลง · เกมที่ต้องใช้จะเล่นไม่ได้
+mupen64plus-IgnoreTLBExceptions	ข้ามข้อผิดพลาด TLB
+mupen64plus-IgnoreTLBExceptions.desc	(แฮ็ก) ข้ามข้อผิดพลาด TLB ที่จำลอง · อาจแก้ ROM แฮ็กบางตัวที่เสีย
+mupen64plus-IgnoreTLBExceptions=False	ไม่ข้าม
+mupen64plus-IgnoreTLBExceptions=OnlyNotEnabled	ข้ามเมื่อเกมไม่ได้ใช้ TLB
+mupen64plus-IgnoreTLBExceptions=AlwaysIgnoreTLB	ข้ามเสมอ
+mupen64plus-CountPerOp	Count Per Op
+mupen64plus-CountPerOp.desc	ใช้ประมาณค่าตัวนับ · 0 ใช้ฐานข้อมูลในตัว (หรือ 2) · เปลี่ยนแล้วเกมอาจเสีย
+mupen64plus-CountPerOpDenomPot	ตัวหาร Count Per Op (โอเวอร์คล็อก)
+mupen64plus-CountPerOpDenomPot.desc	ตัวหารของ Count per Op · เปลี่ยนแล้วเกมอาจเสีย
+mupen64plus-astick-deadzone	ระยะไม่ตอบสนองอนาล็อก (%)
+mupen64plus-astick-deadzone.desc	ขนาดของช่วงรอบสติกที่ขยับแล้วยังไม่ตอบสนอง
+mupen64plus-astick-sensitivity	ความไวอนาล็อก (%)
+mupen64plus-astick-sensitivity.desc	ต้องดันสติกแค่ไหนถึงจะได้ค่าสูงสุด
+mupen64plus-r-cbutton	ปุ่ม C ขวา
+mupen64plus-r-cbutton.desc	ปุ่มที่ใช้เป็น C ขวา
+mupen64plus-l-cbutton	ปุ่ม C ซ้าย
+mupen64plus-l-cbutton.desc	ปุ่มที่ใช้เป็น C ซ้าย
+mupen64plus-d-cbutton	ปุ่ม C ล่าง
+mupen64plus-d-cbutton.desc	ปุ่มที่ใช้เป็น C ล่าง
+mupen64plus-u-cbutton	ปุ่ม C บน
+mupen64plus-u-cbutton.desc	ปุ่มที่ใช้เป็น C บน
+mupen64plus-alt-map	ปุ่ม C แยกอิสระ
+mupen64plus-alt-map.desc	ใช้รูปแบบปุ่มอีกแบบ · เหมาะกับจอยบางยี่ห้อ
+mupen64plus-pak1	แพ็กของผู้เล่น 1
+mupen64plus-pak1.desc	อุปกรณ์ที่เสียบในจอยผู้เล่น 1
+mupen64plus-pak2	แพ็กของผู้เล่น 2
+mupen64plus-pak2.desc	อุปกรณ์ที่เสียบในจอยผู้เล่น 2
+mupen64plus-pak3	แพ็กของผู้เล่น 3
+mupen64plus-pak3.desc	อุปกรณ์ที่เสียบในจอยผู้เล่น 3
+mupen64plus-pak4	แพ็กของผู้เล่น 4
+mupen64plus-pak4.desc	อุปกรณ์ที่เสียบในจอยผู้เล่น 4
+mupen64plus-pak1=none	ไม่มี
+mupen64plus-pak1=memory	เมมโมรีแพ็ก
+mupen64plus-pak1=rumble	รัมเบิลแพ็ก (สั่น)
+mupen64plus-pak1=transfer	ทรานสเฟอร์แพ็ก
+mupen64plus-pak2=none	ไม่มี
+mupen64plus-pak2=memory	เมมโมรีแพ็ก
+mupen64plus-pak2=rumble	รัมเบิลแพ็ก (สั่น)
+mupen64plus-pak2=transfer	ทรานสเฟอร์แพ็ก
+mupen64plus-pak3=none	ไม่มี
+mupen64plus-pak3=memory	เมมโมรีแพ็ก
+mupen64plus-pak3=rumble	รัมเบิลแพ็ก (สั่น)
+mupen64plus-pak3=transfer	ทรานสเฟอร์แพ็ก
+mupen64plus-pak4=none	ไม่มี
+mupen64plus-pak4=memory	เมมโมรีแพ็ก
+mupen64plus-pak4=rumble	รัมเบิลแพ็ก (สั่น)
+mupen64plus-pak4=transfer	ทรานสเฟอร์แพ็ก
+mupen64plus-43screensize	ความละเอียด 4:3
+mupen64plus-43screensize.desc	(GLN64) ขนาดภาพที่วาดในอัตราส่วน 4:3
+mupen64plus-169screensize	ความละเอียดจอกว้าง
+mupen64plus-169screensize.desc	(GLN64) ขนาดภาพที่วาดเมื่อใช้จอกว้าง
+mupen64plus-aspect	อัตราส่วนภาพ
+mupen64plus-aspect.desc	(GLN64) อัตราส่วนภาพ · แบบปรับแล้วคือแฮ็กจอกว้าง
+mupen64plus-aspect=4:3	ต้นฉบับ (4:3)
+mupen64plus-aspect=16:9	จอกว้าง (ยืด)
+mupen64plus-aspect=16:9 adjusted	จอกว้าง (ปรับแล้ว)
+mupen64plus-EnableNativeResFactor	คูณความละเอียด
+mupen64plus-EnableNativeResFactor.desc	(GLN64) วาดที่ความละเอียดต้นฉบับคูณ N เท่า
+mupen64plus-ThreadedRenderer	วาดภาพแยกเธรด
+mupen64plus-ThreadedRenderer.desc	(GLN64) เร็วขึ้น แต่ปุ่มตอบสนองช้าลงเล็กน้อย
+mupen64plus-BilinearMode	การกรองภาพแบบไบลิเนียร์
+mupen64plus-BilinearMode.desc	(GLN64) วิธีกรองภาพ · 3point คือแบบของเครื่องจริง
+mupen64plus-BilinearMode=standard	มาตรฐาน
+mupen64plus-HybridFilter	ฟิลเตอร์ไฮบริด
+mupen64plus-HybridFilter.desc	(GLN64) ย่อขยายภาพแบบจำนวนเต็มผสม · อาจช้าบน GPU แรงน้อย
+mupen64plus-DitheringPattern	ดิทเธอริง
+mupen64plus-DitheringPattern.desc	(GLN64) ใส่ลายดิทเธอร์ให้ภาพ
+mupen64plus-DitheringQuantization	ดิทเธอร์แบบลดสี
+mupen64plus-DitheringQuantization.desc	(GLN64) ดิทเธอร์พร้อมลดจำนวนสี
+mupen64plus-RDRAMImageDitheringMode	ดิทเธอร์ภาพใน RDRAM
+mupen64plus-RDRAMImageDitheringMode.desc	(GLN64) แบบดิทเธอร์ของภาพในหน่วยความจำ
+mupen64plus-MultiSampling	ระดับ MSAA
+mupen64plus-MultiSampling.desc	(GLN64) ระดับลดรอยหยัก (0 = ปิด)
+mupen64plus-FXAA	FXAA
+mupen64plus-FXAA.desc	(GLN64) ลดรอยหยักแบบเร็ว · ภาพเบลอลงเล็กน้อย (0 = ปิด)
+mupen64plus-EnableLODEmulation	จำลอง LOD
+mupen64plus-EnableLODEmulation.desc	(GLN64) คำนวณระดับรายละเอียดต่อพิกเซลเพื่อเลือกและผสมระดับพื้นผิว
+mupen64plus-EnableFBEmulation	จำลองเฟรมบัฟเฟอร์
+mupen64plus-EnableFBEmulation.desc	(GLN64) ปิดแล้วบางเกมปุ่มตอบสนองไวขึ้น แต่เอฟเฟกต์พิเศษบางอย่างจะหาย
+mupen64plus-EnableCopyAuxToRDRAM	คัดลอกบัฟเฟอร์เสริมไป RDRAM
+mupen64plus-EnableCopyAuxToRDRAM.desc	(GLN64) แก้ภาพผิดบางเกม เช่น ฉากเปิด Paper Mario
+mupen64plus-EnableCopyColorToRDRAM	บัฟเฟอร์สีไป RDRAM
+mupen64plus-EnableCopyColorToRDRAM.desc	(GLN64) ปิดแล้วเร็วขึ้นแต่เข้ากับเกมได้น้อยลง
+mupen64plus-EnableCopyColorFromRDRAM	คัดลอกบัฟเฟอร์สีจาก RDRAM
+mupen64plus-EnableCopyColorFromRDRAM.desc	(GLN64) คัดลอกบัฟเฟอร์สีกลับจากหน่วยความจำ
+mupen64plus-EnableCopyDepthToRDRAM	บัฟเฟอร์ความลึกไป RDRAM
+mupen64plus-EnableCopyDepthToRDRAM.desc	(GLN64) ปิดแล้วเร็วขึ้นแต่เข้ากับเกมได้น้อยลง
+mupen64plus-BackgroundMode	การวาดฉากหลัง
+mupen64plus-BackgroundMode.desc	(GLN64, HLE เท่านั้น) ชิ้นเดียว: เร็ว · แบ่งแถบ: แม่นยำ
+mupen64plus-BackgroundMode=Stripped	แบ่งแถบ
+mupen64plus-BackgroundMode=OnePiece	ชิ้นเดียว
+mupen64plus-EnableHWLighting	แสงต่อพิกเซล
+mupen64plus-EnableHWLighting.desc	(GLN64) ปิดแล้วใช้แสงต่อจุดยอดแบบมาตรฐาน · ภาพต่างกันเล็กน้อย
+mupen64plus-CorrectTexrectCoords	พิกัดพื้นผิวต่อเนื่อง
+mupen64plus-CorrectTexrectCoords.desc	(GLN64) ทำให้พิกัดพื้นผิวต่อกันเพื่อไม่ให้มีเส้นดำคั่น
+mupen64plus-CorrectTexrectCoords=Force	บังคับ
+mupen64plus-EnableInaccurateTextureCoordinates	พิกัดพื้นผิวแบบไม่แม่น
+mupen64plus-EnableInaccurateTextureCoordinates.desc	(GLN64) เร็วขึ้นและเข้ากับแพ็กพื้นผิวได้ดีขึ้น แต่แม่นน้อยลง
+mupen64plus-EnableTexCoordBounds	จำกัดพิกัดพื้นผิวตามความละเอียดเดิม
+mupen64plus-EnableTexCoordBounds.desc	(GLN64) กันขยะภาพจากการอ่านเกินพื้นผิว แต่ขอบอาจแข็ง
+mupen64plus-EnableNativeResTexrects	ภาพ 2D ที่ความละเอียดเดิม
+mupen64plus-EnableNativeResTexrects.desc	(GLN64) วาดภาพ 2D ที่ความละเอียดเดิมเพื่อแก้ชิ้นภาพเหลื่อมกัน (เช่น รูปตัวละครใน Mario Kart)
+mupen64plus-EnableNativeResTexrects=Unoptimized	ไม่ปรับแต่ง
+mupen64plus-EnableNativeResTexrects=Optimized	ปรับแต่งแล้ว
+mupen64plus-EnableLegacyBlending	ผสมสีแบบไม่แม่น
+mupen64plus-EnableLegacyBlending.desc	(GLN64) ไม่ใช้เชดเดอร์จำลองการผสมสี · เร็วขึ้นบน GPU ช้า แต่ภาพอาจผิด
+mupen64plus-EnableFragmentDepthWrite	เขียนความลึกในเชดเดอร์
+mupen64plus-EnableFragmentDepthWrite.desc	(GLN64) GPU มือถือบางตัวไม่รองรับ · ควรเปิดไว้
+mupen64plus-EnableTextureCache	เก็บแคชพื้นผิว
+mupen64plus-EnableTextureCache.desc	(GLN64) บันทึกแคชพื้นผิวลงการ์ด
+mupen64plus-EnableOverscan	ตัดขอบภาพ
+mupen64plus-EnableOverscan.desc	(GLN64) ตัดขอบดำรอบภาพ
+mupen64plus-OverscanTop	ตัดขอบ (บน)
+mupen64plus-OverscanTop.desc	(GLN64) ระยะตัดขอบด้านบน
+mupen64plus-OverscanLeft	ตัดขอบ (ซ้าย)
+mupen64plus-OverscanLeft.desc	(GLN64) ระยะตัดขอบด้านซ้าย
+mupen64plus-OverscanRight	ตัดขอบ (ขวา)
+mupen64plus-OverscanRight.desc	(GLN64) ระยะตัดขอบด้านขวา
+mupen64plus-OverscanBottom	ตัดขอบ (ล่าง)
+mupen64plus-OverscanBottom.desc	(GLN64) ระยะตัดขอบด้านล่าง
+mupen64plus-MaxHiResTxVramLimit	จำกัด VRAM พื้นผิวความละเอียดสูง
+mupen64plus-MaxHiResTxVramLimit.desc	(GLN64) จำกัดขนาดพื้นผิวความละเอียดสูงใน VRAM (MB, 0 = ไม่จำกัด)
+mupen64plus-MaxTxCacheSize	ขนาดแคชพื้นผิวสูงสุด
+mupen64plus-MaxTxCacheSize.desc	(GLN64) ถ้าพื้นผิวเป็นสีดำแล้วค้าง ให้ลดค่านี้
+mupen64plus-txFilterMode	ฟิลเตอร์พื้นผิว
+mupen64plus-txFilterMode.desc	(GLN64) วิธีกรองพื้นผิว
+mupen64plus-txFilterMode=None	ไม่มี
+mupen64plus-txFilterMode=Smooth filtering 1	นุ่ม 1
+mupen64plus-txFilterMode=Smooth filtering 2	นุ่ม 2
+mupen64plus-txFilterMode=Smooth filtering 3	นุ่ม 3
+mupen64plus-txFilterMode=Smooth filtering 4	นุ่ม 4
+mupen64plus-txFilterMode=Sharp filtering 1	คม 1
+mupen64plus-txFilterMode=Sharp filtering 2	คม 2
+mupen64plus-txEnhancementMode	เพิ่มคุณภาพพื้นผิว
+mupen64plus-txEnhancementMode.desc	(GLN64) ฟิลเตอร์พื้นผิวแบบต่างๆ
+mupen64plus-txEnhancementMode=None	ไม่มี
+mupen64plus-txFilterIgnoreBG	ไม่กรองพื้นผิวฉากหลัง
+mupen64plus-txFilterIgnoreBG.desc	(GLN64) ไม่ใช้ฟิลเตอร์กับพื้นผิวฉากหลัง
+mupen64plus-txHiresEnable	ใช้พื้นผิวความละเอียดสูง
+mupen64plus-txHiresEnable.desc	(GLN64) ใช้แพ็กพื้นผิวความละเอียดสูงถ้ามี
+mupen64plus-txCacheCompression	บีบอัดแคชพื้นผิว
+mupen64plus-txCacheCompression.desc	(GLN64) บีบอัดแคชพื้นผิวที่สร้าง
+mupen64plus-txHiresFullAlphaChannel	ช่องโปร่งใสเต็ม
+mupen64plus-txHiresFullAlphaChannel.desc	(GLN64) ควรเปิด ยกเว้นแพ็กพื้นผิว RICE แบบเก่า
+mupen64plus-EnableEnhancedTextureStorage	เก็บพื้นผิวแบบปรับปรุง
+mupen64plus-EnableEnhancedTextureStorage.desc	(GLN64) โหลดเมื่อใช้ ลดการใช้หน่วยความจำแลกกับความเร็วโหลด
+mupen64plus-EnableHiResAltCRC	เช็กซัมแบบอื่นสำหรับพื้นผิวความละเอียดสูง
+mupen64plus-EnableHiResAltCRC.desc	(GLN64) คำนวณ CRC ของพื้นผิวแบบพาเลตต์อีกวิธี
+mupen64plus-EnableEnhancedHighResStorage	เก็บพื้นผิวความละเอียดสูงแบบปรับปรุง
+mupen64plus-EnableEnhancedHighResStorage.desc	(GLN64) โหลดเมื่อใช้ ลดการใช้หน่วยความจำแลกกับความเร็วโหลด
+mupen64plus-GLideN64IniBehaviour	การใช้ไฟล์ INI
+mupen64plus-GLideN64IniBehaviour.desc	(GLN64) ลำดับระหว่างค่าในไฟล์ INI กับตัวเลือกนี้ · เปลี่ยนแล้วเกมอาจเสียถ้าตั้งค่าไม่ครบ
+mupen64plus-GLideN64IniBehaviour=late	ใช้ INI ก่อน
+mupen64plus-GLideN64IniBehaviour=early	ใช้ตัวเลือกนี้ก่อน
+mupen64plus-GLideN64IniBehaviour=disabled	ไม่ใช้ INI
+# ---- PSP (PPSSPP) ----
+ppsspp_cpu_core	แกน CPU
+ppsspp_cpu_core=JIT	Dynarec (JIT)
+ppsspp_cpu_core=IR JIT	ตัวแปล IR
+ppsspp_cpu_core=Interpreter	แปลทีละคำสั่ง
+ppsspp_fast_memory	หน่วยความจำเร็ว
+ppsspp_fast_memory.desc	ไม่เสถียร
+ppsspp_ignore_bad_memory_access	ข้ามการอ่านหน่วยความจำผิด
+ppsspp_io_timing_method	จังหวะการอ่านข้อมูล
+ppsspp_io_timing_method=Fast	เร็ว
+ppsspp_io_timing_method=Host	ตามเครื่อง
+ppsspp_io_timing_method=Simulate UMD delays	จำลองความหน่วงของแผ่น UMD
+ppsspp_force_lag_sync	บังคับตรงนาฬิกาจริง
+ppsspp_force_lag_sync.desc	ช้าลง แต่หน่วงน้อยลง
+ppsspp_locked_cpu_speed	ล็อกความเร็ว CPU
+ppsspp_memstick_inserted	เสียบเมมโมรีสติก
+ppsspp_memstick_inserted.desc	บางเกมต้องถอดหรือเสียบเมมโมรีสติก
+ppsspp_cache_iso	เก็บไฟล์ ISO ทั้งไฟล์ใน RAM
+ppsspp_cheats	สูตรโกงในตัว
+ppsspp_language	ภาษาในเกม
+ppsspp_language.desc	อัตโนมัติ: ใช้ภาษาของระบบ
+ppsspp_language=Automatic	อัตโนมัติ
+ppsspp_language=English	อังกฤษ
+ppsspp_language=Japanese	ญี่ปุ่น
+ppsspp_language=French	ฝรั่งเศส
+ppsspp_language=Spanish	สเปน
+ppsspp_language=German	เยอรมัน
+ppsspp_language=Italian	อิตาลี
+ppsspp_language=Dutch	ดัตช์
+ppsspp_language=Portuguese	โปรตุเกส
+ppsspp_language=Russian	รัสเซีย
+ppsspp_language=Korean	เกาหลี
+ppsspp_language=Chinese Traditional	จีนตัวเต็ม
+ppsspp_language=Chinese Simplified	จีนตัวย่อ
+ppsspp_psp_model	รุ่น PSP
+ppsspp_backend	ระบบกราฟิก
+ppsspp_backend.desc	อัตโนมัติ: ใช้ระบบกราฟิกของเครื่อง · ต้องเปิดเกมใหม่
+ppsspp_backend=auto	อัตโนมัติ
+ppsspp_software_rendering	วาดภาพด้วย CPU
+ppsspp_software_rendering.desc	ช้าแต่แม่นยำ · ต้องเปิดเกมใหม่
+ppsspp_internal_resolution	ความละเอียดการวาด
+ppsspp_internal_resolution.desc	ถ้าใช้ Vulkan ต้องเปิดเกมใหม่
+ppsspp_mulitsample_level	ลดรอยหยัก MSAA
+ppsspp_mulitsample_level.desc	Vulkan เท่านั้น · ต้องเปิดเกมใหม่
+ppsspp_cropto16x9	ตัดเป็น 16:9
+ppsspp_cropto16x9.desc	ตัดบรรทัดบนและล่างออกอย่างละ 1 ให้เป็น 16:9 พอดี · ถ้าใช้ Vulkan ต้องเปิดเกมใหม่
+ppsspp_frameskip	ข้ามเฟรม
+ppsspp_frameskiptype	แบบข้ามเฟรม
+ppsspp_frameskiptype=Number of frames	จำนวนเฟรม
+ppsspp_frameskiptype=Percent of FPS	เปอร์เซ็นต์ของ FPS
+ppsspp_auto_frameskip	ข้ามเฟรมอัตโนมัติ
+ppsspp_frame_duplication	ทำซ้ำเฟรมให้ครบ 60 Hz
+ppsspp_frame_duplication.desc	ทำให้เกมที่เฟรมต่ำดูลื่นขึ้น
+ppsspp_detect_vsync_swap_interval	ตรวจการเปลี่ยนอัตราเฟรม
+ppsspp_detect_vsync_swap_interval.desc	แจ้งระบบเมื่ออัตราเฟรมเปลี่ยน
+ppsspp_inflight_frames	บัฟเฟอร์คำสั่งกราฟิก
+ppsspp_inflight_frames.desc	GL/Vulkan เท่านั้น · ช้าลงแต่หน่วงน้อยลง · ต้องเปิดเกมใหม่
+ppsspp_inflight_frames=No buffer	ไม่มีบัฟเฟอร์
+ppsspp_gpu_hardware_transform	แปลงพิกัดด้วยฮาร์ดแวร์
+ppsspp_software_skinning	สกินนิ่งด้วย CPU
+ppsspp_software_skinning.desc	รวมการวาดโมเดลบน CPU · เร็วขึ้นในเกมส่วนใหญ่
+ppsspp_hardware_tesselation	สร้างเส้นโค้งด้วยฮาร์ดแวร์
+ppsspp_hardware_tesselation.desc	ใช้ฮาร์ดแวร์สร้างเส้นโค้ง
+ppsspp_texture_scaling_type	วิธีขยายพื้นผิว
+ppsspp_texture_scaling_type=hybrid	ไฮบริด
+ppsspp_texture_scaling_type=hybrid_bicubic	ไฮบริด + Bicubic
+ppsspp_texture_scaling_level	ระดับขยายพื้นผิว
+ppsspp_texture_scaling_level.desc	ใช้ CPU หนัก · บางส่วนอาจขยายช้าเพื่อไม่ให้กระตุก
+ppsspp_texture_deposterize	ลดแถบสีพื้นผิว
+ppsspp_texture_deposterize.desc	แก้แถบสีเป็นขั้นๆ ในพื้นผิวที่ขยาย
+ppsspp_texture_shader	เชดเดอร์พื้นผิว
+ppsspp_texture_shader.desc	Vulkan เท่านั้น · ใช้แทน "วิธีขยายพื้นผิว"
+ppsspp_texture_anisotropic_filtering	ฟิลเตอร์แอนไอโซทรอปิก
+ppsspp_texture_filtering	การกรองพื้นผิว
+ppsspp_texture_filtering=Nearest	ใกล้สุด (คม)
+ppsspp_texture_filtering=Linear	เชิงเส้น (นุ่ม)
+ppsspp_texture_filtering=Auto max quality	อัตโนมัติ คุณภาพสูงสุด
+ppsspp_smart_2d_texture_filtering	กรองพื้นผิว 2D อัจฉริยะ
+ppsspp_smart_2d_texture_filtering.desc	แก้ภาพเพี้ยนในเกม 2D บางเกมโดยใช้การกรองแบบใกล้สุด
+ppsspp_texture_replacement	แทนที่พื้นผิว
+ppsspp_button_preference	ปุ่มยืนยัน
+ppsspp_button_preference=Cross	กากบาท (X)
+ppsspp_button_preference=Circle	วงกลม (O)
+ppsspp_analog_is_circular	ชดเชยกรอบสติกกลม/เหลี่ยม
+ppsspp_analog_deadzone	ระยะไม่ตอบสนองอนาล็อก
+ppsspp_analog_deadzone.desc	ระยะไม่ตอบสนองเพิ่มจากที่ระบบตั้งไว้
+ppsspp_analog_sensitivity	สเกลแกนอนาล็อก
+ppsspp_analog_sensitivity.desc	ความไวเพิ่มจากที่ระบบตั้งไว้
+ppsspp_skip_buffer_effects	ข้ามเอฟเฟกต์บัฟเฟอร์
+ppsspp_skip_buffer_effects.desc	เร็วขึ้น แต่บางเกมอาจไม่มีภาพเลย
+ppsspp_skip_gpu_readbacks	ข้ามการอ่านกลับจาก GPU
+ppsspp_skip_gpu_readbacks.desc	บางเกมต้องใช้ ระวัง
+ppsspp_lazy_texture_caching	แคชพื้นผิวแบบขี้เกียจ (เร็วขึ้น)
+ppsspp_lazy_texture_caching.desc	เร็วขึ้น แต่บางเกมตัวหนังสืออาจเพี้ยน
+ppsspp_spline_quality	คุณภาพเส้นโค้ง
+ppsspp_spline_quality.desc	ใช้ในบางเกม · ความเนียนของเส้นโค้ง
+ppsspp_spline_quality=Low	ต่ำ
+ppsspp_spline_quality=Medium	กลาง
+ppsspp_spline_quality=High	สูง
+ppsspp_lower_resolution_for_effects	ลดความละเอียดเอฟเฟกต์
+ppsspp_lower_resolution_for_effects.desc	ลดภาพเพี้ยน
+ppsspp_lower_resolution_for_effects=Safe	ปลอดภัย
+ppsspp_lower_resolution_for_effects=Balanced	สมดุล
+ppsspp_lower_resolution_for_effects=Aggressive	เต็มที่
+ppsspp_enable_wlan	เปิดเครือข่าย/WLAN (ทดลอง อาจทำให้เกมเสีย)
+ppsspp_wlan_channel	ช่อง WLAN
+ppsspp_enable_builtin_pro_ad_hoc_server	เปิดเซิร์ฟเวอร์ PRO Ad Hoc ในตัว
+ppsspp_change_pro_ad_hoc_server_address	ที่อยู่เซิร์ฟเวอร์ PRO Ad Hoc ('localhost' = หลายเครื่องในเครื่องเดียว)
+ppsspp_change_pro_ad_hoc_server_address=IP address	ที่อยู่ IP
+ppsspp_enable_upnp	เปิด UPnP (ใช้เวลาตรวจสักครู่)
+ppsspp_upnp_use_original_port	UPnP ใช้พอร์ตเดิม (เปิด = เข้ากับ PSP)
+ppsspp_port_offset	เลื่อนพอร์ต ('0' = เข้ากับ PSP)
+ppsspp_minimum_timeout	หมดเวลาขั้นต่ำ (ms, '0' = ค่าเริ่มต้น)
+ppsspp_forced_first_connect	บังคับเชื่อมต่อครั้งแรก (เชื่อมเร็วขึ้น)
+# ---- DC (Flycast) ----
+reicast_region	โซน
+reicast_region=Japan	ญี่ปุ่น
+reicast_region=USA	อเมริกา
+reicast_region=Europe	ยุโรป
+reicast_region=Default	ค่าเริ่มต้น
+reicast_language	ภาษา
+reicast_language.desc	ภาษาของ BIOS และของเกมที่มีหลายภาษา
+reicast_language=Japanese	ญี่ปุ่น
+reicast_language=English	อังกฤษ
+reicast_language=German	เยอรมัน
+reicast_language=French	ฝรั่งเศส
+reicast_language=Spanish	สเปน
+reicast_language=Italian	อิตาลี
+reicast_language=Default	ค่าเริ่มต้น
+reicast_hle_bios	BIOS จำลอง HLE (ต้องเปิดเกมใหม่)
+reicast_hle_bios.desc	บังคับใช้ BIOS แบบจำลอง
+reicast_enable_dsp	ชิปเสียง DSP
+reicast_enable_dsp.desc	จำลองชิปประมวลผลเสียงของ Dreamcast · เสียงแม่นขึ้น แต่ใช้แรงเครื่องมากขึ้น
+reicast_allow_service_buttons	ปุ่ม Service ของตู้เกม
+reicast_allow_service_buttons.desc	เปิดปุ่ม SERVICE ของเกมตู้ เพื่อเข้าเมนูตั้งค่าตู้
+reicast_force_freeplay	เกม NAOMI เล่นฟรี
+reicast_force_freeplay.desc	ตั้งเกมให้เล่นได้โดยไม่ต้องหยอดเหรียญ
+reicast_coin_limit	จำกัดเหรียญ
+reicast_coin_limit.desc	หยอดเหรียญไม่ได้เมื่อครบจำนวนที่ตั้ง
+reicast_emulate_bba	จำลองอะแดปเตอร์บรอดแบนด์
+reicast_emulate_bba.desc	จำลองอะแดปเตอร์อีเทอร์เน็ตแทนโมเด็ม (ต้องเปิดเกมใหม่)
+reicast_upnp	เปิด UPnP
+reicast_upnp.desc	ตั้งค่าเราเตอร์ให้อัตโนมัติสำหรับเกมออนไลน์
+reicast_netplay_delay	หน่วงปุ่มตอนเล่นออนไลน์
+reicast_netplay_delay.desc	จำนวนเฟรมที่หน่วงปุ่มของเราเอง · ค่าสูง: เน็ตช้าแล้วกระตุกน้อยลงแต่ปุ่มช้าลง · ผู้เล่นแต่ละคนตั้งเอง
+reicast_dcnet	ใช้ DCNet
+reicast_dcnet.desc	ใช้บริการ DCNet ให้ Dreamcast ต่ออินเทอร์เน็ต
+reicast_internal_resolution	ความละเอียดภายใน
+reicast_internal_resolution.desc	ความละเอียดที่ใช้วาดภาพ
+reicast_internal_resolution=320x240	320x240 (ครึ่งหนึ่ง)
+reicast_internal_resolution=640x480	640x480 (ต้นฉบับ)
+reicast_cable_type	ชนิดสาย
+reicast_cable_type.desc	ชนิดสัญญาณภาพ · ทีวี (คอมโพสิต) เข้ากับเกมได้มากที่สุด
+reicast_cable_type=TV (RGB)	ทีวี (RGB)
+reicast_cable_type=TV (Composite)	ทีวี (คอมโพสิต)
+reicast_broadcast	มาตรฐานสัญญาณ
+reicast_broadcast=PAL	PAL (ทั่วโลก)
+reicast_broadcast=PAL_N	PAL-N (อาร์เจนตินา ปารากวัย อุรุกวัย)
+reicast_broadcast=PAL_M	PAL-M (บราซิล)
+reicast_broadcast=Default	ค่าเริ่มต้น
+reicast_screen_rotation	แนวจอ
+reicast_screen_rotation=horizontal	แนวนอน
+reicast_screen_rotation=vertical	แนวตั้ง
+reicast_alpha_sorting	เรียงลำดับความโปร่งใส
+reicast_alpha_sorting.desc	วิธีเรียงรูปทรงโปร่งใส
+reicast_alpha_sorting=per-strip (fast, least accurate)	ต่อแถบ (เร็ว แม่นน้อยสุด)
+reicast_alpha_sorting=per-triangle (normal)	ต่อสามเหลี่ยม (ปกติ)
+reicast_alpha_sorting=per-pixel (accurate)	ต่อพิกเซล (แม่น แต่ช้าสุด)
+reicast_oit_abuffer_size	ขนาดบัฟเฟอร์สะสมพิกเซล
+reicast_oit_abuffer_size.desc	ความละเอียดสูงอาจต้องใช้ค่าสูงขึ้นจึงจะแสดงถูกต้อง
+reicast_oit_layers	ชั้นโปร่งใสสูงสุด
+reicast_oit_layers.desc	ฉากซับซ้อนอาจต้องใช้ค่าสูงขึ้น
+reicast_emulate_framebuffer	จำลองเฟรมบัฟเฟอร์เต็มรูปแบบ
+reicast_emulate_framebuffer.desc	สำหรับเกมที่อ่านเขียนเฟรมบัฟเฟอร์ตรงๆ · เปิดแล้วความละเอียดถูกบังคับเป็น 640x480 และอาจช้าลงมาก
+reicast_enable_rttb	บัฟเฟอร์ RTT (วาดลงพื้นผิว)
+reicast_enable_rttb.desc	คัดลอกพื้นผิวที่วาดกลับไป VRAM · ปกติเปิดเองกับเกมที่ต้องใช้ · เปิดแล้วจะไม่ขยายพื้นผิวและอาจช้าลง
+reicast_mipmapping	มิปแมป
+reicast_mipmapping.desc	พื้นผิวที่อยู่ไกลใช้รุ่นเล็กลง · เร็วขึ้นและลดภาพระยิบ
+reicast_fog	เอฟเฟกต์หมอก
+reicast_volume_modifier_enable	Volume Modifier (เงา)
+reicast_volume_modifier_enable.desc	ความสามารถของ GPU ที่เกมใช้วาดเงา · ควรเปิดไว้ ใช้แรงน้อยมาก
+reicast_anisotropic_filtering	ฟิลเตอร์แอนไอโซทรอปิก
+reicast_anisotropic_filtering.desc	พื้นผิวที่มองเฉียงคมขึ้น · ค่าสูงใช้ GPU มาก · มีผลเมื่อเปิดเกมใหม่
+reicast_texture_filtering	การกรองพื้นผิว
+reicast_texture_filtering.desc	บังคับวิธีกรองพื้นผิวให้คมหรือนุ่มขึ้น · ค่าอื่นนอกจากค่าเริ่มต้นอาจทำให้ภาพผิด · มีผลเมื่อเปิดเกมใหม่
+reicast_texture_filtering=0	ค่าเริ่มต้น
+reicast_texture_filtering=1	บังคับใกล้สุด (คม)
+reicast_texture_filtering=2	บังคับเชิงเส้น (นุ่ม)
+reicast_delay_frame_swapping	หน่วงการสลับเฟรม
+reicast_delay_frame_swapping.desc	กันจอกะพริบหรือวิดีโอเพี้ยน · ไม่แนะนำบนเครื่องช้า
+reicast_detect_vsync_swap_interval	ตรวจการเปลี่ยนอัตราเฟรม
+reicast_detect_vsync_swap_interval.desc	ช่วยให้เกมที่ล็อก 30 หรือ 20 fps ลื่นขึ้น · ควรปิดกับเกมที่เฟรมไม่นิ่ง (Ecco the Dolphin, Unreal Tournament) · ใช้ไม่ได้เมื่อเปิดข้ามเฟรมอัตโนมัติ
+reicast_pvr2_filtering	ฟิลเตอร์ PowerVR2
+reicast_pvr2_filtering.desc	ปรับภาพให้เหมือนชิปกราฟิก PowerVR2 และสัญญาณภาพอนาล็อก
+reicast_native_depth_interpolation	ประมาณค่าความลึกแบบเดิม
+reicast_native_depth_interpolation.desc	แก้พื้นผิวเสียและปัญหาความลึกบน GPU AMD และบางครั้ง Intel
+reicast_fix_upscale_bleeding_edge	แก้ขอบเลอะเมื่อขยาย
+reicast_fix_upscale_bleeding_edge.desc	แก้สีเลอะขอบพื้นผิวเมื่อขยาย · ถ้าเกม 2D (MVC2, CVS, KOF) พิกเซลบิด ลองปิด
+reicast_threaded_rendering	วาดภาพแยกเธรด
+reicast_threaded_rendering.desc	ให้ GPU กับ CPU ทำงานคนละเธรด · แนะนำอย่างยิ่ง
+reicast_auto_skip_frame	ข้ามเฟรมอัตโนมัติ
+reicast_auto_skip_frame.desc	ข้ามเฟรมเองเมื่อเกมช้า · ใช้ได้เมื่อเปิดวาดภาพแยกเธรด
+reicast_auto_skip_frame=some	ปกติ
+reicast_auto_skip_frame=more	มากสุด
+reicast_frame_skipping	ข้ามเฟรม
+reicast_frame_skipping.desc	จำนวนเฟรมที่ข้ามระหว่างเฟรมที่แสดง
+reicast_widescreen_cheats	โค้ดจอกว้าง (ต้องเปิดเกมใหม่)
+reicast_widescreen_cheats.desc	เปิดโค้ดที่ทำให้บางเกมแสดงแบบจอกว้าง
+reicast_widescreen_hack	แฮ็กจอกว้าง
+reicast_widescreen_hack.desc	วาดภาพเลยกรอบ 4:3 · บริเวณที่เพิ่มมาอาจมีภาพผิด
+reicast_gdrom_fast_loading	โหลดแผ่น GD-ROM เร็ว (ไม่แม่น)
+reicast_gdrom_fast_loading.desc	ทำให้โหลดแผ่นเร็วขึ้น
+reicast_dc_32mb_mod	ดัดแปลง RAM 32MB
+reicast_dc_32mb_mod.desc	ใช้ RAM 32MB แบบเครื่องดัดแปลง · อาจกระทบความเข้ากันของเกม
+reicast_sh4clock	ความเร็ว CPU SH4
+reicast_sh4clock.desc	เปลี่ยนความเร็ว CPU จาก 200 MHz · ลดช่วยเครื่องช้า · เพิ่มอาจทำให้บางเกมเฟรมสูงขึ้น · ใช้อย่างระวัง
+reicast_custom_textures	โหลดพื้นผิวที่ทำเอง
+reicast_custom_textures.desc	โหลดพื้นผิวจากโฟลเดอร์ system/dc/textures/<game-id>/
+reicast_preload_custom_textures	โหลดพื้นผิวที่ทำเองล่วงหน้า
+reicast_preload_custom_textures.desc	โหลดตอนเริ่มเกม · อาจเร็วขึ้นแต่ใช้หน่วยความจำมากขึ้น
+reicast_dump_textures	บันทึกพื้นผิวออกเป็นไฟล์
+reicast_dump_textures.desc	พื้นผิวใหม่ทุกอันจะถูกบันทึกเป็น .png ใน system/dc/texdump/<game-id>/
+reicast_dump_replaced_textures	บันทึกพื้นผิวที่ถูกแทนแล้วด้วย
+reicast_dump_replaced_textures.desc	บันทึกพื้นผิวที่ถูกแทนด้วยพื้นผิวทำเองแล้วเสมอ
+reicast_analog_stick_deadzone	ระยะไม่ตอบสนองอนาล็อก
+reicast_analog_stick_deadzone.desc	ต้องดันสติกแค่ไหนถึงเริ่มตอบสนอง
+reicast_trigger_deadzone	ระยะไม่ตอบสนองไกปืน
+reicast_trigger_deadzone.desc	ต้องกดทริกเกอร์แค่ไหนถึงเริ่มตอบสนอง
+reicast_digital_triggers	ทริกเกอร์แบบปุ่มธรรมดา
+reicast_digital_triggers.desc	ทริกเกอร์มีแค่กดสุดหรือไม่กด ไม่มีระดับกลาง
+reicast_network_output	ส่งสัญญาณเอาต์พุตทางเครือข่าย
+reicast_network_output.desc	ส่งสถานะเอาต์พุตและการสั่นทาง TCP พอร์ต 8000 · ใช้กับตัวเลือก -output network ของ MAME
+reicast_show_lightgun_settings	แสดงตั้งค่าปืน
+reicast_show_lightgun_settings.desc	แสดงตัวเลือกเป้าปืน
+reicast_lightgun_crosshair_size_scaling	ขนาดเป้าปืน
+reicast_per_content_vmus	VMU แยกตามเกม
+reicast_per_content_vmus.desc	ปิด: ทุกเกมใช้ไฟล์ VMU ชุดเดียวกัน (สูงสุด 8) · VMU A1: แต่ละเกมมี A1 ของตัวเอง · ทุก VMU: แต่ละเกมมีครบ 8 ไฟล์
+reicast_per_content_vmus=All VMUs	ทุก VMU
+reicast_vmu_sound	เสียง VMU
+reicast_vmu_sound.desc	เล่นเสียงบี๊บของ VMU
+reicast_linked_vmu_storage	เก็บ VMU ใน DreamPotato
+reicast_linked_vmu_storage.desc	เก็บข้อมูล VMU ในตัวจำลอง DreamPotato ที่ต่ออยู่ ไม่ใช้ไฟล์ในเครื่อง
+reicast_show_vmu_screen_settings	แสดงตั้งค่าจอ VMU
+reicast_show_vmu_screen_settings.desc	แสดงตัวเลือกจอ VMU: แสดงหรือไม่ ขนาด ตำแหน่ง สี
+reicast_vmu1_screen_display	แสดงจอ VMU 1
+reicast_vmu1_screen_position	ตำแหน่งจอ VMU 1
+reicast_vmu1_screen_size_mult	ขนาดจอ VMU 1
+reicast_vmu1_pixel_on_color	สีพิกเซลติด จอ VMU 1
+reicast_vmu1_pixel_off_color	สีพิกเซลดับ จอ VMU 1
+reicast_vmu1_screen_opacity	ความทึบจอ VMU 1
+reicast_vmu1_screen_position=Upper Left	บนซ้าย
+reicast_vmu1_screen_position=Upper Right	บนขวา
+reicast_vmu1_screen_position=Lower Left	ล่างซ้าย
+reicast_vmu1_screen_position=Lower Right	ล่างขวา
+reicast_vmu1_pixel_on_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu1_pixel_off_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu1_pixel_on_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu1_pixel_off_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu1_pixel_on_color=BLACK 02	ดำ
+reicast_vmu1_pixel_off_color=BLACK 02	ดำ
+reicast_vmu1_pixel_on_color=BLUE 03	น้ำเงิน
+reicast_vmu1_pixel_off_color=BLUE 03	น้ำเงิน
+reicast_vmu1_pixel_on_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu1_pixel_off_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu1_pixel_on_color=GREEN 05	เขียว
+reicast_vmu1_pixel_off_color=GREEN 05	เขียว
+reicast_vmu1_pixel_on_color=CYAN 06	ฟ้าเขียว
+reicast_vmu1_pixel_off_color=CYAN 06	ฟ้าเขียว
+reicast_vmu1_pixel_on_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu1_pixel_off_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu1_pixel_on_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu1_pixel_off_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu1_pixel_on_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu1_pixel_off_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu1_pixel_on_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu1_pixel_off_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu1_pixel_on_color=RED 11	แดง
+reicast_vmu1_pixel_off_color=RED 11	แดง
+reicast_vmu1_pixel_on_color=PURPLE 12	ม่วง
+reicast_vmu1_pixel_off_color=PURPLE 12	ม่วง
+reicast_vmu1_pixel_on_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu1_pixel_off_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu1_pixel_on_color=YELLOW 14	เหลือง
+reicast_vmu1_pixel_off_color=YELLOW 14	เหลือง
+reicast_vmu1_pixel_on_color=GRAY 15	เทา
+reicast_vmu1_pixel_off_color=GRAY 15	เทา
+reicast_vmu1_pixel_on_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu1_pixel_off_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu1_pixel_on_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu1_pixel_off_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu1_pixel_on_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu1_pixel_off_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu1_pixel_on_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu1_pixel_off_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu1_pixel_on_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu1_pixel_off_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu1_pixel_on_color=MAGENTA 21	ม่วงแดง
+reicast_vmu1_pixel_off_color=MAGENTA 21	ม่วงแดง
+reicast_vmu1_pixel_on_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu1_pixel_off_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu1_pixel_on_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu1_pixel_off_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu1_pixel_on_color=ORANGE 24	ส้ม
+reicast_vmu1_pixel_off_color=ORANGE 24	ส้ม
+reicast_vmu1_pixel_on_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu1_pixel_off_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu1_pixel_on_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu1_pixel_off_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu1_pixel_on_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu1_pixel_off_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu1_pixel_on_color=WHITE 28	ขาว
+reicast_vmu1_pixel_off_color=WHITE 28	ขาว
+reicast_vmu2_screen_display	แสดงจอ VMU 2
+reicast_vmu2_screen_position	ตำแหน่งจอ VMU 2
+reicast_vmu2_screen_size_mult	ขนาดจอ VMU 2
+reicast_vmu2_pixel_on_color	สีพิกเซลติด จอ VMU 2
+reicast_vmu2_pixel_off_color	สีพิกเซลดับ จอ VMU 2
+reicast_vmu2_screen_opacity	ความทึบจอ VMU 2
+reicast_vmu2_screen_position=Upper Left	บนซ้าย
+reicast_vmu2_screen_position=Upper Right	บนขวา
+reicast_vmu2_screen_position=Lower Left	ล่างซ้าย
+reicast_vmu2_screen_position=Lower Right	ล่างขวา
+reicast_vmu2_pixel_on_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu2_pixel_off_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu2_pixel_on_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu2_pixel_off_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu2_pixel_on_color=BLACK 02	ดำ
+reicast_vmu2_pixel_off_color=BLACK 02	ดำ
+reicast_vmu2_pixel_on_color=BLUE 03	น้ำเงิน
+reicast_vmu2_pixel_off_color=BLUE 03	น้ำเงิน
+reicast_vmu2_pixel_on_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu2_pixel_off_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu2_pixel_on_color=GREEN 05	เขียว
+reicast_vmu2_pixel_off_color=GREEN 05	เขียว
+reicast_vmu2_pixel_on_color=CYAN 06	ฟ้าเขียว
+reicast_vmu2_pixel_off_color=CYAN 06	ฟ้าเขียว
+reicast_vmu2_pixel_on_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu2_pixel_off_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu2_pixel_on_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu2_pixel_off_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu2_pixel_on_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu2_pixel_off_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu2_pixel_on_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu2_pixel_off_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu2_pixel_on_color=RED 11	แดง
+reicast_vmu2_pixel_off_color=RED 11	แดง
+reicast_vmu2_pixel_on_color=PURPLE 12	ม่วง
+reicast_vmu2_pixel_off_color=PURPLE 12	ม่วง
+reicast_vmu2_pixel_on_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu2_pixel_off_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu2_pixel_on_color=YELLOW 14	เหลือง
+reicast_vmu2_pixel_off_color=YELLOW 14	เหลือง
+reicast_vmu2_pixel_on_color=GRAY 15	เทา
+reicast_vmu2_pixel_off_color=GRAY 15	เทา
+reicast_vmu2_pixel_on_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu2_pixel_off_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu2_pixel_on_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu2_pixel_off_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu2_pixel_on_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu2_pixel_off_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu2_pixel_on_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu2_pixel_off_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu2_pixel_on_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu2_pixel_off_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu2_pixel_on_color=MAGENTA 21	ม่วงแดง
+reicast_vmu2_pixel_off_color=MAGENTA 21	ม่วงแดง
+reicast_vmu2_pixel_on_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu2_pixel_off_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu2_pixel_on_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu2_pixel_off_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu2_pixel_on_color=ORANGE 24	ส้ม
+reicast_vmu2_pixel_off_color=ORANGE 24	ส้ม
+reicast_vmu2_pixel_on_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu2_pixel_off_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu2_pixel_on_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu2_pixel_off_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu2_pixel_on_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu2_pixel_off_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu2_pixel_on_color=WHITE 28	ขาว
+reicast_vmu2_pixel_off_color=WHITE 28	ขาว
+reicast_vmu3_screen_display	แสดงจอ VMU 3
+reicast_vmu3_screen_position	ตำแหน่งจอ VMU 3
+reicast_vmu3_screen_size_mult	ขนาดจอ VMU 3
+reicast_vmu3_pixel_on_color	สีพิกเซลติด จอ VMU 3
+reicast_vmu3_pixel_off_color	สีพิกเซลดับ จอ VMU 3
+reicast_vmu3_screen_opacity	ความทึบจอ VMU 3
+reicast_vmu3_screen_position=Upper Left	บนซ้าย
+reicast_vmu3_screen_position=Upper Right	บนขวา
+reicast_vmu3_screen_position=Lower Left	ล่างซ้าย
+reicast_vmu3_screen_position=Lower Right	ล่างขวา
+reicast_vmu3_pixel_on_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu3_pixel_off_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu3_pixel_on_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu3_pixel_off_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu3_pixel_on_color=BLACK 02	ดำ
+reicast_vmu3_pixel_off_color=BLACK 02	ดำ
+reicast_vmu3_pixel_on_color=BLUE 03	น้ำเงิน
+reicast_vmu3_pixel_off_color=BLUE 03	น้ำเงิน
+reicast_vmu3_pixel_on_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu3_pixel_off_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu3_pixel_on_color=GREEN 05	เขียว
+reicast_vmu3_pixel_off_color=GREEN 05	เขียว
+reicast_vmu3_pixel_on_color=CYAN 06	ฟ้าเขียว
+reicast_vmu3_pixel_off_color=CYAN 06	ฟ้าเขียว
+reicast_vmu3_pixel_on_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu3_pixel_off_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu3_pixel_on_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu3_pixel_off_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu3_pixel_on_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu3_pixel_off_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu3_pixel_on_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu3_pixel_off_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu3_pixel_on_color=RED 11	แดง
+reicast_vmu3_pixel_off_color=RED 11	แดง
+reicast_vmu3_pixel_on_color=PURPLE 12	ม่วง
+reicast_vmu3_pixel_off_color=PURPLE 12	ม่วง
+reicast_vmu3_pixel_on_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu3_pixel_off_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu3_pixel_on_color=YELLOW 14	เหลือง
+reicast_vmu3_pixel_off_color=YELLOW 14	เหลือง
+reicast_vmu3_pixel_on_color=GRAY 15	เทา
+reicast_vmu3_pixel_off_color=GRAY 15	เทา
+reicast_vmu3_pixel_on_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu3_pixel_off_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu3_pixel_on_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu3_pixel_off_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu3_pixel_on_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu3_pixel_off_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu3_pixel_on_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu3_pixel_off_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu3_pixel_on_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu3_pixel_off_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu3_pixel_on_color=MAGENTA 21	ม่วงแดง
+reicast_vmu3_pixel_off_color=MAGENTA 21	ม่วงแดง
+reicast_vmu3_pixel_on_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu3_pixel_off_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu3_pixel_on_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu3_pixel_off_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu3_pixel_on_color=ORANGE 24	ส้ม
+reicast_vmu3_pixel_off_color=ORANGE 24	ส้ม
+reicast_vmu3_pixel_on_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu3_pixel_off_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu3_pixel_on_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu3_pixel_off_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu3_pixel_on_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu3_pixel_off_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu3_pixel_on_color=WHITE 28	ขาว
+reicast_vmu3_pixel_off_color=WHITE 28	ขาว
+reicast_vmu4_screen_display	แสดงจอ VMU 4
+reicast_vmu4_screen_position	ตำแหน่งจอ VMU 4
+reicast_vmu4_screen_size_mult	ขนาดจอ VMU 4
+reicast_vmu4_pixel_on_color	สีพิกเซลติด จอ VMU 4
+reicast_vmu4_pixel_off_color	สีพิกเซลดับ จอ VMU 4
+reicast_vmu4_screen_opacity	ความทึบจอ VMU 4
+reicast_vmu4_screen_position=Upper Left	บนซ้าย
+reicast_vmu4_screen_position=Upper Right	บนขวา
+reicast_vmu4_screen_position=Lower Left	ล่างซ้าย
+reicast_vmu4_screen_position=Lower Right	ล่างขวา
+reicast_vmu4_pixel_on_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu4_pixel_off_color=DEFAULT_ON 00	ค่าเริ่มต้น (ติด)
+reicast_vmu4_pixel_on_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu4_pixel_off_color=DEFAULT_OFF 01	ค่าเริ่มต้น (ดับ)
+reicast_vmu4_pixel_on_color=BLACK 02	ดำ
+reicast_vmu4_pixel_off_color=BLACK 02	ดำ
+reicast_vmu4_pixel_on_color=BLUE 03	น้ำเงิน
+reicast_vmu4_pixel_off_color=BLUE 03	น้ำเงิน
+reicast_vmu4_pixel_on_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu4_pixel_off_color=LIGHT_BLUE 04	ฟ้าอ่อน
+reicast_vmu4_pixel_on_color=GREEN 05	เขียว
+reicast_vmu4_pixel_off_color=GREEN 05	เขียว
+reicast_vmu4_pixel_on_color=CYAN 06	ฟ้าเขียว
+reicast_vmu4_pixel_off_color=CYAN 06	ฟ้าเขียว
+reicast_vmu4_pixel_on_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu4_pixel_off_color=CYAN_BLUE 07	ฟ้าน้ำเงิน
+reicast_vmu4_pixel_on_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu4_pixel_off_color=LIGHT_GREEN 08	เขียวอ่อน
+reicast_vmu4_pixel_on_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu4_pixel_off_color=CYAN_GREEN 09	เขียวฟ้า
+reicast_vmu4_pixel_on_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu4_pixel_off_color=LIGHT_CYAN 10	ฟ้าเขียวอ่อน
+reicast_vmu4_pixel_on_color=RED 11	แดง
+reicast_vmu4_pixel_off_color=RED 11	แดง
+reicast_vmu4_pixel_on_color=PURPLE 12	ม่วง
+reicast_vmu4_pixel_off_color=PURPLE 12	ม่วง
+reicast_vmu4_pixel_on_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu4_pixel_off_color=LIGHT_PURPLE 13	ม่วงอ่อน
+reicast_vmu4_pixel_on_color=YELLOW 14	เหลือง
+reicast_vmu4_pixel_off_color=YELLOW 14	เหลือง
+reicast_vmu4_pixel_on_color=GRAY 15	เทา
+reicast_vmu4_pixel_off_color=GRAY 15	เทา
+reicast_vmu4_pixel_on_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu4_pixel_off_color=LIGHT_PURPLE_2 16	ม่วงอ่อน (2)
+reicast_vmu4_pixel_on_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu4_pixel_off_color=LIGHT_GREEN_2 17	เขียวอ่อน (2)
+reicast_vmu4_pixel_on_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu4_pixel_off_color=LIGHT_GREEN_3 18	เขียวอ่อน (3)
+reicast_vmu4_pixel_on_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu4_pixel_off_color=LIGHT_CYAN_2 19	ฟ้าเขียวอ่อน (2)
+reicast_vmu4_pixel_on_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu4_pixel_off_color=LIGHT_RED_2 20	แดงอ่อน (2)
+reicast_vmu4_pixel_on_color=MAGENTA 21	ม่วงแดง
+reicast_vmu4_pixel_off_color=MAGENTA 21	ม่วงแดง
+reicast_vmu4_pixel_on_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu4_pixel_off_color=LIGHT_PURPLE_3 22	ม่วงอ่อน (3)
+reicast_vmu4_pixel_on_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu4_pixel_off_color=LIGHT_ORANGE 23	ส้มอ่อน
+reicast_vmu4_pixel_on_color=ORANGE 24	ส้ม
+reicast_vmu4_pixel_off_color=ORANGE 24	ส้ม
+reicast_vmu4_pixel_on_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu4_pixel_off_color=LIGHT_PURPLE_4 25	ม่วงอ่อน (4)
+reicast_vmu4_pixel_on_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu4_pixel_off_color=LIGHT_YELLOW 26	เหลืองอ่อน
+reicast_vmu4_pixel_on_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu4_pixel_off_color=LIGHT_YELLOW_2 27	เหลืองอ่อน (2)
+reicast_vmu4_pixel_on_color=WHITE 28	ขาว
+reicast_vmu4_pixel_off_color=WHITE 28	ขาว
+reicast_lightgun1_crosshair	เป้าปืน 1
+reicast_lightgun1_crosshair=White	ขาว
+reicast_lightgun1_crosshair=Red	แดง
+reicast_lightgun1_crosshair=Green	เขียว
+reicast_lightgun1_crosshair=Blue	น้ำเงิน
+reicast_lightgun2_crosshair	เป้าปืน 2
+reicast_lightgun2_crosshair=White	ขาว
+reicast_lightgun2_crosshair=Red	แดง
+reicast_lightgun2_crosshair=Green	เขียว
+reicast_lightgun2_crosshair=Blue	น้ำเงิน
+reicast_lightgun3_crosshair	เป้าปืน 3
+reicast_lightgun3_crosshair=White	ขาว
+reicast_lightgun3_crosshair=Red	แดง
+reicast_lightgun3_crosshair=Green	เขียว
+reicast_lightgun3_crosshair=Blue	น้ำเงิน
+reicast_lightgun4_crosshair	เป้าปืน 4
+reicast_lightgun4_crosshair=White	ขาว
+reicast_lightgun4_crosshair=Red	แดง
+reicast_lightgun4_crosshair=Green	เขียว
+reicast_lightgun4_crosshair=Blue	น้ำเงิน
+reicast_device_port1_slot1	อุปกรณ์ในช่อง A1
+reicast_device_port1_slot1.desc	อุปกรณ์ที่เสียบในช่องเสริม A1 (พอร์ต A ช่อง 1)
+reicast_device_port1_slot1=Purupuru	แพ็กสั่น
+reicast_device_port1_slot1=None	ไม่มี
+reicast_device_port1_slot2	อุปกรณ์ในช่อง A2
+reicast_device_port1_slot2.desc	อุปกรณ์ที่เสียบในช่องเสริม A2 (พอร์ต A ช่อง 2)
+reicast_device_port1_slot2=Purupuru	แพ็กสั่น
+reicast_device_port1_slot2=None	ไม่มี
+reicast_device_port2_slot1	อุปกรณ์ในช่อง B1
+reicast_device_port2_slot1.desc	อุปกรณ์ที่เสียบในช่องเสริม B1 (พอร์ต B ช่อง 1)
+reicast_device_port2_slot1=Purupuru	แพ็กสั่น
+reicast_device_port2_slot1=None	ไม่มี
+reicast_device_port2_slot2	อุปกรณ์ในช่อง B2
+reicast_device_port2_slot2.desc	อุปกรณ์ที่เสียบในช่องเสริม B2 (พอร์ต B ช่อง 2)
+reicast_device_port2_slot2=Purupuru	แพ็กสั่น
+reicast_device_port2_slot2=None	ไม่มี
+reicast_device_port3_slot1	อุปกรณ์ในช่อง C1
+reicast_device_port3_slot1.desc	อุปกรณ์ที่เสียบในช่องเสริม C1 (พอร์ต C ช่อง 1)
+reicast_device_port3_slot1=Purupuru	แพ็กสั่น
+reicast_device_port3_slot1=None	ไม่มี
+reicast_device_port3_slot2	อุปกรณ์ในช่อง C2
+reicast_device_port3_slot2.desc	อุปกรณ์ที่เสียบในช่องเสริม C2 (พอร์ต C ช่อง 2)
+reicast_device_port3_slot2=Purupuru	แพ็กสั่น
+reicast_device_port3_slot2=None	ไม่มี
+reicast_device_port4_slot1	อุปกรณ์ในช่อง D1
+reicast_device_port4_slot1.desc	อุปกรณ์ที่เสียบในช่องเสริม D1 (พอร์ต D ช่อง 1)
+reicast_device_port4_slot1=Purupuru	แพ็กสั่น
+reicast_device_port4_slot1=None	ไม่มี
+reicast_device_port4_slot2	อุปกรณ์ในช่อง D2
+reicast_device_port4_slot2.desc	อุปกรณ์ที่เสียบในช่องเสริม D2 (พอร์ต D ช่อง 2)
+reicast_device_port4_slot2=Purupuru	แพ็กสั่น
+reicast_device_port4_slot2=None	ไม่มี
+ppsspp_change_mac_address01	ที่อยู่ MAC ส่วนที่ 1
+ppsspp_pro_ad_hoc_server_address01	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 1
+ppsspp_change_mac_address02	ที่อยู่ MAC ส่วนที่ 2
+ppsspp_pro_ad_hoc_server_address02	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 2
+ppsspp_change_mac_address03	ที่อยู่ MAC ส่วนที่ 3
+ppsspp_pro_ad_hoc_server_address03	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 3
+ppsspp_change_mac_address04	ที่อยู่ MAC ส่วนที่ 4
+ppsspp_pro_ad_hoc_server_address04	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 4
+ppsspp_change_mac_address05	ที่อยู่ MAC ส่วนที่ 5
+ppsspp_pro_ad_hoc_server_address05	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 5
+ppsspp_change_mac_address06	ที่อยู่ MAC ส่วนที่ 6
+ppsspp_pro_ad_hoc_server_address06	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 6
+ppsspp_change_mac_address07	ที่อยู่ MAC ส่วนที่ 7
+ppsspp_pro_ad_hoc_server_address07	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 7
+ppsspp_change_mac_address08	ที่อยู่ MAC ส่วนที่ 8
+ppsspp_pro_ad_hoc_server_address08	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 8
+ppsspp_change_mac_address09	ที่อยู่ MAC ส่วนที่ 9
+ppsspp_pro_ad_hoc_server_address09	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 9
+ppsspp_change_mac_address10	ที่อยู่ MAC ส่วนที่ 10
+ppsspp_pro_ad_hoc_server_address10	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 10
+ppsspp_change_mac_address11	ที่อยู่ MAC ส่วนที่ 11
+ppsspp_pro_ad_hoc_server_address11	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 11
+ppsspp_change_mac_address12	ที่อยู่ MAC ส่วนที่ 12
+ppsspp_pro_ad_hoc_server_address12	ที่อยู่ IP เซิร์ฟเวอร์ Ad Hoc ส่วนที่ 12

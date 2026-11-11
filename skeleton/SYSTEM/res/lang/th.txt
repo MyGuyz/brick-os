@@ -203,7 +203,7 @@ Brick OS version	เวอร์ชัน Brick OS
 Release date	วันที่ออก
 Platform	รุ่นเครื่อง
 Firmware version	เวอร์ชันเฟิร์มแวร์
-Updater	อัปเดตระบบ
+Updater	ตรวจหาอัปเดต
 Enable or disable WiFi	เปิดหรือปิด WiFi
 Enable or disable Bluetooth	เปิดหรือปิด Bluetooth
 Connect	เชื่อมต่อ
@@ -365,8 +365,8 @@ Pairing...	กำลังจับคู่...
 Disconnecting...	กำลังตัดการเชื่อมต่อ...
 Remove saved network credentials	ลบรหัส WiFi ที่บันทึกไว้
 Remove pairing with this device	เลิกจับคู่กับอุปกรณ์นี้
-You already have latest version	คุณใช้เวอร์ชันล่าสุดแล้ว
-Checking for update..	กำลังตรวจหาอัปเดต..
+You already have latest version	เป็นเวอร์ชันล่าสุดแล้ว
+Checking for update..	กำลังตรวจหาอัปเดต…
 Fetching release info...	กำลังดึงข้อมูลเวอร์ชัน...
 Press any button to close	กดปุ่มใดก็ได้เพื่อปิด
 Your settings are automatically saved	การตั้งค่าบันทึกอัตโนมัติ
@@ -673,3 +673,31 @@ LED light effect	รูปแบบการเปลี่ยนแสง
 The light shows this colour now · B cancels	ไฟจริงเปลี่ยนตามทันที · B ยกเลิกได้
 The lights show these settings while you are on this page, even while charging	ไฟจริงแสดงค่าที่ตั้งตลอดเวลาที่อยู่ในหน้านี้ แม้กำลังชาร์จ
 F1 and F2 share one brightness	ปุ่ม F1 และ F2 ใช้ความสว่างเดียวกัน
+# Brick OS 2.0: อัปเดต, แอปที่ปักหมุด, ตั้งค่าแยกเครื่อง (DESIGN 6.7a-c)
+Updates	อัปเดต
+This version	เวอร์ชันนี้
+Update to	อัปเดตเป็น
+Update	อัปเดต
+Try again	ลองอีกครั้ง
+Checks each time this page opens. Needs WiFi.	ตรวจหาอัปเดตเองทุกครั้งที่เปิดหน้านี้ · ต้องต่อ WiFi
+Pinned apps	แอปที่ปักหมุด
+%d apps	%d แอป
+On Home · in this order	บนหน้าแรก · เรียงตามนี้
+Other apps · A–Z	แอปอื่น · ก–ฮ
+You can pin any number of apps. Over 6, Home's row scrolls.	ปักหมุดได้ไม่จำกัด · เกิน 6 แอป แถวหน้าแรกเลื่อนได้
+Reorder	จัดเรียง
+Display options	การแสดงผล
+Saves	เซฟ
+Per-console settings	ตั้งค่าแยกเครื่อง
+%d consoles	%d เครื่อง
+Consoles with games · A–Z	เครื่องที่มีเกม · ก–ฮ
+Applies the next time a game starts	มีผลตอนเปิดเกมครั้งถัดไป
+Can't be set yet	ยังตั้งค่าไม่ได้
+Start one game of this console first	เปิดเกมของเครื่องนี้ก่อน 1 ครั้ง
+enabled	เปิด
+disabled	ปิด
+Enabled	เปิด
+Disabled	ปิด
+auto	อัตโนมัติ
+False	ปิด
+True	เปิด

@@ -41,6 +41,7 @@ static const Cat CATS[] = {
 	{"In-game", "game", 0x30D158, 5},
 	{"LED Control", "led", 0xFFD60A, 5},
 	{"System", "cpu", 0x8E8E93, 6},
+	{"Updates", "update", 0x0A84FF, 6},
 	{"About", "info", 0x8E8E93, 6},
 };
 #define NCATS ((int)(sizeof(CATS) / sizeof(CATS[0])))
@@ -114,6 +115,8 @@ static const char* itemValue(SettingItem* it) {
 		return it->get_display ? it->get_display() : it->display_text;
 	if (it->type == ITEM_TEXT_INPUT)
 		return it->get_text ? it->get_text() : it->text_value;
+	if (it->type == ITEM_BUTTON || it->type == ITEM_SUBMENU) // a page row's value ("6 แอป", a console's emulator)
+		return it->get_display ? it->get_display() : it->display_text;
 	return "";
 }
 
@@ -330,6 +333,8 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	if (hot) {
 		int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
 		x -= gw / 2, w += gw, y -= gh / 2, h += gh;
+		if (it->lifted) // จัดเรียง: picked up, as Home's (DESIGN §6.1)
+			y -= BOS_px(12);
 		BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
 	}
 	float a = hot ? 1.0f : BOS_DIM;
@@ -337,6 +342,23 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	int cy = y + h / 2, lx = x + BOS_px(28), right = x + w - BOS_px(24);
 	int weight = hot ? 600 : 500;
 	const char* name = I18N_text(it->name);
+	if (it->lead_icon) { // an app's tile: its icon on surface2
+		int t = BOS_px(60), ic = BOS_px(44);
+		lx = x + BOS_px(20);
+		BOS_rrect(s, lx, cy - t / 2, t, t, BOS_px(16), hot ? BOS_theme()->surface2 : mix(BOS_theme()->surface2, BOS_theme()->surface, a));
+		BOS_icon(s, it->lead_icon, it->lead_color, hot ? 1 : a, lx + (t - ic) / 2, cy - ic / 2, ic);
+		lx += t + BOS_px(22);
+	}
+	if (it->lifted && hot) { // ▲▼ in place of the value
+		int ar = BOS_px(30);
+		BOS_icon(s, "chevu", sub, 1, right - ar, cy - ar - BOS_px(1), ar);
+		BOS_icon(s, "chevd", sub, 1, right - ar, cy + BOS_px(1), ar);
+		int nw = it->note[0] ? BOS_textW(it->note, BOS_FS_SMALL, 400) : 0;
+		if (nw)
+			BOS_textMid(s, it->note, BOS_FS_SMALL, 400, sub, 1, right - ar - BOS_px(18) - nw, cy);
+		BOS_textMarquee(s, name, BOS_FS_BODY, weight, fg, a, lx, cy, right - ar - BOS_px(40) - nw - lx);
+		return;
+	}
 
 	// the value: a switch, a slider, a colour dot, or text; a Left/Right row in focus gets ‹ › round it
 	enum { V_NONE, V_TEXT, V_SLIDER, V_DOT, V_TOGGLE, V_CAPS } k = V_NONE;
@@ -374,8 +396,18 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	}
 	bool arrows = hot && SettingsBos_isPickable(it);
 	int ar = BOS_px(28), ag = BOS_px(4), arw = arrows ? 2 * (ar + ag) : 0;
-	int chevw = it->type == ITEM_SUBMENU || it->color_slot || it->dot_color ? BOS_px(28 + 10) : 0;
-	int room = right - chevw - lx; // the label's width with nothing beside it
+	bool chev = it->type == ITEM_SUBMENU || it->color_slot || it->dot_color || it->chevron;
+	int chevw = chev ? BOS_px(28 + 10) : 0;
+	if (it->pill && it->pill[0]) { // a primary pill before the chevron (อัปเดต's "ใหม่")
+		const char* pt = I18N_text(it->pill);
+		int ph = BOS_px(34), pw = BOS_textW(pt, 24, 700) + BOS_px(28);
+		BOS_rrect(s, right - chevw - pw, cy - ph / 2, pw, ph, ph / 2, BOS_theme()->primary);
+		BOS_textMid(s, pt, 24, 700, BOS_theme()->onprimary, 1, right - chevw - pw + BOS_px(14), cy);
+		chevw += pw + BOS_px(12);
+	}
+	// a small text before the value (a pin's place), kept with the value
+	int notew = it->note[0] ? BOS_textW(it->note, BOS_FS_SMALL, 400) + BOS_px(18) : 0;
+	int room = right - chevw - notew - lx; // the label's width with nothing beside it
 	// the name is never cut for its value: when both don't fit on one line the value goes under the name. Decided
 	// from the widest choice, the focused weight and the arrows, so the row never jumps between one and two lines
 	// when its value changes or it gains focus (DESIGN §6.6)
@@ -400,7 +432,7 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	if (two && k == V_SLIDER && cw + arw > room)
 		cw = room - arw;
 
-	if (chevw)
+	if (chev)
 		BOS_icon(s, "chev", hot ? C_ON_SUB : BOS_C_TEXTOFF, a, right - BOS_px(28), cy - BOS_px(14), BOS_px(28));
 	int ly = two ? y + h * 32 / 100 : cy, vy = two ? y + h * 73 / 100 : cy;
 	char label[160];
@@ -422,6 +454,8 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		return;
 
 	int vx = two ? lx : right - chevw - cw - arw;
+	if (notew && !two)
+		BOS_textMid(s, it->note, BOS_FS_SMALL, 400, sub, a, vx - notew, vy);
 	if (arrows) {
 		BOS_icon(s, "chevl", sub, 1, vx, vy - ar / 2, ar);
 		vx += ar + ag;
@@ -1121,9 +1155,14 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	BosHint r[3], l[1];
 	int nr = 0, nl = 0;
 	SettingItem* it = right_focused ? hot : cat;
+	if (it && right_focused && it->lhint_keys)
+		l[nl++] = (BosHint){it->lhint_keys, I18N_text(it->lhint_label)};
 	if (it) {
 		bool cyc = it->type == ITEM_CYCLE || it->type == ITEM_COLOR;
-		if (it->keybtn)
+		if (right_focused && it->a_label) {
+			if (it->a_label[0])
+				r[nr++] = (BosHint){"A", I18N_text(it->a_label)};
+		} else if (it->keybtn)
 			r[nr++] = (BosHint){"A", I18N_text("Configure")};
 		else if (it->color_slot || (it->dot_color && it->on_press))
 			r[nr++] = (BosHint){"A", I18N_text("Choose")};
@@ -1141,10 +1180,10 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 			r[nr++] = (BosHint){"A", I18N_text("Set")};
 		else if (SettingsBos_isPickable(it))
 			r[nr++] = (BosHint){"A", I18N_text("Choose")};
-		if (cyc && toggleState(it) < 0 && !it->keycaps)
+		if (cyc && toggleState(it) < 0 && !it->keycaps && !nl)
 			l[nl++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change")};
 	}
-	r[nr++] = (BosHint){"B", I18N_text("Back")};
+	r[nr++] = (BosHint){"B", I18N_text(it && right_focused && it->b_label ? it->b_label : "Back")};
 	if (it && right_focused && it->on_clear)
 		r[nr++] = (BosHint){"X", I18N_text(it->clear_label ? it->clear_label : "Clear")};
 	BOS_hintBar(s, r, nr, l, nl);

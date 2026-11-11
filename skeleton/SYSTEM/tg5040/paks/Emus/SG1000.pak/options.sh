@@ -38,6 +38,14 @@ SYS_CFG="$SYSTEM_PATH/system.cfg"
 DEF_CFG="$PAK_DIR/default.cfg"
 [ -n "${DEVICE:-}" ] && [ -f "$PAK_DIR/default-$DEVICE.cfg" ] && DEF_CFG="$PAK_DIR/default-$DEVICE.cfg"
 
+# Settings › ตั้งค่าแยกเครื่อง (Brick OS) draws the console-wide editor itself: with --paths this script only
+# refreshes the schema cache (above) and prints where everything is, one per line: schema, system cfg, pak
+# default cfg, config dir.
+if [ "${1:-}" = "--paths" ]; then
+    printf '%s\n' "$CACHE" "$SYS_CFG" "$DEF_CFG" "$CONFIG_DIR"
+    exit 0
+fi
+
 # Per-game key: minarch's alt_name — the basename WITH extension, collapsed
 # to the folder-named .m3u for multi-disc folder games (ma_game.c, M3U_findForRom).
 nx_minarch_alt_name() {

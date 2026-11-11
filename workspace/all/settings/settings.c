@@ -1339,6 +1339,14 @@ static char about_busybox_version[128] = "";
 static const char* get_about_version(void) {
 	return about_nxredux_version;
 }
+static const char* get_update_version(void) { // อัปเดต: "0.7.1", without the tag prefix
+	const char* v = about_nxredux_version;
+	if (!strncmp(v, "bos-", 4))
+		v += 4;
+	if (v[0] == v)
+		v++;
+	return v;
+}
 static const char* get_about_release_date(void) {
 	return about_release_date;
 }
@@ -1445,10 +1453,10 @@ static void init_about_info(void) {
 #define MAX_SHORTCUT_ITEMS (SHORTCUT_COUNT + 1)
 #define MAX_MAIN_ITEMS 18
 #define MAX_BATTERY_ITEMS 5
-#define MAX_HOMEGAMES_ITEMS 5
+#define MAX_HOMEGAMES_ITEMS 8
 #define MAX_KEYS_ITEMS (8 + SHORTCUT_COUNT)
 #define MAX_CONTROLS_ITEMS 7
-#define MAX_INGAME_ITEMS 6
+#define MAX_INGAME_ITEMS 8
 #define MAX_STATUSBAR_ITEMS 7
 
 static SettingItem appearance_items[MAX_APPEARANCE_ITEMS];
@@ -1480,6 +1488,12 @@ static SettingsPage fn_keys_page;
 static SettingsPage shortcuts_page;
 static SettingsPage notify_page;
 static SettingsPage about_page;
+static SettingsPage update_page; // อัปเดต (DESIGN 6.7a)
+static SettingItem update_items[4];
+SettingsPage* pins_page_create(void);
+const char* pins_count_text(void);
+SettingsPage* emu_page_create(void);
+const char* emu_count_text(void);
 static SettingsPage simple_mode_page;
 static SettingsPage main_page;
 static SettingsPage battery_page;
@@ -2391,10 +2405,13 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	// Home & games (หน้าแรกและเกม)
 	// ============================
 	idx = 0;
-	homegames_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+	homegames_items[idx] = (SettingItem)ITEM_SUBMENU_INIT("Pinned apps", "", pins_page_create()); // DESIGN 6.7b
+	homegames_items[idx++].get_display = pins_count_text;
+	homegames_items[idx] = (SettingItem)ITEM_CYCLE_INIT(
 		"Default view", "The initial view to show on boot",
 		default_view_labels, DEFAULT_VIEW_COUNT, default_view_values, get_default_view, set_default_view,
 		reset_default_view);
+	homegames_items[idx++].header = "Display options";
 	homegames_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Game Switcher games", "Which recently played games appear in the Game Switcher.",
 		switcher_games_labels, SWITCHER_GAMES_COUNT, switcher_games_values, get_switcher_resumable_only,
@@ -2498,9 +2515,12 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	// ในเกม (In-game)
 	// ============================
 	idx = 0;
-	ingame_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+	ingame_items[idx] = (SettingItem)ITEM_SUBMENU_INIT("Per-console settings", "", emu_page_create()); // DESIGN 6.7c
+	ingame_items[idx++].get_display = emu_count_text;
+	ingame_items[idx] = (SettingItem)ITEM_CYCLE_INIT(
 		"Save format", "The save format to use.",
 		save_format_labels, SAVE_FORMAT_COUNT, save_format_values, get_save_format, set_save_format, reset_save_format);
+	ingame_items[idx++].header = "Saves";
 	ingame_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Save state format", "The save state format to use.",
 		state_format_labels, STATE_FORMAT_COUNT, state_format_values, get_state_format, set_state_format, reset_state_format);
@@ -2688,12 +2708,16 @@ static void build_menu_tree(const DeviceInfo* dev) {
 		"Busybox version", "", get_about_busybox);
 	about_items[idx++] = (SettingItem)ITEM_STATIC_INIT(
 		"Font", "Third-party licenses are in .system/licenses", get_about_font);
-	about_items[idx++] = (SettingItem)ITEM_BUTTON_INIT(
-		"Updater", "",
-		updater_check_for_updates);
 	init_page(&about_page, "Settings | About", about_items, idx, 0);
-	about_page.on_show = updater_about_on_show;
-	about_page.on_tick = updater_about_on_tick;
+
+	// อัปเดต (DESIGN 6.7a): its own category; the updater checks by itself when the page opens
+	idx = 0;
+	update_items[idx++] = (SettingItem)ITEM_STATIC_INIT("This version", "", get_update_version);
+	update_items[idx] = (SettingItem)ITEM_BUTTON_INIT("Updater", "", updater_check_for_updates);
+	update_items[idx++].desc = "Checks each time this page opens. Needs WiFi.";
+	init_page(&update_page, "Settings | Updates", update_items, idx, 0);
+	update_page.on_show = updater_about_on_show;
+	update_page.on_tick = updater_about_on_tick;
 
 	// ============================
 	// Main page (category list, DESIGN.md 6.7)
@@ -2791,6 +2815,7 @@ static void build_menu_tree(const DeviceInfo* dev) {
 			main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("LED Control", "Configure LED lighting effects", led_page_ptr);
 	}
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("System", "", &system_page);
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Updates", "", &update_page);
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("About", "", &about_page);
 
 	// Brick OS: the categories in their DESIGN.md 6.7 groups (a stable insertion sort)

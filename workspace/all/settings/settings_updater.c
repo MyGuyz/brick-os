@@ -28,6 +28,7 @@
 #include "ui_menubar.h"
 #include "wget_fetch.h"
 #include "updater_url.h"
+#include "i18n.h"
 #include <ctype.h>
 #include <signal.h>
 #include <strings.h>
@@ -244,8 +245,14 @@ static void process_auto_check_result(void) {
 		snprintf(cached_release.tag_name, sizeof(cached_release.tag_name),
 				 "%s", auto_tag);
 		auto_state = UPDATE_AVAILABLE;
-		snprintf(item_label, sizeof(item_label), "Install Update");
-		snprintf(item_desc, sizeof(item_desc), "%s", cached_release.tag_name);
+		// อัปเดต (DESIGN 6.7a): "อัปเดตเป็น 0.7.2" with a ใหม่ pill
+		const char* v = cached_release.tag_name;
+		if (!strncmp(v, "bos-", 4))
+			v += 4;
+		if (v[0] == 'v')
+			v++;
+		snprintf(item_label, sizeof(item_label), "%s %s", I18N_text("Update to"), v);
+		item_desc[0] = '\0';
 	}
 }
 
@@ -800,6 +807,9 @@ void updater_about_on_tick(SettingsPage* page) {
 		item->type = (auto_state == UPDATE_AVAILABLE || auto_state == UPDATE_ERROR)
 						 ? ITEM_BUTTON
 						 : ITEM_STATIC;
+		item->pill = auto_state == UPDATE_AVAILABLE ? "New" : NULL;
+		item->chevron = auto_state == UPDATE_AVAILABLE;
+		item->a_label = auto_state == UPDATE_AVAILABLE ? "Update" : auto_state == UPDATE_ERROR ? "Try again" : "";
 		page->needs_layout = 1;
 	}
 }

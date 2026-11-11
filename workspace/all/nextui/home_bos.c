@@ -3,6 +3,7 @@
 // Grid (the Brick OS default); home.c hands over its render and input. Every size, colour and font here is the
 // mockup's; px are the 1024x768 panel's (FIXED_WIDTH/HEIGHT), scaled by the screen's width when it differs.
 
+#include "bos_apps.h"
 #include "home_bos.h"
 
 #include <dirent.h>
@@ -176,7 +177,6 @@ static void rrect(SDL_Surface* s, int x, int y, int w, int h, int r, uint32_t c,
 // ==== Home v2 (DESIGN.md 6.1): status bar, เล่นต่อ carousel, pinned app row + ทั้งหมด, hint bar — all from bos_ui ====
 
 #define MAX_CARDS 12
-#define MAX_APPS 40
 
 static bool pending; // a picture or a game's info still loading: keep drawing
 
@@ -241,156 +241,33 @@ static void freeCards(void) {
 	ncards = 0;
 }
 
-// ---- apps: every Tools pak (shipped + installed), plus เกม and Ports ----
-typedef enum { APP_GAMES, APP_PORTS, APP_PAK } AppKind;
-typedef struct {
-	char id[64];	 // "games", "ports", or the pak's folder name ("Music Player")
-	char name[64];	 // English key for I18N_text, or the pak name as is
-	const char* icon;
-	uint32_t color;
-	AppKind kind;
-	char path[MAX_PATH]; // the pak or the Ports folder
-	bool fresh;			 // installed since the user last opened แอปทั้งหมด (the ใหม่ pill)
-} App;
-static App apps[MAX_APPS];
-static int napps;
-static int pins[MAX_APPS]; // indexes into apps, in the user's order
-static int npins;
+// ---- apps: the shared list and pins (bos_apps.c; Settings › แอปที่ปักหมุด edits the same file) ----
+typedef BosApp App;
+#define apps bos_apps
+#define napps bos_napps
+#define pins bos_pins
+#define npins bos_npins
+#define MAX_APPS BOS_APPS_MAX
+#define APP_GAMES BOS_APP_KIND_GAMES
+#define APP_PORTS BOS_APP_KIND_PORTS
+#define findApp BosApps_find
+#define pinIndex BosApps_pinIndex
+#define savePins BosApps_savePins
+#define markSeen BosApps_markSeen
+#define buildApps BosApps_build
 
-static const struct {
-	const char* pak;
-	const char* name;
-	const char* icon;
-	uint32_t color;
-} KNOWN[] = {
-	{"YouTube", "YouTube", "youtube", BOS_APP_YOUTUBE},
-	{"Music Player", "Music", "music", BOS_APP_MUSIC},
-	{"Media Player", "Video", "video", BOS_APP_VIDEO},
-	{"Settings", "Settings", "settings", BOS_APP_SETTINGS},
-	{"Files", "Files", "folder", BOS_APP_FILES},
-	{"Image Viewer", "Images", "image", BOS_APP_IMAGES},
-	{"RetroAchievements", "Trophies", "trophy", BOS_APP_TROPHIES},
-	{"Game Tracker", "Stats", "chart", BOS_APP_STATS},
-	{"Device Sync", "Sync", "sync", BOS_APP_SYNC},
-	{"Xtras", "Xtras", "spark", BOS_APP_XTRAS},
-	{"Emulator Settings", "Emulator Settings", "sliders", BOS_APP_EMUSET},
-	{"Artwork Manager", "Artwork", "palette", BOS_APP_ARTWORK},
-	{"PortMaster", "PortMaster", "box", BOS_APP_PORTMASTER},
-};
-
-#define PINS_PATH USERDATA_PATH "/bos_home_pins.txt"
-#define SEEN_PATH USERDATA_PATH "/bos_apps_seen.txt"
-static const char* DEFAULT_PINS[] = {"games", "YouTube", "Music Player", "Media Player", "ports", "Settings"};
-
-static int findApp(const char* id) {
-	for (int i = 0; i < napps; i++)
-		if (!strcmp(apps[i].id, id))
-			return i;
-	return -1;
-}
-
-static bool lineInFile(const char* path, const char* s) {
+static bool lineInFile(const char* path, const char* s) { // bos_games.inc: is this exact line in the file
 	FILE* f = fopen(path, "r");
 	if (!f)
 		return false;
-	char line[128];
+	char line[1024];
 	bool found = false;
 	while (!found && fgets(line, sizeof(line), f)) {
-		line[strcspn(line, "\r\n")] = '\0';
+		line[strcspn(line, "\r\n")] = 0;
 		found = !strcmp(line, s);
 	}
 	fclose(f);
 	return found;
-}
-
-static void addPak(const char* dir, const char* file, bool seen_known) {
-	if (napps >= MAX_APPS)
-		return;
-	size_t n = strlen(file);
-	if (n < 5 || strcasecmp(file + n - 4, ".pak"))
-		return;
-	char id[64];
-	snprintf(id, sizeof(id), "%.*s", (int)(n - 4), file);
-	if (findApp(id) >= 0)
-		return;
-	App* a = &apps[napps];
-	memset(a, 0, sizeof(*a));
-	snprintf(a->id, sizeof(a->id), "%s", id);
-	snprintf(a->path, sizeof(a->path), "%s/%s", dir, file);
-	a->kind = APP_PAK;
-	a->icon = "box";
-	a->color = BOS_C_SECONDARY;
-	snprintf(a->name, sizeof(a->name), "%s", id);
-	for (size_t k2 = 0; k2 < sizeof(KNOWN) / sizeof(KNOWN[0]); k2++)
-		if (!strcmp(KNOWN[k2].pak, id)) {
-			snprintf(a->name, sizeof(a->name), "%s", KNOWN[k2].name);
-			a->icon = KNOWN[k2].icon;
-			a->color = KNOWN[k2].color;
-		}
-	a->fresh = seen_known && !lineInFile(SEEN_PATH, id);
-	napps++;
-}
-
-static void scanPaks(const char* dir, bool seen_known) {
-	DIR* d = opendir(dir);
-	if (!d)
-		return;
-	struct dirent* e;
-	while ((e = readdir(d)))
-		if (e->d_name[0] != '.')
-			addPak(dir, e->d_name, seen_known);
-	closedir(d);
-}
-
-static void buildApps(void) {
-	napps = 0;
-	App* g = &apps[napps++];
-	memset(g, 0, sizeof(*g));
-	snprintf(g->id, sizeof(g->id), "games");
-	snprintf(g->name, sizeof(g->name), "Games");
-	g->icon = "game";
-	g->color = BOS_APP_GAMES;
-	g->kind = APP_GAMES;
-
-	App* p = &apps[napps++];
-	memset(p, 0, sizeof(*p));
-	snprintf(p->id, sizeof(p->id), "ports");
-	snprintf(p->name, sizeof(p->name), "Ports");
-	p->icon = "ports";
-	p->color = BOS_APP_PORTS;
-	p->kind = APP_PORTS;
-	DIR* d = opendir(ROMS_PATH);
-	if (d) {
-		struct dirent* e;
-		while ((e = readdir(d)))
-			if (strstr(e->d_name, "(PORTS)")) {
-				snprintf(p->path, sizeof(p->path), "%s/%s", ROMS_PATH, e->d_name);
-				break;
-			}
-		closedir(d);
-	}
-
-	bool seen_known = exists((char*)SEEN_PATH); // the very first boot marks nothing as new
-	scanPaks(SDCARD_PATH "/.system/paks/Tools", seen_known);
-	scanPaks(TOOLS_PATH, seen_known); // user-installed (PortMaster …), as the Tools tab reads them
-
-	npins = 0;
-	FILE* f = fopen(PINS_PATH, "r");
-	if (f) {
-		char line[128];
-		while (npins < MAX_APPS && fgets(line, sizeof(line), f)) {
-			line[strcspn(line, "\r\n")] = '\0';
-			int i = findApp(line);
-			if (i >= 0)
-				pins[npins++] = i;
-		}
-		fclose(f);
-	} else
-		for (size_t i = 0; i < sizeof(DEFAULT_PINS) / sizeof(DEFAULT_PINS[0]); i++) {
-			int a = findApp(DEFAULT_PINS[i]);
-			if (a >= 0)
-				pins[npins++] = a;
-		}
 }
 
 static float gdim = 1.0f;		 // the เล่นต่อ block's alpha (0.35 while reordering)
@@ -399,33 +276,6 @@ static int saved_pins[MAX_APPS]; // the order to restore on B
 static int nsaved;
 static bool lib;				 // แอปทั้งหมด is showing
 static int lorder[MAX_APPS], nlorder, lfocus, ltop;
-
-static void savePins(void) {
-	FILE* f = fopen(PINS_PATH, "w");
-	if (!f)
-		return;
-	for (int i = 0; i < npins; i++)
-		fprintf(f, "%s\n", apps[pins[i]].id);
-	fclose(f);
-}
-
-static void markSeen(void) { // every app now on the card is no longer "ใหม่"
-	FILE* f = fopen(SEEN_PATH, "w");
-	if (!f)
-		return;
-	for (int i = 0; i < napps; i++) {
-		fprintf(f, "%s\n", apps[i].id);
-		apps[i].fresh = false;
-	}
-	fclose(f);
-}
-
-static int pinIndex(int app) {
-	for (int i = 0; i < npins; i++)
-		if (pins[i] == app)
-			return i;
-	return -1;
-}
 
 static int byName(const void* a, const void* b) {
 	return strcasecmp(I18N_text(apps[*(const int*)a].name), I18N_text(apps[*(const int*)b].name));

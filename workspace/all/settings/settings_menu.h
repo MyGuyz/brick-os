@@ -88,6 +88,17 @@ typedef struct SettingItem {
 	int keycaps;			 // the value is buttons: "MENU+R1" drawn as caps joined by "+", "MENU|Hold" adds a word
 	int (*on_input)(struct SettingItem* it); // takes the D-pad before the list; 1 = used it
 	int keybtn; // ปุ่มพิเศษ (DESIGN §6.9b): 1 + BOSKEY_*; the value is the key's tap action (+ค้าง), A opens its popup
+	// อัปเดต / แอปที่ปักหมุด (DESIGN §6.7a, §6.7b)
+	const char* pill;		// a primary pill before the chevron ("ใหม่")
+	int chevron;			// a chevron on a button row
+	const char* lead_icon;	// an app tile (icon on surface2) before the name
+	uint32_t lead_color;	// the tile icon's colour
+	char note[16];			// small text before the value (a pin's place: "2")
+	int lifted;				// จัดเรียง: lifted 12 px, ▲▼ in place of the value
+	const char* a_label;	// the A / B hints, when not the usual ones ("" hides A)
+	const char* b_label;
+	const char* lhint_keys; // a left hint ("▲▼" ย้าย)
+	const char* lhint_label;
 } SettingItem;
 
 // ============================================
