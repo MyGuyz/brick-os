@@ -292,7 +292,7 @@ static float wrapD(float d, int n) { // the shortest way round the wheel
 }
 
 static void wheelRender(SDL_Surface* s) {
-	BOS_statusBar(s, I18N_text("Games"));
+	barTitle(s, I18N_text("Games"));
 	int top = BOS_px(BOS_BAR_H) + BOS_px(10);
 	int n = bg_ncons;
 	// slot centres out from the middle: 328 / 498 px (the mockup's neighbour left 34, outer left -96)
@@ -334,6 +334,11 @@ static void wheelRender(SDL_Surface* s) {
 			BOS_rrect(s, x, y, w, dw, dw / 2, i == bg_sel ? BOS_C_TEXT : BOS_theme()->surface2);
 			x += w + gap;
 		}
+	}
+	if (pick_kind) {
+		BosHint p[] = {{"A", I18N_text(pick_kind == PICK_CONSOLE ? "Choose" : "Open")}, {"B", I18N_text("Cancel")}};
+		BOS_hintBar(s, p, 2, NULL, 0);
+		return;
 	}
 	BosHint r[] = {{"A", I18N_text("Open")}, {"B", I18N_text("Back")}, {"Y", I18N_text("Search")}};
 	BOS_hintBar(s, r, 3, NULL, 0);
@@ -473,7 +478,7 @@ static void listRender(SDL_Surface* s, int top) { // §6.4: rows of 96 on the le
 }
 
 static void gamesRender(SDL_Surface* s) {
-	BOS_statusBar(s, I18N_text("Games"));
+	barTitle(s, I18N_text("Games"));
 	BgConsole* c = &bg_cons[bg_sel];
 	char sub[96];
 	snprintf(sub, sizeof(sub), I18N_text("%d games · Sorted A-Z"), gamesCount());
@@ -486,6 +491,11 @@ static void gamesRender(SDL_Surface* s) {
 		listRender(s, top);
 	else
 		coversRender(s, top);
+	if (pick_kind) { // nothing to pick in an empty console: only B
+		BosHint p[] = {{"A", I18N_text("Choose")}, {"B", I18N_text("Back")}};
+		BOS_hintBar(s, gamesCount() > 0 ? p : p + 1, gamesCount() > 0 ? 2 : 1, NULL, 0);
+		return;
+	}
 	BosHint r[] = {{"A", I18N_text("Play")}, {"B", I18N_text("Back")}, {"X", I18N_text("Favorite")}, {"Y", I18N_text("Search")}};
 	BosHint l[] = {{"MENU", I18N_text("Options")}};
 	BOS_hintBar(s, r, 4, l, gamesCount() > 0 ? 1 : 0);
@@ -508,7 +518,7 @@ void BosGames_render(SDL_Surface* s) {
 	pending = false;
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
 	if (bg_ncons == 0) {
-		BOS_statusBar(s, I18N_text("Games"));
+		barTitle(s, I18N_text("Games"));
 		BosHint r[] = {{"B", I18N_text("Back")}};
 		BOS_hintBar(s, r, 1, NULL, 0);
 		return;
@@ -565,10 +575,62 @@ static void gameMove(int to) {
 		bg_gpos = (float)to;
 }
 
+// pick mode (DESIGN §6.9b): the wheel and the games as they are, A picks, B backs out; nothing else
+static BosGamesInput pickGamesInput(bool tap_select) {
+	if (!bg_step2) {
+		if (PAD_justPressed(BTN_B))
+			pickDone(NULL, NULL);
+		else if (PAD_justRepeated(BTN_LEFT))
+			wheelMove(-1);
+		else if (PAD_justRepeated(BTN_RIGHT))
+			wheelMove(1);
+		else if (PAD_justPressed(BTN_A) && bg_ncons > 0) {
+			BgConsole* c = &bg_cons[bg_sel];
+			if (pick_kind == PICK_CONSOLE) {
+				char v[MAX_PATH + 16];
+				snprintf(v, sizeof(v), "console:%s", c->path);
+				pickDone(v, c->name);
+			} else {
+				bg_games_for = -1;
+				bgLoadGames();
+				bg_step2 = true;
+			}
+		}
+		return BOSGAMES_HANDLED;
+	}
+	bgLoadGames();
+	int ng = gamesCount();
+	int prev = bg_listmode ? BTN_UP : BTN_LEFT, next = bg_listmode ? BTN_DOWN : BTN_RIGHT;
+	if (PAD_justPressed(BTN_B))
+		bg_step2 = false;
+	else if (tap_select) {
+		bg_listmode = !bg_listmode;
+		setListMode(bg_cons[bg_sel].path, bg_listmode);
+		bg_gpos = (float)bg_gsel;
+		bg_gstart = 0;
+	} else if (PAD_justRepeated(prev))
+		gameMove(bg_gsel - 1);
+	else if (PAD_justRepeated(next))
+		gameMove(bg_gsel + 1);
+	else if (bg_listmode && PAD_justRepeated(BTN_LEFT))
+		gameMove(bg_gsel - LIST_ROWS > 0 ? bg_gsel - LIST_ROWS : 0);
+	else if (bg_listmode && PAD_justRepeated(BTN_RIGHT))
+		gameMove(bg_gsel + LIST_ROWS < ng ? bg_gsel + LIST_ROWS : ng - 1);
+	else if (PAD_justPressed(BTN_A) && ng > 0) {
+		Entry* e = bg_games->entries->items[bg_gsel];
+		char v[MAX_PATH + 16];
+		snprintf(v, sizeof(v), "game:%s", e->path);
+		pickDone(v, e->name);
+	}
+	return BOSGAMES_HANDLED;
+}
+
 BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu, bool tap_select) {
 	if (!bg_built)
 		bgBuild();
 	*dirty = true;
+	if (pick_kind == PICK_CONSOLE || pick_kind == PICK_GAME)
+		return pickGamesInput(tap_select);
 	if (PAD_justPressed(BTN_MENU))
 		bg_menu_down = (uint32_t)now;
 	if (bg_menu_down && PAD_isPressed(BTN_MENU) && (uint32_t)now - bg_menu_down >= 500) {

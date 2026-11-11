@@ -17,4 +17,13 @@ void SettingsBos_preset(int i, uint32_t* focus, uint32_t* primary); // the six �
 void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h, int hot); // their cards
 void SettingsBos_colorSheetOpen(int slot, const char* title); // THEME_FOCUS / PRIMARY / HINT; A sets, B cancels
 
+// ปุ่มลัด's "press the button you want" sheet over the page (DESIGN §6.9); secs = the countdown
+void SettingsBos_captureSheet(SDL_Surface* s, const char* name, const char* note, int secs);
+
+// ปุ่มพิเศษ (DESIGN §6.9b): the key's popup (กดคลิก / กดค้าง, then what it does), its light, the pick hand-over
+void SettingsBos_keyOpen(int key);   // BOSKEY_*: step 1 of its popup
+void SettingsBos_keyReset(int key);  // X on its row: tap and hold back to the defaults
+int SettingsBos_keyResume(void);     // at start: a pick the launcher answered; the key to show (its popup open), or -1
+bool SettingsBos_keyTick(bool* quit); // every frame: the light's timer, an action keymon left (Settings closes)
+
 #endif

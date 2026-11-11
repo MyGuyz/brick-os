@@ -250,7 +250,7 @@ Core Options	ตัวเลือกคอร์
 Cheats	สูตรโกง
 Shaders	เชดเดอร์
 Controls	การควบคุม
-Shortcuts	ทางลัด
+Shortcuts	ปุ่มลัด
 Frontend	ทั่วไป
 Emulator Settings	ตั้งค่าอีมูเลเตอร์
 Shader Settings	ตั้งค่าเชดเดอร์
@@ -607,3 +607,52 @@ Edit code	แก้รหัส
 Pick digit	เลือกหลัก
 Change value	เปลี่ยนค่า
 Preview	ตัวอย่าง
+Special buttons	ปุ่มพิเศษ
+In game · every console	ในเกม · ทุกเครื่อง
+F1 key	ปุ่ม F1
+F2 key	ปุ่ม F2
+Game switcher key	ปุ่มสลับเกม
+Hold	กดค้าง
+Not set	ไม่ได้ตั้ง
+Save State	บันทึกเกม
+Load State	โหลดเกม
+Undo Load State	ย้อนการโหลด
+Reset Game	เริ่มเกมใหม่
+Save & Quit	บันทึกแล้วออก
+Cycle Scaling	สลับขนาดภาพ
+Cycle Effect	สลับเอฟเฟกต์ภาพ
+Toggle FF	เร่งความเร็ว (เปิด/ปิด)
+Hold FF	เร่งความเร็ว (กดค้าง)
+Toggle Rewind	ย้อนเวลา (เปิด/ปิด)
+Hold Rewind	ย้อนเวลา (กดค้าง)
+Toggle Turbo A	เทอร์โบ A
+Toggle Turbo B	เทอร์โบ B
+Toggle Turbo X	เทอร์โบ X
+Toggle Turbo Y	เทอร์โบ Y
+Toggle Turbo L	เทอร์โบ L1
+Toggle Turbo L2	เทอร์โบ L2
+Toggle Turbo R	เทอร์โบ R1
+Toggle Turbo R2	เทอร์โบ R2
+Toggle D-pad Joystick	ปุ่มทิศเป็นจอยสติ๊ก
+Press the button you want...	กดปุ่มที่ต้องการ…
+Or hold MENU and press a button.	หรือกด MENU ค้างแล้วกดอีกปุ่ม
+%s is already %s. Press another button.	%s ใช้เป็น “%s” อยู่แล้ว กดปุ่มอื่น
+MENU+SELECT opens the Game Switcher. Press another button.	MENU+SELECT ใช้เปิดหน้าสลับเกม กดปุ่มอื่น
+Clears every shortcut.	ล้างปุ่มลัดในเกมทั้งหมด
+HOME button	ปุ่ม HOME
+F1 button	ปุ่ม F1
+F2 button	ปุ่ม F2
+Tap	กดคลิก
++hold	+ค้าง
+Configure	ตั้งค่า
+Open app...	เปิดแอป…
+Open console...	เปิดเครื่องเกม…
+Open game...	เปิดเกม…
+Quick settings	ตั้งค่าด่วน
+Switch games	สลับเกม
+Back to Home	กลับหน้าแรก
+Mute / unmute	ปิด/เปิดเสียง
+Nothing	ว่าง
+Pick for	เลือกให้
+Works everywhere, in games too	ใช้ได้ทุกที่ รวมถึงตอนเล่นเกม
+The light under %s blinks = the key being set · works everywhere, in games too	ไฟใต้ปุ่ม %s กระพริบ = ปุ่มที่กำลังตั้ง · ใช้ได้ทุกที่ รวมถึงตอนเล่นเกม

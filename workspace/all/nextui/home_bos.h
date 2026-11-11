@@ -47,4 +47,8 @@ void BosGames_render(SDL_Surface* screen);
 bool BosGames_animating(void);
 BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu, bool tap_select);
 Entry* BosGames_focusedGame(void); // step 2's focused game, else NULL
+// ปุ่มพิเศษ (DESIGN.md §6.9b)
+bool BosPick_poll(bool* dirty); // a pick Settings asked for: starts it; true while picking
+bool BosPick_active(void);
+int BosAction_poll(bool* dirty); // an action keymon left: 0 none, 1 run, 2 open the Game Switcher
 #endif

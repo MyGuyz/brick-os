@@ -84,7 +84,9 @@ typedef struct SettingItem {
 	int color_slot;
 	const char* clear_label; // X's hint (default "Clear")
 	int cursor;				 // a free block's own focus (ธีมสี's cards)
+	int keycaps;			 // the value is buttons: "MENU+R1" drawn as caps joined by "+", "MENU|Hold" adds a word
 	int (*on_input)(struct SettingItem* it); // takes the D-pad before the list; 1 = used it
+	int keybtn; // ปุ่มพิเศษ (DESIGN §6.9b): 1 + BOSKEY_*; the value is the key's tap action (+ค้าง), A opens its popup
 } SettingItem;
 
 // ============================================

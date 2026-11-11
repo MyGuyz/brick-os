@@ -79,6 +79,7 @@ LightSettings lightsCriticalBattery[MAX_LIGHTS];
 LightSettings lightsSleep[MAX_LIGHTS];
 LightSettings lightsAmbient[MAX_LIGHTS];
 LightSettings (*lights)[MAX_LIGHTS] = NULL;
+static bool lights_indicator = false; // the profile in use drives the indicator brightness
 
 #define PROFILE_OVERRIDE_SIZE 4
 int profile_override_top = -1;
@@ -4900,8 +4901,14 @@ void LEDS_setProfile(int profile) {
 	if (profile != LIGHT_PROFILE_AMBIENT && lights == (LightSettings(*)[MAX_LIGHTS])new_lights)
 		return;
 	lights = (LightSettings(*)[MAX_LIGHTS])new_lights;
+	lights_indicator = indicator;
 
 	LEDS_updateLeds(indicator);
+}
+
+void LEDS_refresh(void) {
+	if (lights_initialized && lights)
+		LEDS_updateLeds(lights_indicator);
 }
 
 void LEDS_applyRules() {

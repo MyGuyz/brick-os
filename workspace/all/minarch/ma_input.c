@@ -12,6 +12,7 @@
 #include "ma_present.h"
 #include "button_layout.h"
 #include "notification.h"
+#include "bos_keys.h"
 
 int setFastForward(int enable) {
 	int val = enable ? 1 : 0;
@@ -90,6 +91,7 @@ static int Input_positionalBtn(int btn) {
 // coroutine, and its retro_serialize() co_switches to that same coroutine
 // until the save is done, so a save from in here never returns.
 #define DEFERRED_MENU_SELECT SHORTCUT_COUNT // the built-in MENU+SELECT Game Switcher combo
+#define DEFERRED_BOS_ACTION (SHORTCUT_COUNT + 1) // a ปุ่มพิเศษ action from keymon: save, quit, the launcher runs it
 static int deferred_shortcut = -1;
 
 void Input_runDeferredShortcut(void) {
@@ -118,6 +120,15 @@ void Input_runDeferredShortcut(void) {
 		quit = 1;
 		Menu_saveState();
 		break;
+	case DEFERRED_BOS_ACTION:
+		// /tmp/bos_action stays for the launcher; สลับเกม goes the Game Switcher's own way below
+		Netplay_quitAll();
+		newScreenshot = 1;
+		quit = 1;
+		Menu_saveState();
+		if (prefixMatch(SDCARD_PATH, game.path))
+			putFile(HELD_FRAME_PATH, (char*)Menu_slotPreviewPath());
+		break;
 	case SHORTCUT_GAMESWITCHER:
 	case DEFERRED_MENU_SELECT:
 		Netplay_quitAll();
@@ -143,6 +154,23 @@ void Input_beginFrame(void) {
 void input_poll_callback(void) {
 	polled_this_frame = 1;
 	PAD_poll();
+
+	// ปุ่มพิเศษ (DESIGN §6.9b): keymon left an action for the launcher; checked a few times a second
+	static int bos_poll = 0;
+	if (++bos_poll >= 15) {
+		bos_poll = 0;
+		if (deferred_shortcut < 0 && access(BOS_ACTION_PATH, F_OK) == 0) {
+			char v[BOS_KEY_VAL];
+			BosKeys_readFile(BOS_ACTION_PATH, v, sizeof(v));
+			if (!strcmp(v, "sys:switcher")) {
+				unlink(BOS_ACTION_PATH);
+				deferred_shortcut = SHORTCUT_GAMESWITCHER;
+			} else if (v[0])
+				deferred_shortcut = DEFERRED_BOS_ACTION;
+			else
+				unlink(BOS_ACTION_PATH);
+		}
+	}
 
 	IndicatorType show_setting = INDICATOR_NONE;
 	PWR_update(NULL, &show_setting, Menu_beforeSleep, Menu_afterSleep);

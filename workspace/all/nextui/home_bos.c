@@ -37,6 +37,14 @@
 #include "menutabs.h"
 #include "recents.h"
 #include "types.h"
+#include "bos_keys.h"
+
+// ---- ปุ่มพิเศษ pick mode (DESIGN §6.9b): Settings asked for an app, a console or a game for one of its keys ----
+enum { PICK_NONE, PICK_APP, PICK_CONSOLE, PICK_GAME };
+static int pick_kind;
+static char pick_slot[32], pick_title[160];
+static void pickDone(const char* value, const char* label);
+static void barTitle(SDL_Surface* s, const char* title);
 
 // ---- tokens (DESIGN.md 2) ----
 #define C_BG 0x000000
@@ -654,7 +662,7 @@ static void appRow(SDL_Surface* s, int top) {
 // แอปทั้งหมด (§6.1b): 5 columns (cell 176, tile 112), row gap 18, scrolls by rows
 static void libraryRender(SDL_Surface* s) {
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
-	BOS_statusBar(s, I18N_text("Home"));
+	barTitle(s, I18N_text("Home"));
 	char sub[128];
 	snprintf(sub, sizeof(sub), I18N_text("%d apps · blue dot = pinned to Home"), napps);
 	int y = BOS_px(BOS_BAR_H);
@@ -691,6 +699,11 @@ static void libraryRender(SDL_Surface* s) {
 	}
 	SDL_SetClipRect(s, NULL);
 	bool pinned = lfocus < nlorder && pinIndex(lorder[lfocus]) >= 0;
+	if (pick_kind) {
+		BosHint p[] = {{"A", I18N_text("Choose")}, {"B", I18N_text("Cancel")}};
+		BOS_hintBar(s, p, 2, NULL, 0);
+		return;
+	}
 	BosHint r[] = {{"A", I18N_text("Open")}, {"B", I18N_text("Back")}, {"X", I18N_text(pinned ? "Unpin" : "Pin")}};
 	BOS_hintBar(s, r, 3, NULL, 0);
 }
@@ -778,6 +791,18 @@ Entry* HomeBos_focusedGame(void) {
 
 static HomeBosInput libraryInput(bool* dirty) {
 	int cols = 5, f = lfocus;
+	if (pick_kind == PICK_APP && (PAD_justPressed(BTN_A) || PAD_justPressed(BTN_B) || PAD_justPressed(BTN_X))) {
+		if (PAD_justPressed(BTN_B))
+			pickDone(NULL, NULL);
+		else if (PAD_justPressed(BTN_A) && lfocus < nlorder) {
+			const App* a = &apps[lorder[lfocus]];
+			char v[96];
+			snprintf(v, sizeof(v), "app:%s", a->id);
+			pickDone(v, I18N_text(a->name));
+		}
+		*dirty = true;
+		return HOMEBOS_HANDLED;
+	}
 	if (PAD_justRepeated(BTN_LEFT) && f > 0)
 		f--;
 	else if (PAD_justRepeated(BTN_RIGHT) && f < nlorder - 1)
@@ -838,6 +863,10 @@ static HomeBosInput reorderInput(bool* dirty) {
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) {
 	if (!built)
 		build();
+	if (pick_kind == PICK_APP && !lib) {
+		buildLibrary();
+		lib = true;
+	}
 	if (lib)
 		return libraryInput(dirty);
 	if (moving)
@@ -1030,3 +1059,127 @@ bool BosSwitcher_animating(void) {
 }
 
 #include "bos_games.inc"
+
+// ---- ปุ่มพิเศษ (DESIGN.md §6.9b) ----
+
+// the status bar's left label: the page's name, or in pick mode the primary pill "เลือกให้" and what is being set
+static void barTitle(SDL_Surface* s, const char* title) {
+	if (!pick_kind) {
+		BOS_statusBar(s, title);
+		return;
+	}
+	BOS_statusBar(s, NULL);
+	int cy = BOS_px(BOS_BAR_H) / 2, x = BOS_px(BOS_BAR_PAD);
+	const char* pl = I18N_text("Pick for");
+	int ph = BOS_px(40), pw = BOS_textW(pl, 26, 700) + 2 * BOS_px(14);
+	BOS_rrect(s, x, cy - ph / 2, pw, ph, BOS_px(12), BOS_theme()->primary);
+	BOS_textMid(s, pl, 26, 700, 0xFFFFFF, 1, x + BOS_px(14), cy);
+	BOS_textMid(s, pick_title, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, x + pw + BOS_px(14), cy);
+}
+
+// back to Settings with the answer (value NULL: cancelled); Settings reopens on the key's popup
+static void pickDone(const char* value, const char* label) {
+	char r[MAX_PATH * 2 + 64];
+	if (value)
+		snprintf(r, sizeof(r), "%s\tset\t%s\t%s", pick_slot, value, label ? label : "");
+	else
+		snprintf(r, sizeof(r), "%s\tcancel", pick_slot);
+	BosKeys_writeFile(BOS_PICK_RESULT_PATH, r);
+	unlink(BOS_PICK_PATH);
+	pick_kind = PICK_NONE;
+	lib = false;
+	bg_step2 = false;
+	if (!built)
+		build();
+	int i = findApp("Settings");
+	if (i >= 0 && apps[i].path[0])
+		openPakInPlace(apps[i].path);
+}
+
+bool BosPick_active(void) {
+	return pick_kind != PICK_NONE;
+}
+
+// a pick Settings asked for (/tmp/bos_pick): starts on its screen; true while picking
+bool BosPick_poll(bool* dirty) {
+	if (pick_kind)
+		return true;
+	if (access(BOS_PICK_PATH, F_OK) != 0)
+		return false;
+	char line[MAX_PATH];
+	BosKeys_readFile(BOS_PICK_PATH, line, sizeof(line));
+	char* k = strchr(line, '\t');
+	char* t = k ? strchr(k + 1, '\t') : NULL;
+	if (!k || !t) {
+		unlink(BOS_PICK_PATH);
+		return false;
+	}
+	*k = *t = '\0';
+	snprintf(pick_slot, sizeof(pick_slot), "%s", line);
+	snprintf(pick_title, sizeof(pick_title), "%s", t + 1);
+	pick_kind = !strcmp(k + 1, "app") ? PICK_APP : !strcmp(k + 1, "console") ? PICK_CONSOLE : PICK_GAME;
+	while (stack->count > 1)
+		closeDirectory();
+	if (pick_kind == PICK_APP) {
+		GameList_openTab(MENU_TAB_HOME, dirty);
+		if (!built)
+			build();
+		buildLibrary();
+		lib = true;
+		lfocus = ltop = 0;
+	} else {
+		GameList_openTab(MENU_TAB_CONSOLES, dirty);
+		bg_step2 = false;
+	}
+	*dirty = true;
+	return true;
+}
+
+// an action keymon left (/tmp/bos_action): 0 none, 1 run, 2 the caller opens the Game Switcher
+int BosAction_poll(bool* dirty) {
+	if (access(BOS_ACTION_PATH, F_OK) != 0)
+		return 0;
+	char v[BOS_KEY_VAL];
+	BosKeys_readFile(BOS_ACTION_PATH, v, sizeof(v));
+	unlink(BOS_ACTION_PATH);
+	if (pick_kind || !v[0])
+		return 0;
+	*dirty = true;
+	if (!strcmp(v, "sys:switcher")) {
+		GameSwitcher_resetSelection();
+		return 2;
+	}
+	while (stack->count > 1)
+		closeDirectory();
+	if (!built)
+		build();
+	lib = false;
+	if (!strcmp(v, "sys:home")) {
+		GameList_openTab(MENU_TAB_HOME, dirty);
+	} else if (!strncmp(v, "app:", 4)) {
+		int i = findApp(v + 4);
+		if (i >= 0)
+			openApp(i, dirty);
+	} else if (!strncmp(v, "console:", 8)) {
+		GameList_openTab(MENU_TAB_CONSOLES, dirty);
+		if (!bg_built)
+			bgBuild();
+		for (int i = 0; i < bg_ncons; i++)
+			if (!strcmp(bg_cons[i].path, v + 8)) {
+				bg_sel = i;
+				bg_pos = bg_from = (float)i;
+				bg_start = 0;
+				bg_games_for = -1;
+				bg_step2 = true;
+			}
+	} else if (!strncmp(v, "game:", 5) && exists(v + 5)) {
+		Entry* e = Entry_new(v + 5, ENTRY_ROM);
+		if (e) {
+			readyResume(e);
+			resume.should_resume = resume.can_resume;
+			Entry_open(e);
+			Entry_free(e);
+		}
+	}
+	return 1;
+}

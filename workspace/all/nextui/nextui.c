@@ -44,6 +44,8 @@
 #include "types.h"
 #include "cpu_policy.h"
 #include "../musicplayer/music_service_client.h"
+#include "bos_keys.h"
+#include "home_bos.h"
 
 // Boot-phase stamps into the same file the launch scripts write, so a slow
 // boot can be attributed (script phase vs GFX init vs content scan vs first
@@ -278,6 +280,8 @@ int main(int argc, char* argv[]) {
 	GameSwitcher_init();
 	int lastScreen = SCREEN_OFF;
 	int currentScreen = CFG_getDefaultView();
+	// ปุ่มพิเศษ (DESIGN §6.9b): the old F1/F2 tool settings become the keys' tap actions, once
+	BosKeys_migrate(CFG_getFn1Tool(), CFG_getFn2Tool());
 
 	if (GameSwitcher_shouldStartInSwitcher())
 		currentScreen = SCREEN_GAMESWITCHER;
@@ -338,6 +342,21 @@ int main(int argc, char* argv[]) {
 			char launch_path[MAX_PATH];
 			if (pak_path[0] == '/' && snprintf(launch_path, sizeof(launch_path), "%s/launch.sh", pak_path) < (int)sizeof(launch_path) && exists(launch_path))
 				openPakInPlace(pak_path);
+		}
+
+		// ปุ่มพิเศษ: an action other than สลับเกม waiting while the switcher shows runs from the list
+		if (currentScreen == SCREEN_GAMESWITCHER && access(BOS_ACTION_PATH, F_OK) == 0) {
+			char bos_v[BOS_KEY_VAL];
+			BosKeys_readFile(BOS_ACTION_PATH, bos_v, sizeof(bos_v));
+			if (strcmp(bos_v, "sys:switcher")) {
+				currentScreen = SCREEN_GAMELIST;
+				dirty = true;
+			} else
+				unlink(BOS_ACTION_PATH);
+		}
+		if (currentScreen == SCREEN_GAMESWITCHER && access(BOS_PICK_PATH, F_OK) == 0) {
+			currentScreen = SCREEN_GAMELIST;
+			dirty = true;
 		}
 
 		// Handle context menu input (consumes input when open)

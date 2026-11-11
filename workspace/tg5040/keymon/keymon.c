@@ -17,6 +17,8 @@
 #include <msettings.h>
 
 #include "emu_shortcuts.h"
+#include "bos_keys.h"
+#include "proc_util.h"
 
 #define VOLUME_MIN 0
 #define VOLUME_MAX 20
@@ -119,6 +121,96 @@ static void toggle_osd(void) {
 		if (f)
 			fclose(f);
 	}
+}
+
+// ปุ่มพิเศษ (DESIGN.md §6.9b): HOME, F1 and F2 each have a tap and a hold action (bos_keys.h)
+#define BOS_HOLD_MS 500
+typedef struct {
+	int down;		 // held now
+	uint32_t at;	 // when it went down
+	int hold_fired;	 // its hold action already ran (the release does nothing)
+	int quick_on_up; // the hold action is the quick menu: shown on release (see CODE_HOME)
+	int no_hold;	 // it has no hold action: the release is a tap however long it was held
+} BosKey;
+static BosKey bos_keys[BOSKEY_COUNT];
+
+// Runs one action. The quick menu and mute keymon does itself; anything else goes to the app in front, but only to
+// one that hands it on (the launcher runs it, a game saves and quits, Settings closes): elsewhere it does nothing.
+static void bos_run(const char* v, uint32_t now, uint32_t* osd_at) {
+	if (!v[0])
+		return;
+	if (!strcmp(v, "sys:quick")) {
+		*osd_at = now + HOME_TOGGLE_DELAY_MS;
+		return;
+	}
+	if (!strcmp(v, "sys:mute")) {
+		SetSpeakerMute(!GetSpeakerMute());
+		return;
+	}
+	if (!proc_running("nextui.elf") && !proc_running("minarch.elf") && !proc_running("settings.elf"))
+		return;
+	FILE* f = fopen(BOS_ACTION_PATH, "w");
+	if (f) {
+		fprintf(f, "%s\n", v);
+		fclose(f);
+	}
+}
+
+static void bos_key_event(int key, int pressed, uint32_t now, uint32_t* osd_at) {
+	BosKey* k = &bos_keys[key];
+	if (pressed) {
+		memset(k, 0, sizeof(*k));
+		k->down = 1;
+		k->at = now;
+		return;
+	}
+	if (!k->down)
+		return;
+	k->down = 0;
+	if (k->quick_on_up) {
+		*osd_at = now + HOME_TOGGLE_DELAY_MS;
+		return;
+	}
+	if (k->hold_fired)
+		return;
+	char v[BOS_KEY_VAL];
+	BosKeys_value(key, 0, v, sizeof(v)); // a tap (or a long press with no hold action)
+	bos_run(v, now, osd_at);
+}
+
+// a key held past BOS_HOLD_MS runs its hold action now, if it has one
+static void bos_key_tick(uint32_t now, uint32_t* osd_at) {
+	for (int key = 0; key < BOSKEY_COUNT; key++) {
+		BosKey* k = &bos_keys[key];
+		if (!k->down || k->hold_fired || k->no_hold || now - k->at < BOS_HOLD_MS)
+			continue;
+		char v[BOS_KEY_VAL];
+		BosKeys_value(key, 1, v, sizeof(v));
+		if (!v[0]) {
+			k->no_hold = 1;
+			continue;
+		}
+		k->hold_fired = 1;
+		if (!strcmp(v, "sys:quick"))
+			k->quick_on_up = 1; // the panel would take the pad mid-press and eat this release as its close
+		else
+			bos_run(v, now, osd_at);
+	}
+}
+
+static int bos_key_pending(uint32_t now) { // ms to the next hold threshold, or -1
+	int best = -1;
+	for (int key = 0; key < BOSKEY_COUNT; key++) {
+		BosKey* k = &bos_keys[key];
+		if (!k->down || k->hold_fired || k->no_hold)
+			continue;
+		int r = (int)(k->at + BOS_HOLD_MS - now);
+		if (r < 1)
+			r = 1;
+		if (best < 0 || r < best)
+			best = r;
+	}
+	return best;
 }
 
 static int getInt(char* path) {
@@ -312,6 +404,10 @@ int main(int argc, char* argv[]) {
 
 	const char* device = getenv("DEVICE");
 	int is_brick = device && strcmp(device, "brick") == 0;
+	int is_brickpro = device && strcmp(device, "brickpro") == 0;
+	// F1/F2: their own keys on the Brick Pro (KEY_F1/KEY_F2, joystick 11/12); on the Brick they are the stick clicks
+	int code_f1 = is_brickpro ? KEY_F1 : is_brick ? BTN_THUMBL : -1;
+	int code_f2 = is_brickpro ? KEY_F2 : is_brick ? BTN_THUMBR : -1;
 
 	// Create epoll instance
 	epoll_fd = epoll_create1(EPOLL_CLOEXEC);
@@ -379,6 +475,8 @@ int main(int argc, char* argv[]) {
 		} else if (home_toggle_at) {
 			int remaining = (int)(home_toggle_at - now);
 			timeout_ms = remaining > 0 ? remaining : 1;
+		} else if (bos_key_pending(now) >= 0) {
+			timeout_ms = bos_key_pending(now);
 		} else {
 			timeout_ms = 1000; // idle — wake up occasionally
 		}
@@ -402,6 +500,7 @@ int main(int argc, char* argv[]) {
 			up_repeat_at = 0;
 			down_repeat_at = 0;
 			abs_held = 0;
+			memset(bos_keys, 0, sizeof(bos_keys));
 			// Drain all input fds
 			for (int i = 0; i < input_count; i++) {
 				if (input_fds[i] < 0)
@@ -450,6 +549,15 @@ int main(int argc, char* argv[]) {
 				// volume/brightness chords) — never pop the OSD on those.
 				if (val == PRESSED && menu_pressed && input_ev.code != CODE_MENU2)
 					menu_long_fired = 1;
+				if (val != REPEAT) {
+					int code = input_ev.code;
+					int bk = code == CODE_HOME ? BOSKEY_HOME : code == code_f1 ? BOSKEY_F1 : code == code_f2 ? BOSKEY_F2 : -1;
+					// on the Brick the F keys are a game's L3/R3: there they stay the game's
+					if (bk > BOSKEY_HOME && !is_brickpro && proc_running("minarch.elf"))
+						bk = -1;
+					if (bk >= 0)
+						bos_key_event(bk, val == PRESSED, now, &home_toggle_at);
+				}
 				switch (input_ev.code) {
 				case CODE_PLUS:
 					up_pressed = up_just_pressed = val;
@@ -497,14 +605,15 @@ int main(int argc, char* argv[]) {
 					// Defer the toggle by HOME_TOGGLE_DELAY_MS so the daemon has
 					// discarded the release before the panel comes up. Repeat (2)
 					// is filtered out above.
-					if (val == RELEASED)
-						home_toggle_at = now + HOME_TOGGLE_DELAY_MS;
+					// Brick OS: the toggle now comes from the key's tap or hold action (bos_key_event)
 					break;
 				default:
 					break;
 				}
 			}
 		}
+
+		bos_key_tick(now, &home_toggle_at);
 
 		// Deferred Brick Pro Home toggle (see CODE_HOME above)
 		if (home_toggle_at && (int)(now - home_toggle_at) >= 0) {

@@ -14,6 +14,8 @@
 #include "defines.h"
 #include "i18n.h"
 #include "config.h"
+#include "bos_keys.h"
+#include <unistd.h>
 
 #define C_SEP 0x38383A	  // row separator inside a group
 #define C_ON_SUB 0x3A3A3C // a value / chevron on the focused (white) row
@@ -258,7 +260,69 @@ static void slider(SDL_Surface* s, int x, int w, int cy, float frac, bool hot, f
 		BOS_rrect(s, x, cy - h / 2, fw < h ? h : fw, h, h / 2, hot ? BOS_theme()->onfocus : mix(BOS_C_TEXT, BOS_theme()->surface, a));
 }
 
+// a key-cap value (DESIGN §6.9): "MENU+R1" -> caps in surface2 joined by "+"; "MENU|Hold" adds a word after the
+// caps; the D-pad names show as arrows. Returns the width; draws only when s is set
+static const char* capText(const char* k) {
+	if (!strcmp(k, "UP"))
+		return "\xE2\x86\x91";
+	if (!strcmp(k, "DOWN"))
+		return "\xE2\x86\x93";
+	if (!strcmp(k, "LEFT"))
+		return "\xE2\x86\x90";
+	if (!strcmp(k, "RIGHT"))
+		return "\xE2\x86\x92";
+	return k;
+}
+static int keyCaps(SDL_Surface* s, const char* v, int x, int cy, float a, uint32_t sub) {
+	char buf[64];
+	snprintf(buf, sizeof(buf), "%s", v);
+	char* tail = strchr(buf, '|');
+	if (tail)
+		*tail++ = 0;
+	int ch = BOS_px(40), pad = BOS_px(12), gap = BOS_px(6), x0 = x;
+	uint32_t cap = BOS_theme()->surface2;
+	char* save = NULL;
+	bool first = true;
+	for (char* k = strtok_r(buf, "+", &save); k; k = strtok_r(NULL, "+", &save)) {
+		if (!first) {
+			x += gap;
+			if (s)
+				BOS_textMid(s, "+", 24, 500, sub, a, x, cy);
+			x += BOS_textW("+", 24, 500) + gap;
+		}
+		first = false;
+		const char* t = capText(k);
+		bool round = strlen(k) == 1 || t != k; // A B X Y and the arrows: a circle
+		int tw = BOS_textW(t, 22, 700), w = round ? ch : tw + 2 * pad;
+		if (w < ch)
+			w = ch;
+		if (s) {
+			BOS_rrect(s, x, cy - ch / 2, w, ch, round ? ch / 2 : BOS_px(12), mix(cap, BOS_theme()->surface, a));
+			BOS_textMid(s, t, 22, 700, BOS_C_TEXT, a, x + (w - tw) / 2, cy);
+		}
+		x += w;
+	}
+	if (tail && tail[0]) {
+		const char* t = I18N_text(tail);
+		x += BOS_px(10);
+		if (s)
+			BOS_textMid(s, t, 26, 400, sub, a, x, cy);
+		x += BOS_textW(t, 26, 400);
+	}
+	return x - x0;
+}
+
+static void keyText(int key, int hold, char* out, size_t size);
+static void keyRowDraw(SDL_Surface* s, const char* name, const char* value, bool tag, int mark, int x, int y, int w,
+					   int h, bool hot);
 static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h, bool hot) {
+	if (it->keybtn) {
+		char v[160], hv[8];
+		keyText(it->keybtn - 1, 0, v, sizeof(v));
+		BosKeys_value(it->keybtn - 1, 1, hv, sizeof(hv));
+		keyRowDraw(s, I18N_text(it->name), v, hv[0] != '\0', 1, x, y, w, h, hot);
+		return;
+	}
 	if (hot) {
 		int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
 		x -= gw / 2, w += gw, y -= gh / 2, h += gh;
@@ -271,12 +335,19 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	const char* name = I18N_text(it->name);
 
 	// the value: a switch, a slider, a colour dot, or text; a Left/Right row in focus gets ‹ › round it
-	enum { V_NONE, V_TEXT, V_SLIDER, V_DOT, V_TOGGLE } k = V_NONE;
+	enum { V_NONE, V_TEXT, V_SLIDER, V_DOT, V_TOGGLE, V_CAPS } k = V_NONE;
 	int ts = toggleState(it), cw = 0;
 	uint32_t dotc = 0;
 	char val[160] = "";
 	if (it->color_slot) // ธีมสี: the colour set now
 		k = V_DOT, cw = BOS_px(32), dotc = slotColor(it->color_slot - 1);
+	else if (it->keycaps) { // ปุ่มลัด: the buttons, or "ไม่ได้ตั้ง"
+		const char* v = itemValue(it);
+		if (!v || !v[0] || !strcmp(v, "NONE"))
+			snprintf(val, sizeof(val), "%s", I18N_text("Not set")), k = V_TEXT, cw = BOS_textW(val, BOS_FS_SMALL, 400);
+		else
+			snprintf(val, sizeof(val), "%s", v), k = V_CAPS, cw = keyCaps(NULL, val, 0, 0, 1, 0);
+	}
 	else if (ts >= 0)
 		k = V_TOGGLE, cw = BOS_px(80);
 	else if (numericRange(it))
@@ -298,7 +369,11 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	// from the widest choice, the focused weight and the arrows, so the row never jumps between one and two lines
 	// when its value changes or it gains focus (DESIGN §6.6)
 	int widest = cw;
-	if (k == V_TEXT && (it->type == ITEM_CYCLE || it->type == ITEM_COLOR) && it->labels)
+	if (it->keycaps) { // the widest binding there is
+		int ww = keyCaps(NULL, "MENU+SELECT", 0, 0, 1, 0);
+		if (ww > widest)
+			widest = ww;
+	} else if (k == V_TEXT && (it->type == ITEM_CYCLE || it->type == ITEM_COLOR) && it->labels)
 		for (int i = 0; i < it->label_count; i++)
 			if (it->labels[i]) {
 				int lw = BOS_textW(I18N_text(it->labels[i]), BOS_FS_SMALL, 400);
@@ -346,6 +421,9 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		break;
 	case V_SLIDER:
 		slider(s, vx, cw, vy, it->label_count > 1 ? (float)it->current_idx / (it->label_count - 1) : 0, hot, a);
+		break;
+	case V_CAPS:
+		keyCaps(s, val, vx, vy, a, sub);
 		break;
 	case V_DOT: {
 		// a dot with a faint ring, so a dark or light colour still shows on either row
@@ -468,14 +546,11 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 			free_layout = true;
 	}
 	if (free_layout) { // a page with free blocks and group headers (ธีมสี): laid out in px, scrolled in px
-		int end = freeColumn(s, page, focused, rx, rw, list_y, bottom - foot_h, hot_item);
+		// no description line here: the page scrolls, and a line under the view sat on the rows (DESIGN §6.8)
+		freeColumn(s, page, focused, rx, rw, list_y, bottom, hot_item);
 		BOS_text(s, head, BOS_FS_TITLE, 700, BOS_C_TEXT, 1, rx + BOS_px(8), top);
-		SettingItem* fi = focused ? *hot_item : NULL;
-		foot = fi && fi->desc && fi->desc[0] ? fi->desc : NULL;
 		if (has_lock)
 			pthread_rwlock_unlock(&page->lock);
-		if (foot)
-			BOS_textWrap(s, I18N_text(foot), 26, 400, BOS_C_TEXTOFF, 1, rx + BOS_px(28), end + BOS_px(8), rw - BOS_px(28), 2);
 		return;
 	}
 	int rows = (bottom - list_y - foot_h) / rh;
@@ -852,11 +927,19 @@ void SettingsBos_pickerOpen(SettingItem* it) {
 		pk_top = 0;
 }
 
+static int ks_key = -1;
+static void keySheetInput(bool* dirty);
+static void keySheetRender(SDL_Surface* s);
+
 bool SettingsBos_pickerActive(void) {
-	return pk_item != NULL || cs_slot >= 0;
+	return pk_item != NULL || cs_slot >= 0 || ks_key >= 0;
 }
 
 void SettingsBos_pickerInput(bool* dirty) {
+	if (ks_key >= 0) {
+		keySheetInput(dirty);
+		return;
+	}
 	if (cs_slot >= 0) {
 		sheetInput(dirty);
 		return;
@@ -932,6 +1015,42 @@ static void pickerRender(SDL_Surface* s) {
 	BOS_hintBar(s, r, 2, NULL, 0);
 }
 
+static void shadeScreen(SDL_Surface* s) { // the page under a sheet dims to 60 %
+	static SDL_Surface* shade = NULL;
+	if (!shade || shade->w != s->w || shade->h != s->h) {
+		if (shade)
+			SDL_FreeSurface(shade);
+		shade = SDL_CreateRGBSurfaceWithFormat(0, s->w, s->h, 32, SDL_PIXELFORMAT_ARGB8888);
+		if (shade) {
+			SDL_FillRect(shade, NULL, SDL_MapRGBA(shade->format, 0, 0, 0, 153));
+			SDL_SetSurfaceBlendMode(shade, SDL_BLENDMODE_BLEND);
+		}
+	}
+	if (shade)
+		SDL_BlitSurface(shade, NULL, s, NULL);
+}
+
+// ---- ปุ่มลัด: "กดปุ่มที่ต้องการ…", a §5.7 sheet; the shortcut's name, the ask, a note, the countdown ----
+void SettingsBos_captureSheet(SDL_Surface* s, const char* name, const char* note, int secs) {
+	shadeScreen(s);
+	const BosTheme* th = BOS_theme();
+	int bar = BOS_px(BOS_BAR_H), sh = BOS_px(330), top = s->h - bar - sh, px = BOS_px(48);
+	BOS_rrect(s, 0, top, s->w, sh + bar, BOS_px(32), th->surface);
+	int y = top + BOS_px(24);
+	BOS_text(s, I18N_text(name), 44, 700, BOS_C_TEXT, 1, px, y);
+	char n[16];
+	snprintf(n, sizeof(n), "%d", secs);
+	int nw = BOS_textW(n, 44, 700), d = BOS_px(64);
+	BOS_rrect(s, s->w - px - d, y + (BOS_lineH(44) - d) / 2, d, d, d / 2, th->surface2);
+	BOS_text(s, n, 44, 700, BOS_C_TEXT2, 1, s->w - px - d + (d - nw) / 2, y + (BOS_lineH(44) - BOS_lineH(44)) / 2);
+	y += BOS_lineH(44) + BOS_px(28);
+	BOS_text(s, I18N_text("Press the button you want..."), BOS_FS_BODY, 600, BOS_C_TEXT, 1, px, y);
+	y += BOS_lineH(BOS_FS_BODY) + BOS_px(14);
+	BOS_textWrap(s, note, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px, y, s->w - 2 * px, 2);
+	BosHint r[] = {{"B", I18N_text("Cancel")}};
+	BOS_hintBar(s, r, 1, NULL, 0);
+}
+
 void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	if (depth <= 0)
 		return;
@@ -955,8 +1074,14 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	SettingItem* it = right_focused ? hot : cat;
 	if (it) {
 		bool cyc = it->type == ITEM_CYCLE || it->type == ITEM_COLOR;
-		if (it->color_slot)
+		if (it->keybtn)
+			r[nr++] = (BosHint){"A", I18N_text("Configure")};
+		else if (it->color_slot)
 			r[nr++] = (BosHint){"A", I18N_text("Choose")};
+		else if (it->keycaps && it->on_press)
+			r[nr++] = (BosHint){"A", I18N_text("Set")};
+		else if (it->keycaps)
+			; // read only (ปุ่มสลับเกม)
 		else if (it->custom_draw)
 			r[nr++] = (BosHint){"A", I18N_text("Use this theme")}; // the theme cards
 		else if (!cyc && it->type != ITEM_STATIC)
@@ -967,29 +1092,340 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 			r[nr++] = (BosHint){"A", I18N_text("Set")};
 		else if (SettingsBos_isPickable(it))
 			r[nr++] = (BosHint){"A", I18N_text("Choose")};
-		if (cyc && toggleState(it) < 0)
+		if (cyc && toggleState(it) < 0 && !it->keycaps)
 			l[nl++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change")};
 	}
 	r[nr++] = (BosHint){"B", I18N_text("Back")};
 	if (it && right_focused && it->on_clear)
 		r[nr++] = (BosHint){"X", I18N_text(it->clear_label ? it->clear_label : "Clear")};
 	BOS_hintBar(s, r, nr, l, nl);
-	if (pk_item || cs_slot >= 0) { // a sheet over the page, which dims to 60 %
-		static SDL_Surface* shade = NULL;
-		if (!shade || shade->w != s->w || shade->h != s->h) {
-			if (shade)
-				SDL_FreeSurface(shade);
-			shade = SDL_CreateRGBSurfaceWithFormat(0, s->w, s->h, 32, SDL_PIXELFORMAT_ARGB8888);
-			if (shade) {
-				SDL_FillRect(shade, NULL, SDL_MapRGBA(shade->format, 0, 0, 0, 153));
-				SDL_SetSurfaceBlendMode(shade, SDL_BLENDMODE_BLEND);
-			}
-		}
-		if (shade)
-			SDL_BlitSurface(shade, NULL, s, NULL);
-		if (cs_slot >= 0)
+	if (pk_item || cs_slot >= 0 || ks_key >= 0) { // a sheet over the page, which dims to 60 %
+		shadeScreen(s);
+		if (ks_key >= 0)
+			keySheetRender(s);
+		else if (cs_slot >= 0)
 			sheetRender(s);
 		else
 			pickerRender(s);
 	}
+}
+
+// ---- ปุ่มพิเศษ (DESIGN §6.9b) ----
+// step 1 lists กดคลิก / กดค้าง; step 2 replaces it with what the slot can do. The three "…" rows hand over to the
+// launcher's real screens in pick mode (BOS_PICK_PATH), which answers through BOS_PICK_RESULT_PATH.
+static const struct {
+	const char* name;
+	const char* value; // a sys: value, or "pick:<kind>"
+} KS_OPTS[] = {
+	{"Open app...", "pick:app"},	   {"Open console...", "pick:console"}, {"Open game...", "pick:game"},
+	{"Quick settings", "sys:quick"},  {"Switch games", "sys:switcher"},   {"Back to Home", "sys:home"},
+	{"Mute / unmute", "sys:mute"},	   {"Nothing", ""},
+};
+#define KS_NOPTS ((int)(sizeof(KS_OPTS) / sizeof(KS_OPTS[0])))
+#define KS_ROWS2 5 // step 2 rows in view
+static int ks_step, ks_hold, ks_sel, ks_top;
+static bool ks_quit;		 // Settings closes (a pick, or an action for the launcher)
+static uint32_t ks_flash_at; // the light's fast blink ends then (0: none)
+
+static const char* keyName(int key) {
+	return key == BOSKEY_HOME ? "HOME button" : key == BOSKEY_F1 ? "F1 button" : "F2 button";
+}
+
+// what a slot does, as Settings shows it
+static void keyText(int key, int hold, char* out, size_t size) {
+	char v[BOS_KEY_VAL];
+	BosKeys_value(key, hold, v, sizeof(v));
+	if (!v[0]) {
+		snprintf(out, size, "%s", I18N_text("Nothing"));
+		return;
+	}
+	for (int i = 3; i < KS_NOPTS; i++)
+		if (!strcmp(v, KS_OPTS[i].value)) {
+			snprintf(out, size, "%s", I18N_text(KS_OPTS[i].name));
+			return;
+		}
+	char lab[64], l[160];
+	snprintf(lab, sizeof(lab), "%s.label", BosKeys_slot(key, hold));
+	if (BosKeys_read(lab, l, sizeof(l)) && l[0]) {
+		snprintf(out, size, "%s", l);
+		return;
+	}
+	const char* c = strchr(v, ':');
+	const char* b = strrchr(v, '/');
+	snprintf(out, size, "%s", b ? b + 1 : c ? c + 1 : v);
+}
+
+// the key's light (Brick, Brick Pro: one under F1 and one under F2): 1 breathes slowly in primary, 2 blinks fast,
+// 0 gives the user's own lights back. Drawn straight on the zones; LEDS_refresh puts the profile back.
+static void keyLight(int key, int mode) {
+#if MAX_LIGHTS > 0
+	if ((key != BOSKEY_F1 && key != BOSKEY_F2) || !(is_brick || is_brickpro))
+		return;
+	if (mode == 0) {
+		LEDS_refresh();
+		return;
+	}
+	LightSettings on = {0}, off = {0}, scale = {0};
+	snprintf(on.filename, sizeof(on.filename), "%s", key == BOSKEY_F1 ? "f1" : "f2");
+	snprintf(off.filename, sizeof(off.filename), "%s", key == BOSKEY_F1 ? "f2" : "f1");
+	snprintf(scale.filename, sizeof(scale.filename), "f1"); // F1 and F2 share one brightness node, written via f1
+	scale.brightness = 60;
+	PLAT_setLedBrightness(&scale);
+	off.effect = 0;
+	PLAT_setLedEffect(&off);
+	on.color1 = BOS_theme()->primary & 0xFFFFFF;
+	on.effect = mode == 1 ? 2 : 5;		// Breathe, or Blink 1
+	on.speed = mode == 1 ? 1200 : 100;	// ms per cycle
+	on.cycles = mode == 1 ? -1 : 3;
+	PLAT_setLedEffectCycles(&on);
+	PLAT_setLedEffectSpeed(&on);
+	PLAT_setLedColor(&on);
+	PLAT_setLedEffect(&on);
+#else
+	(void)key, (void)mode;
+#endif
+}
+
+static void keySaved(void) { // the value changed: a fast blink, then the breath again (SettingsBos_keyTick)
+	keyLight(ks_key, 2);
+	ks_flash_at = SDL_GetTicks() + 700;
+}
+
+void SettingsBos_keyOpen(int key) {
+	ks_key = key;
+	ks_step = 1;
+	ks_hold = 0;
+	ks_sel = 0;
+	ks_flash_at = 0;
+	keyLight(key, 1);
+}
+
+void SettingsBos_keyReset(int key) {
+	BosKeys_reset(key, 0);
+	BosKeys_reset(key, 1);
+	if (key != BOSKEY_HOME) { // F1/F2's default is ว่าง; a missing line would be migrated again from fn1tool
+		BosKeys_set(key, 0, "", NULL);
+		BosKeys_set(key, 1, "", NULL);
+	}
+}
+
+static void keyClose(void) {
+	int k = ks_key;
+	ks_key = -1;
+	ks_flash_at = 0;
+	keyLight(k, 0);
+}
+
+static int keyOptIndex(void) { // step 2: the row holding the slot's value (-1: an app / console / game)
+	char v[BOS_KEY_VAL];
+	BosKeys_value(ks_key, ks_hold, v, sizeof(v));
+	for (int i = 3; i < KS_NOPTS; i++)
+		if (!strcmp(v, KS_OPTS[i].value))
+			return i;
+	return -1;
+}
+
+static void keySheetInput(bool* dirty) {
+	*dirty = true;
+	if (ks_step == 1) {
+		if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN))
+			ks_sel = !ks_sel;
+		else if (PAD_justPressed(BTN_B))
+			keyClose();
+		else if (PAD_justPressed(BTN_X)) { // ล้าง (HOME: คืนค่าเดิม)
+			if (ks_key == BOSKEY_HOME)
+				BosKeys_reset(ks_key, ks_sel);
+			else
+				BosKeys_set(ks_key, ks_sel, "", NULL);
+			keySaved();
+		} else if (PAD_justPressed(BTN_A)) {
+			ks_hold = ks_sel;
+			ks_step = 2;
+			int i = keyOptIndex();
+			ks_sel = i >= 0 ? i : 0;
+			ks_top = ks_sel - KS_ROWS2 + 1 > 0 ? ks_sel - KS_ROWS2 + 1 : 0;
+		}
+		return;
+	}
+	if (PAD_justRepeated(BTN_UP) && ks_sel > 0)
+		ks_sel--;
+	else if (PAD_justRepeated(BTN_DOWN) && ks_sel < KS_NOPTS - 1)
+		ks_sel++;
+	else if (PAD_justPressed(BTN_B)) {
+		ks_step = 1;
+		ks_sel = ks_hold;
+	} else if (PAD_justPressed(BTN_A)) {
+		const char* v = KS_OPTS[ks_sel].value;
+		if (!strncmp(v, "pick:", 5)) { // the launcher's real screen; it brings us back here
+			char title[160], line[256];
+			snprintf(title, sizeof(title), "%s · %s", I18N_text(keyName(ks_key)), I18N_text(ks_hold ? "Hold" : "Tap"));
+			snprintf(line, sizeof(line), "%s\t%s\t%s", BosKeys_slot(ks_key, ks_hold), v + 5, title);
+			BosKeys_writeFile(BOS_PICK_PATH, line);
+			unlink(BOS_PICK_RESULT_PATH);
+			keyLight(ks_key, 0);
+			ks_quit = true;
+			return;
+		}
+		BosKeys_set(ks_key, ks_hold, v, NULL);
+		ks_step = 1;
+		ks_sel = ks_hold;
+		keySaved();
+	}
+	if (ks_sel < ks_top)
+		ks_top = ks_sel;
+	if (ks_sel >= ks_top + KS_ROWS2)
+		ks_top = ks_sel - KS_ROWS2 + 1;
+}
+
+// one row: the name, then the value (or nothing), the "+ค้าง" tag, and a chevron (mark 1) or a ✓ (mark 2)
+static void keyRowDraw(SDL_Surface* s, const char* name, const char* value, bool tag, int mark, int x, int y, int w,
+					   int h, bool hot) {
+	if (hot) {
+		int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
+		x -= gw / 2, w += gw, y -= gh / 2, h += gh;
+		BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+	}
+	float a = hot ? 1.0f : BOS_DIM;
+	uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT, sub = hot ? C_ON_SUB : BOS_C_TEXT2;
+	int cy = y + h / 2, lx = x + BOS_px(28), rx = x + w - BOS_px(24);
+	if (mark == 1) {
+		BOS_icon(s, "chev", hot ? C_ON_SUB : BOS_C_TEXTOFF, a, rx - BOS_px(28), cy - BOS_px(14), BOS_px(28));
+		rx -= BOS_px(28 + 10);
+	} else if (mark == 2) {
+		int ck = BOS_px(36);
+		BOS_icon(s, "check", hot ? BOS_theme()->onfocus : BOS_theme()->primary, 1, rx - ck, cy - ck / 2, ck);
+		rx -= ck + BOS_px(10);
+	}
+	if (tag) { // "+ค้าง": 26 in a 2 px outline, radius 10, padding 0 8
+		const char* t = I18N_text("+hold");
+		int tw = BOS_textW(t, 26, 500) + 2 * BOS_px(8), th = BOS_px(36);
+		rx -= tw;
+		BOS_rrect(s, rx, cy - th / 2, tw, th, BOS_px(10), sub);
+		BOS_rrect(s, rx + BOS_px(2), cy - th / 2 + BOS_px(2), tw - BOS_px(4), th - BOS_px(4), BOS_px(8),
+				  hot ? BOS_theme()->focus : BOS_theme()->surface);
+		BOS_textMid(s, t, 26, 500, sub, a, rx + BOS_px(8), cy);
+		rx -= BOS_px(10);
+	}
+	int vw = 0;
+	char v[160] = "";
+	if (value && value[0]) {
+		BOS_fit(value, BOS_FS_SMALL, 400, (rx - lx) / 2, v, sizeof(v));
+		vw = BOS_textW(v, BOS_FS_SMALL, 400);
+		BOS_textMid(s, v, BOS_FS_SMALL, 400, sub, a, rx - vw, cy);
+	}
+	char l[160];
+	BOS_fit(name, BOS_FS_BODY, hot ? 600 : 500, rx - vw - BOS_px(16) - lx, l, sizeof(l));
+	BOS_textMid(s, l, BOS_FS_BODY, hot ? 600 : 500, fg, a, lx, cy);
+}
+
+// the popup: a §5.7 sheet from the bottom (330 tall at step 1, 600 at step 2), above everything on the page
+static void keySheetRender(SDL_Surface* s) {
+	const BosTheme* th = BOS_theme();
+	// step 1 fits its title, two rows and the note line; step 2 is 600 tall
+	int bar = BOS_px(BOS_BAR_H), px = BOS_px(48);
+	int sh = ks_step == 1 ? BOS_px(24 + 16 + 2 * 96 + 14 + 22) + BOS_lineH(44) + BOS_lineH(26) : BOS_px(600);
+	int top = s->h - bar - sh;
+	BOS_rrect(s, 0, top, s->w, sh + bar, BOS_px(32), th->surface);
+	int y = top + BOS_px(24);
+	char title[160];
+	if (ks_step == 1)
+		snprintf(title, sizeof(title), "%s", I18N_text(keyName(ks_key)));
+	else
+		snprintf(title, sizeof(title), "%s · %s", I18N_text(keyName(ks_key)), I18N_text(ks_hold ? "Hold" : "Tap"));
+	BOS_text(s, title, 44, 700, BOS_C_TEXT, 1, px, y);
+	y += BOS_lineH(44) + BOS_px(16);
+	int rh = BOS_px(96), gx = px, gw = s->w - 2 * px;
+	if (ks_step == 1) {
+		BOS_rrect(s, gx, y, gw, 2 * rh, BOS_px(24), th->surface2);
+		for (int r = 0; r < 2; r++) {
+			char v[160], hv[8];
+			keyText(ks_key, r, v, sizeof(v));
+			(void)hv;
+			keyRowDraw(s, I18N_text(r ? "Hold" : "Tap"), v, false, 1, gx, y + r * rh, gw, rh, ks_sel == r);
+		}
+		y += 2 * rh + BOS_px(14);
+		char note[256];
+		if (ks_key == BOSKEY_HOME)
+			snprintf(note, sizeof(note), "%s", I18N_text("Works everywhere, in games too"));
+		else
+			snprintf(note, sizeof(note), I18N_text("The light under %s blinks = the key being set · works everywhere, in games too"),
+					 ks_key == BOSKEY_F1 ? "F1" : "F2");
+		BOS_text(s, note, 26, 400, BOS_C_TEXT2, 1, px + BOS_px(28), y);
+		BosHint r[] = {{"A", I18N_text("Choose")}, {"B", I18N_text("Close")},
+					   {"X", I18N_text(ks_key == BOSKEY_HOME ? "Restore default" : "Clear")}};
+		BOS_hintBar(s, r, 3, NULL, 0);
+		return;
+	}
+	int rows = KS_NOPTS < KS_ROWS2 ? KS_NOPTS : KS_ROWS2, cur = keyOptIndex();
+	SDL_SetClipRect(s, &(SDL_Rect){0, y, s->w, s->h - bar - y});
+	BOS_rrect(s, gx, y, gw, rows * rh, BOS_px(24), th->surface2);
+	for (int r = 0; r < rows; r++) {
+		int i = ks_top + r;
+		bool pick = !strncmp(KS_OPTS[i].value, "pick:", 5);
+		keyRowDraw(s, I18N_text(KS_OPTS[i].name), NULL, false, pick ? 1 : i == cur ? 2 : 0, gx, y + r * rh, gw, rh,
+				   i == ks_sel);
+	}
+	SDL_SetClipRect(s, NULL);
+	if (KS_NOPTS > rows) { // a scroll mark inside the sheet
+		int tt = rows * rh, mh = tt * rows / KS_NOPTS, my = y + (tt - mh) * ks_top / (KS_NOPTS - rows);
+		BOS_rrect(s, s->w - BOS_px(18), my, BOS_px(6), mh, BOS_px(3), BOS_C_TEXTOFF);
+	}
+	BosHint r[] = {{"A", I18N_text("Choose")}, {"B", I18N_text("Back")}};
+	BOS_hintBar(s, r, 2, NULL, 0);
+}
+
+int SettingsBos_keyResume(void) {
+	if (access(BOS_PICK_RESULT_PATH, F_OK) != 0)
+		return -1;
+	char line[BOS_KEY_VAL + 256];
+	BosKeys_readFile(BOS_PICK_RESULT_PATH, line, sizeof(line));
+	unlink(BOS_PICK_RESULT_PATH);
+	char* f[4] = {line, NULL, NULL, NULL};
+	for (int i = 1; i < 4; i++) {
+		char* t = f[i - 1] ? strchr(f[i - 1], '\t') : NULL;
+		if (t) {
+			*t = '\0';
+			f[i] = t + 1;
+		}
+	}
+	int key = -1, hold = 0;
+	for (int k = 0; k < BOSKEY_COUNT; k++)
+		for (int h = 0; h < 2; h++)
+			if (!strcmp(f[0], BosKeys_slot(k, h)))
+				key = k, hold = h;
+	if (key < 0)
+		return -1;
+	SettingsBos_keyOpen(key);
+	ks_sel = hold;
+	if (f[1] && !strcmp(f[1], "set") && f[2]) {
+		BosKeys_set(key, hold, f[2], f[3]);
+		keySaved();
+	}
+	return key;
+}
+
+bool SettingsBos_keyTick(bool* quit) {
+	bool d = false;
+	if (ks_flash_at && (int32_t)(SDL_GetTicks() - ks_flash_at) >= 0) {
+		ks_flash_at = 0;
+		if (ks_key >= 0)
+			keyLight(ks_key, 1);
+		else
+			keyLight(BOSKEY_F1, 0);
+	}
+	static int n = 0;
+	if (++n >= 15) { // an action keymon left for the launcher: Settings gets out of its way (the popup ignores them)
+		n = 0;
+		if (access(BOS_ACTION_PATH, F_OK) == 0) {
+			if (ks_key >= 0)
+				unlink(BOS_ACTION_PATH);
+			else
+				ks_quit = true;
+		}
+	}
+	if (ks_quit) {
+		*quit = true;
+		d = true;
+	}
+	return d;
 }

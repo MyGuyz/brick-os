@@ -7,6 +7,7 @@
 
 #include "msettings.h"
 #include "emu_shortcuts.h"
+#include "bos_keys.h"
 #include "vib_levels.h"
 #include "defines.h"
 #include "api.h"
@@ -1445,7 +1446,7 @@ static void init_about_info(void) {
 #define MAX_MAIN_ITEMS 18
 #define MAX_BATTERY_ITEMS 5
 #define MAX_HOMEGAMES_ITEMS 5
-#define MAX_KEYS_ITEMS 4
+#define MAX_KEYS_ITEMS (8 + SHORTCUT_COUNT)
 #define MAX_CONTROLS_ITEMS 7
 #define MAX_INGAME_ITEMS 6
 #define MAX_STATUSBAR_ITEMS 7
@@ -1666,25 +1667,17 @@ static void shortcut_capture(int id) {
 		if (elapsed >= SHORTCUT_CAPTURE_MS)
 			break;
 
-		char hint[128];
+		char hint[192];
 		if (refused)
-			snprintf(hint, sizeof(hint), "%s is used by %s.\nPress another button.",
-					 button_labels[refused], shortcut_names[shortcut_owner(refused, id)]);
+			snprintf(hint, sizeof(hint), I18N_text("%s is already %s. Press another button."),
+					 button_labels[refused], I18N_text(shortcut_names[shortcut_owner(refused, id)]));
 		else
 			snprintf(hint, sizeof(hint), "%s",
-					 reserved ? "MENU+SELECT opens the Game Switcher.\nPress another button."
-							  : "Press a button, or hold MENU\nand press a button.");
-		char text[256];
-		snprintf(text, sizeof(text),
-				 "%s\n\n%s\n\n%u",
-				 shortcut_names[id], hint,
-				 (unsigned)((SHORTCUT_CAPTURE_MS - elapsed + 999) / 1000));
-		GFX_clear(g_screen);
-		UI_renderMenuBar(g_screen, "Settings | Emulator Shortcuts");
-		GFX_blitMessage(font.small, text, g_screen,
-						&(SDL_Rect){SCALE1(PADDING), 0,
-									g_screen->w - SCALE1(PADDING * 2), g_screen->h});
-		UI_renderButtonHintBar(g_screen, (char*[]){"B", "CANCEL", NULL});
+					 I18N_text(reserved ? "MENU+SELECT opens the Game Switcher. Press another button."
+										: "Or hold MENU and press a button."));
+		settings_menu_render(g_screen, 0);
+		SettingsBos_captureSheet(g_screen, shortcut_names[id], hint,
+								 (int)((SHORTCUT_CAPTURE_MS - elapsed + 999) / 1000));
 		GFX_flip(g_screen);
 	}
 	unlink(OSD_SUPPRESS_PATH);
@@ -1714,6 +1707,35 @@ static void shortcut_capture(int id) {
 	}
 SHORTCUT_LIST(SHORTCUT_CALLBACKS_)
 #undef SHORTCUT_CALLBACKS_
+
+// ปุ่มลัด (DESIGN §6.9): a key row is set by pressing the button (A), never by Left/Right
+static int keys_row_input(SettingItem* it) {
+	(void)it;
+	return PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT) || PAD_justRepeated(BTN_L1) ||
+		   PAD_justRepeated(BTN_R1);
+}
+static const char* keys_switcher_value(void) {
+	return "MENU|Hold";
+}
+// ปุ่มพิเศษ (DESIGN §6.9b): A opens the key's popup, X puts it back to its defaults
+static void open_key_home(void) {
+	SettingsBos_keyOpen(BOSKEY_HOME);
+}
+static void open_key_f1(void) {
+	SettingsBos_keyOpen(BOSKEY_F1);
+}
+static void open_key_f2(void) {
+	SettingsBos_keyOpen(BOSKEY_F2);
+}
+static void reset_key_home(void) {
+	SettingsBos_keyReset(BOSKEY_HOME);
+}
+static void reset_key_f1(void) {
+	SettingsBos_keyReset(BOSKEY_F1);
+}
+static void reset_key_f2(void) {
+	SettingsBos_keyReset(BOSKEY_F2);
+}
 
 typedef struct ShortcutRow {
 	int (*get)(void);
@@ -1931,6 +1953,8 @@ static void reset_shortcuts_page(void) {
 	shortcuts_save(); // one write, not one per row
 	for (int i = 0; i < shortcuts_page.item_count; i++)
 		settings_item_sync(&shortcuts_page.items[i]);
+	for (int i = 0; i < keys_page.item_count; i++)
+		settings_item_sync(&keys_page.items[i]);
 }
 static void reset_notify_page(void) {
 	if (!confirm_reset_page())
@@ -2704,19 +2728,61 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Appearance", "", &appearance_page);
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Home & games", "", &homegames_page);
 
-	// ปุ่มลัด: F1/F2 (hidden in simple mode, they launch tools), the FN switch, the in-game shortcuts (hidden in
-	// simple mode: a shortcut bound to A could reset or quit every game)
+	// ปุ่มลัด (DESIGN §6.9): one page. ปุ่มพิเศษ: F1/F2 (hidden in simple mode, they launch tools), the FN switch,
+	// the game switcher key; ในเกม · ทุกเครื่อง: every emulator shortcut (hidden in simple mode: a shortcut bound to
+	// A could reset or quit every game), as key caps
 	int nkeys = 0;
-	if (has_fn_keys(dev) && !get_simple_mode())
-		keys_items[nkeys++] = (SettingItem)ITEM_SUBMENU_INIT("F1 / F2 keys", "Launch a tool with the F1/F2 keys", &fn_keys_page);
-	if (has_fn_switch(dev))
-		keys_items[nkeys++] = (SettingItem)ITEM_SUBMENU_INIT("FN switch", "FN switch settings", &fn_switch_page);
-	if (!get_simple_mode())
-		keys_items[nkeys++] = (SettingItem)ITEM_SUBMENU_INIT("Emulator Shortcuts", "In-game shortcuts for every console", &shortcuts_page);
-	if (nkeys > 0) {
-		init_page(&keys_page, "Settings | Shortcuts", keys_items, nkeys, 0);
-		main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Shortcuts", "", &keys_page);
+	const char* first_head = "Special buttons";
+	// ปุ่มพิเศษ (DESIGN §6.9b): HOME (Brick Pro), F1, F2 (Brick family; hidden in simple mode), the FN switch
+	BosKeys_migrate(CFG_getFn1Tool(), CFG_getFn2Tool());
+	struct {
+		bool shown;
+		const char* name;
+		void (*open)(void);
+		void (*reset)(void);
+	} keyrows[] = {
+		{dev->model == MODEL_BRICKPRO && !get_simple_mode(), "HOME button", open_key_home, reset_key_home},
+		{has_fn_keys(dev) && !get_simple_mode(), "F1 button", open_key_f1, reset_key_f1},
+		{has_fn_keys(dev) && !get_simple_mode(), "F2 button", open_key_f2, reset_key_f2},
+	};
+	for (int k = 0; k < 3; k++) {
+		if (!keyrows[k].shown)
+			continue;
+		keys_items[nkeys] = (SettingItem)ITEM_BUTTON_INIT(keyrows[k].name, "", keyrows[k].open);
+		keys_items[nkeys].keybtn = k + 1;
+		keys_items[nkeys].on_clear = keyrows[k].reset;
+		keys_items[nkeys].clear_label = "Restore default";
+		keys_items[nkeys++].header = first_head, first_head = NULL;
 	}
+	if (has_fn_switch(dev)) {
+		keys_items[nkeys] = (SettingItem)ITEM_SUBMENU_INIT("FN switch", "", &fn_switch_page);
+		keys_items[nkeys++].header = first_head, first_head = NULL;
+	}
+	if (dev->model != MODEL_BRICKPRO) { // no HOME key: MENU held is the way to สลับเกม
+		keys_items[nkeys] = (SettingItem)ITEM_STATIC_INIT("Game switcher key", "", keys_switcher_value);
+		keys_items[nkeys].keycaps = 1;
+		keys_items[nkeys++].header = first_head;
+	}
+	if (!get_simple_mode()) {
+		const char* head = "In game · every console";
+		for (int i = 0; i < SHORTCUT_COUNT; i++) {
+			if (!shortcut_shown(i))
+				continue;
+			const ShortcutRow* row = &shortcut_rows[i];
+			keys_items[nkeys] = (SettingItem)ITEM_CYCLE_INIT(shortcut_names[i], "",
+				(const char**)button_labels, SHORTCUT_LABEL_COUNT, NULL, row->get, row->set, row->clear);
+			keys_items[nkeys].on_press = row->capture;
+			keys_items[nkeys].on_clear = row->clear;
+			keys_items[nkeys].on_input = keys_row_input;
+			keys_items[nkeys].keycaps = 1;
+			keys_items[nkeys].header = head, head = NULL;
+			nkeys++;
+		}
+		keys_items[nkeys++] = (SettingItem)ITEM_BUTTON_INIT("Reset to defaults", "Clears every shortcut.", reset_shortcuts_page);
+	}
+	init_page(&keys_page, "Settings | Shortcuts", keys_items, nkeys, 0);
+	keys_page.on_hide = shortcuts_page_hide;
+	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Shortcuts", "", &keys_page);
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("Controls", "", &controls_page);
 	main_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT("In-game", "", &ingame_page);
 	if (has_leds(dev)) {
@@ -2745,7 +2811,7 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	{
 		SettingsPage* pages[] = {
 			&appearance_page, &layouts_page, &display_page, &system_page,
-			&fn_switch_page, &notify_page, &simple_mode_page, &shortcuts_page, NULL};
+			&fn_switch_page, &notify_page, &simple_mode_page, &shortcuts_page, &keys_page, NULL};
 		for (int p = 0; pages[p]; p++) {
 			for (int i = 0; i < pages[p]->item_count; i++) {
 				settings_item_sync(&pages[p]->items[i]);
@@ -2799,6 +2865,21 @@ int main(int argc, char* argv[]) {
 
 	settings_menu_init();
 	settings_menu_push(&main_page);
+	// back from the launcher's pick (ปุ่มพิเศษ): straight to ปุ่มลัด with the key's popup open
+	int resume_key = SettingsBos_keyResume();
+	if (resume_key >= 0) {
+		for (int i = 0; i < main_page.item_count; i++)
+			if (main_page.items[i].submenu == &keys_page) {
+				int v = settings_page_actual_to_visible(&main_page, i);
+				main_page.selected = v >= 0 ? v : 0;
+			}
+		settings_menu_push(&keys_page);
+		for (int i = 0; i < keys_page.item_count; i++)
+			if (keys_page.items[i].keybtn == resume_key + 1) {
+				int v = settings_page_actual_to_visible(&keys_page, i);
+				keys_page.selected = v >= 0 ? v : 0;
+			}
+	}
 
 	bool quit = false;
 	bool dirty = true;
@@ -2811,6 +2892,8 @@ int main(int argc, char* argv[]) {
 		UI_handleQuitRequest(screen, &quit, &dirty, "Exit Settings?",
 							 "Your settings are automatically saved");
 		settings_menu_handle_input(&quit, &dirty);
+		if (SettingsBos_keyTick(&quit))
+			dirty = true;
 
 		if (settings_menu_glide_active() || BOS_marqueeActive()) // a focused long name scrolls
 			dirty = true;

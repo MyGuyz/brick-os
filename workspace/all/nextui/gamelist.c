@@ -1948,6 +1948,25 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 	// every frame, whatever returns early below (each tracker ticked once: a tap is spent here, not misread later)
 	tap_menu = PAD_tappedMenu(now);
 	tap_select = PAD_tappedSelect(now);
+
+	// ปุ่มพิเศษ (DESIGN §6.9b): a pick Settings asked for takes every press; an action keymon left runs here
+	if (BosPick_poll(dirty)) {
+		if (BosGames_active())
+			BosGames_handleInput(now, dirty, false, tap_select);
+		else if (Home_active() && HomeBos_active())
+			HomeBos_handleInput(now, dirty, false);
+		return result;
+	}
+	int bos_act = BosAction_poll(dirty);
+	if (bos_act == 2) {
+		result.screen = SCREEN_GAMESWITCHER;
+		result.animdir = SLIDE_UP;
+		return result;
+	}
+	if (bos_act == 1) {
+		result.folderbgchanged = true;
+		return result;
+	}
 	tap_start = PAD_tappedStart(now);
 	artFetchPoll(now, dirty); // a cancelled fetch's art may have landed since
 
@@ -2150,7 +2169,7 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 		GFX_clearLayers(LAYER_SCROLLTEXT);
 		ScrollText_clear(&list_scroll);
 		return result;
-	} else if (HAS_FN_KEYS && !gl_simple_mode &&
+	} else if (false && HAS_FN_KEYS && !gl_simple_mode && // Brick OS: F1/F2 are keymon's now (DESIGN §6.9b)
 			   (PAD_justPressed(BTN_FN1) || PAD_justPressed(BTN_FN2))) {
 		// F1/F2 tool shortcuts (Brick family): launch the assigned tool pak
 		// from anywhere in normal browsing. Unassigned key or a tool that got
