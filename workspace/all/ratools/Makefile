@@ -38,7 +38,7 @@ SOURCE = ratools.c ratools_data.c ratools_browser.c ratools_sync.c ratools_prefe
          $(COMMON_PATH)/ra_hash_cdreader.c ../minarch/chd_reader.c ../minarch/chd_tracks.c \
          $(COMMON_PATH)/display_helper.c \
          $(COMMON_PATH)/image_load.c ../minarch/libretro-common/formats/webp/rwebp.c ../minarch/libretro-common/formats/vp8/rvp8.c \
-         $(UI_COMPONENT_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) \
+         $(UI_COMPONENT_SRCS) $(BOS_UI_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) \
          $(UI_DIR)/ui_keyboard.c \
          ../../$(PLATFORM)/platform/platform.c
 
