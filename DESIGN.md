@@ -466,8 +466,10 @@ Boards: v2-SettingsShortcuts, v2-ShortcutSheet, v2-ShortcutChoose, v2-PickApp, v
   - While the ปุ่ม F1 row is in focus, or F1's popup is open, the light under F1 blinks fast and without stopping
     (Blink 1, 150 ms a blink).
   - The colour is the one the user gave that light on the ไฟ LED page (§6.10). It is white when there is none.
-  - Only that light changes; the others keep the user's settings. F1 and F2 share one brightness node: when it is
-    under 40 the blink lifts it to 60, so the blink always shows.
+  - **Every other light is off** (user, 2026-11-11), so only the key being set shows. F1 and F2 share one brightness
+    node: when it is under 40 the blink lifts it to 60, so the blink always shows.
+  - "Off" is static black (effect 4, colour 000000). The driver's effect 0 freezes a light wherever its animation
+    was, lit or dark: moving from the F2 row to the F1 row left F2 stuck on half the time. Verified on the device.
   - Moving off the row, closing the popup, leaving the page or closing Settings gives the user's own lights back.
 - v1 (replaced): a slow breath in `primary` while the popup was open, 3 fast blinks on save. On the device the user found
   the lights confusing next to the ไฟ LED page.
@@ -477,7 +479,8 @@ Boards: v2-SettingsShortcuts, v2-ShortcutSheet, v2-ShortcutChoose, v2-PickApp, v
 ### 6.10 ตั้งค่า › ไฟ LED (v1, 2026-11-11; boards v2-SettingsLED, v2-SettingsLEDZone, v2-SettingsLEDColor)
 User request: "like the theme colour page, with colour choice and a colour code".
 - **Page ไฟ LED:** large title, a group "ไฟแต่ละจุด" with one row per light.
-  - Brick Pro: ปุ่ม F1, ปุ่ม F2, แถบบน, จอยสติก, ปุ่มไหล่ L R.
+  - Brick Pro: ปุ่ม F1, ปุ่ม F2, ขอบบน, จอยสติก, ปุ่มไหล่ L R. ("ขอบบน", the light along the top edge; the English key is
+    "Top edge", kept apart from "Top bar" = แถบบน on the screen.)
   - Each row shows its effect name, then a colour dot, then a chevron. A light with brightness 0 reads "ปิด".
   - The description: "ไฟจริงแสดงค่าที่ตั้งตลอดเวลาที่อยู่ในหน้านี้ แม้กำลังชาร์จ".
 - **A light's page** (e.g. ปุ่ม F1):
@@ -497,6 +500,11 @@ User request: "like the theme colour page, with colour choice and a colour code"
 - **The lights on these pages show the user's own settings**, whatever profile is active (charging, low battery).
   - Before, an edit made while charging showed in the charging profile and looked wrong.
   - Leaving the pages gives the active profile back.
+- **Colour accuracy (2026-11-11):** every colour goes through a gamma 2.2 table before it reaches the driver
+  (`PLAT_setLedColor`). The LED's PWM is linear in light but the screen's colours are sRGB, so a mix such as orange
+  FF5A00 showed yellowish. Primaries, white and black are unchanged; the stored colour stays the screen colour.
+  - Checked on the device: corrected orange on F1 next to the old one on F2; the user compared them with a web page
+    on a PC and picked F1.
 - Stored as before in `ledsettings_brickpro.txt` (`ledsettings_brick.txt` on the Brick). The old 110-name colour list is
   no longer used by this page, but the file format is unchanged.
 - Why: a slow pulse says "this one, waiting" without alarm; a short fast burst says "done" (the same feedback a phone

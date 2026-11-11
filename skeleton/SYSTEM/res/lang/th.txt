@@ -122,6 +122,7 @@ Consoles tab	แท็บเกม
 Collections tab	แท็บคอลเลกชัน
 Tools tab	แท็บเครื่องมือ
 Top bar	แถบบน
+Top edge	ขอบบน
 Bottom bar	แถบล่าง
 Default view	มุมมองเริ่มต้น
 Full screen	เต็มจอ

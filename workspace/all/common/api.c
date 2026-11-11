@@ -4973,15 +4973,15 @@ void LEDS_updateLeds(bool indicator_only) {
 
 		PLAT_setLedEffectCycles(&led); // set how many times animation should loop
 		PLAT_setLedEffectSpeed(&led);  // set animation speed
-		PLAT_setLedColor(&led);		   // set color
-
 		// On trimui led_anim hardware a brightness (max_scale) of 0 does NOT stop a
 		// running animation — the zone keeps showing its colour (e.g. the green charging
-		// breathe with Info Brightness=0, or a muted/disabled zone). Disable the effect
-		// outright when the effective brightness is 0 so "0" reliably means off. Operates
-		// on the local copy, so the configured effect shown in the UI is untouched.
+		// breathe with Info Brightness=0, or a muted/disabled zone). Effect 0 ("disable")
+		// is no cure either: it freezes the zone wherever the animation was, lit or dark.
+		// Static black is the only real off. Operates on the local copy, so the
+		// configured effect shown in the UI is untouched.
 		if (eff_bright == 0)
-			led.effect = 0;		 // "disable"
+			led.color1 = 0, led.effect = 4;
+		PLAT_setLedColor(&led);		   // set color
 		PLAT_setLedEffect(&led); // finally set the effect, on trimui devices this also applies the settings
 	}
 }

@@ -1207,12 +1207,22 @@ static void keyText(int key, int hold, char* out, size_t size) {
 }
 
 // the key's light (Brick, Brick Pro: one under F1 and one under F2) blinks fast in the colour the user gave that
-// light (ไฟ LED), white when it has none. Only that light changes; LEDS_refresh puts the profile back.
+// light (ไฟ LED), white when it has none. Every other light is off so the key stands out; LEDS_refresh puts the
+// profile back.
 static void keyBlink(int key) {
 #if MAX_LIGHTS > 0
 	if ((key != BOSKEY_F1 && key != BOSKEY_F2) || !(is_brick || is_brickpro))
 		return;
-	LightSettings on = lightsDefault[key == BOSKEY_F1 ? 0 : 1], scale = lightsDefault[0];
+	int zone = key == BOSKEY_F1 ? 0 : 1;
+	for (int z = 0; z < (is_brickpro ? 5 : 4) && z < MAX_LIGHTS; z++)
+		if (z != zone) {
+			LightSettings off = lightsDefault[z]; // effect 0 freezes a light mid-animation (lit or dark): static black
+			off.color1 = 0;
+			off.effect = 4;
+			PLAT_setLedColor(&off);
+			PLAT_setLedEffect(&off);
+		}
+	LightSettings on = lightsDefault[zone], scale = lightsDefault[0];
 	if (scale.brightness < 40) // F1 and F2 share one brightness node (written via f1): dim or off would hide the blink
 		scale.brightness = 60, PLAT_setLedBrightness(&scale);
 	if (!(on.color1 & 0xFFFFFF))

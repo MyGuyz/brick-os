@@ -155,9 +155,9 @@ static void led_preview(void) {
 		PLAT_setLedBrightness(&l);
 		PLAT_setLedEffectCycles(&l);
 		PLAT_setLedEffectSpeed(&l);
+		if (l.brightness == 0) // brightness 0 does not stop an animation, and effect 0 freezes it lit or dark:
+			l.color1 = 0, l.effect = 4; // static black is the only real "off" on this driver
 		PLAT_setLedColor(&l);
-		if (l.brightness == 0)
-			l.effect = 0; // brightness 0 does not stop an animation on this driver
 		PLAT_setLedEffect(&l);
 	}
 }
@@ -407,8 +407,8 @@ static SettingItem led_root_items[MAX_LED_ROOT_ITEMS];
 static SettingsPage led_root_page;
 
 /* Zone title strings (static storage for page titles) */
-static const char* brick_zone_titles[] = {"F1 key", "F2 key", "Top bar", "L&R triggers"};
-static const char* brickpro_zone_titles[] = {"F1 key", "F2 key", "Top bar", "Joysticks", "L&R triggers"};
+static const char* brick_zone_titles[] = {"F1 key", "F2 key", "Top edge", "L&R triggers"};
+static const char* brickpro_zone_titles[] = {"F1 key", "F2 key", "Top edge", "Joysticks", "L&R triggers"};
 
 static const char* default_zone_titles[] = {"Joystick L", "Joystick R", "Logo"};
 
