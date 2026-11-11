@@ -6,6 +6,8 @@
  */
 
 #include "settings_led.h"
+#include "settings_bos.h"
+#include "i18n.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,10 +95,10 @@ static void led_init_labels(void) {
 	for (int i = 0; i < LED_EFFECT_MAX; i++)
 		effect_values[i] = i + 1;
 
-	/* Speed labels: 0, 100, 200, ..., 4900 */
+	/* Speed: ms per cycle, 5000 down to 100, so the slider's right end is the fastest (DESIGN §6.10) */
 	for (int i = 0; i < SPEED_LABEL_COUNT; i++) {
-		speed_values[i] = i * 100;
-		snprintf(speed_label_buf[i], sizeof(speed_label_buf[i]), "%d", i * 100);
+		speed_values[i] = (SPEED_LABEL_COUNT - i) * 100;
+		snprintf(speed_label_buf[i], sizeof(speed_label_buf[i]), "%d", speed_values[i]);
 		speed_labels[i] = speed_label_buf[i];
 	}
 
@@ -144,13 +146,26 @@ static void led_save_settings(void) {
 	fclose(file);
 }
 
+/* The LED pages show the user's own settings on the lights, whatever profile is active (charging, low battery):
+   before, an edit while charging was drawn with the charging profile and looked wrong (DESIGN §6.10).
+   Leaving the pages gives the profile back (SettingsBos lightsApply). */
+static void led_preview(void) {
+	for (int z = 0; z < led_num_lights; z++) {
+		LightSettings l = lightsDefault[z];
+		PLAT_setLedBrightness(&l);
+		PLAT_setLedEffectCycles(&l);
+		PLAT_setLedEffectSpeed(&l);
+		PLAT_setLedColor(&l);
+		if (l.brightness == 0)
+			l.effect = 0; // brightness 0 does not stop an animation on this driver
+		PLAT_setLedEffect(&l);
+	}
+}
+
 static void led_apply_and_save(void) {
 	led_save_settings();
 	LEDS_initLeds();
-	// Push updated values to hardware so changes are visible immediately.
-	// Don't use LEDS_setProfile here — that would clobber the active
-	// operational profile (charging, low-battery, etc.).
-	LEDS_updateLeds(false);
+	led_preview();
 }
 
 // ============================================
@@ -256,10 +271,43 @@ static void led_sync_coupled_inbrightness(int source_zone) {
 		led_apply_and_save();                       \
 	}
 
+static int led_cs_zone; // the zone the colour sheet edits
+static void led_color_live(uint32_t c) {
+	lightsDefault[led_cs_zone].color1 = c;
+	led_preview();
+}
+static void led_color_set(uint32_t c) {
+	lightsDefault[led_cs_zone].color1 = c;
+	led_apply_and_save();
+}
+static char led_cs_title[MAX_LIGHTS][96];
+static const char* led_effect_name(int z) {
+	int e = lightsDefault[z].effect;
+	return lightsDefault[z].brightness == 0 || e < 1 || e > LED_EFFECT_MAX ? "Off" : effect_names[e - 1];
+}
+#define LED_ZONE_EXTRAS(Z)                                                                                  \
+	static void led_open_color_##Z(void) {                                                                \
+		led_cs_zone = Z;                                                                                    \
+		SettingsBos_ledColorOpen(led_cs_title[Z], lightsDefault[Z].color1, led_color_live, led_color_set); \
+	}                                                                                                     \
+	static void led_clear_color_##Z(void) {                                                               \
+		lightsDefault[Z].color1 = 0xFFFFFF;                                                                 \
+		led_apply_and_save();                                                                               \
+	}                                                                                                     \
+	static uint32_t led_dot_##Z(void) {                                                                   \
+		return lightsDefault[Z].color1;                                                                     \
+	}                                                                                                     \
+	static const char* led_effect_##Z(void) {                                                             \
+		return led_effect_name(Z);                                                                          \
+	}
 LED_ZONE_CALLBACKS(0)
 LED_ZONE_CALLBACKS(1)
 LED_ZONE_CALLBACKS(2)
 LED_ZONE_CALLBACKS(3)
+LED_ZONE_EXTRAS(0)
+LED_ZONE_EXTRAS(1)
+LED_ZONE_EXTRAS(2)
+LED_ZONE_EXTRAS(3)
 // Zone 4 (the Brick Pro's "rear" = L&R-triggers zone) exists only on 5-zone devices.
 // MAX_LIGHTS is 5 on tg5040 but 4 on tg5050, so the zone-4 callbacks and their table
 // slots are guarded to avoid an out-of-bounds lightsDefault[4] on tg5050 — where this
@@ -268,6 +316,7 @@ LED_ZONE_CALLBACKS(3)
 // garbage function pointer) as soon as the L&R-triggers zone was opened or edited.
 #if MAX_LIGHTS > 4
 LED_ZONE_CALLBACKS(4)
+LED_ZONE_EXTRAS(4)
 #define LED_Z4(fn) , fn
 #else
 #define LED_Z4(fn)
@@ -286,6 +335,13 @@ static led_set_fn zone_set_speed[] = {led_set_speed_0, led_set_speed_1, led_set_
 static led_get_fn zone_get_brightness[] = {led_get_brightness_0, led_get_brightness_1, led_get_brightness_2, led_get_brightness_3 LED_Z4(led_get_brightness_4)};
 static led_set_fn zone_set_brightness[] = {led_set_brightness_0, led_set_brightness_1, led_set_brightness_2, led_set_brightness_3 LED_Z4(led_set_brightness_4)};
 static led_get_fn zone_get_inbrightness[] = {led_get_inbrightness_0, led_get_inbrightness_1, led_get_inbrightness_2, led_get_inbrightness_3 LED_Z4(led_get_inbrightness_4)};
+typedef void (*led_void_fn)(void);
+typedef uint32_t (*led_dot_fn)(void);
+typedef const char* (*led_text_fn)(void);
+static led_void_fn zone_open_color[] = {led_open_color_0, led_open_color_1, led_open_color_2, led_open_color_3 LED_Z4(led_open_color_4)};
+static led_void_fn zone_clear_color[] = {led_clear_color_0, led_clear_color_1, led_clear_color_2, led_clear_color_3 LED_Z4(led_clear_color_4)};
+static led_dot_fn zone_dot[] = {led_dot_0, led_dot_1, led_dot_2, led_dot_3 LED_Z4(led_dot_4)};
+static led_text_fn zone_effect[] = {led_effect_0, led_effect_1, led_effect_2, led_effect_3 LED_Z4(led_effect_4)};
 static led_set_fn zone_set_inbrightness[] = {led_set_inbrightness_0, led_set_inbrightness_1, led_set_inbrightness_2, led_set_inbrightness_3 LED_Z4(led_set_inbrightness_4)};
 
 // ============================================
@@ -308,10 +364,10 @@ static void led_build_zone_page(int zone_idx, const char* title) {
 		effect_names, LED_EFFECT_MAX, effect_values,
 		zone_get_effect[zone_idx], zone_set_effect[zone_idx], NULL);
 
-	zone_items[zone_idx][idx++] = (SettingItem)ITEM_COLOR_INIT(
-		"Color", "LED color",
-		color_labels, COLOR_COUNT, (int*)color_values,
-		zone_get_color[zone_idx], zone_set_color[zone_idx], NULL);
+	zone_items[zone_idx][idx] = (SettingItem)ITEM_BUTTON_INIT("Color", "LED color", zone_open_color[zone_idx]);
+	zone_items[zone_idx][idx].dot_color = zone_dot[zone_idx];
+	zone_items[zone_idx][idx].on_clear = zone_clear_color[zone_idx];
+	zone_items[zone_idx][idx++].clear_label = "Restore default";
 
 	zone_items[zone_idx][idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Speed", "Animation speed",
@@ -320,11 +376,11 @@ static void led_build_zone_page(int zone_idx, const char* title) {
 
 	const char* brightness_name = led_per_zone_brightness ? "Brightness" : "Brightness (All LEDs)";
 	zone_items[zone_idx][idx++] = (SettingItem)ITEM_CYCLE_INIT(
-		brightness_name, "LED brightness level",
+		brightness_name, led_per_zone_brightness && zone_idx <= 1 ? "F1 and F2 share one brightness" : "LED brightness level",
 		led_brightness_labels, LED_BRIGHTNESS_LABEL_COUNT, led_brightness_values,
 		zone_get_brightness[zone_idx], zone_set_brightness[zone_idx], NULL);
 
-	const char* inbrightness_name = led_per_zone_brightness ? "Info Brightness" : "Info Brightness (All LEDs)";
+	const char* inbrightness_name = led_per_zone_brightness ? "Charging / low battery brightness" : "Info Brightness (All LEDs)";
 	zone_items[zone_idx][idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		inbrightness_name, "LED brightness during charging/low battery",
 		led_brightness_labels, LED_BRIGHTNESS_LABEL_COUNT, led_brightness_values,
@@ -339,6 +395,7 @@ static void led_build_zone_page(int zone_idx, const char* title) {
 	zone_pages[zone_idx].is_list = 0;
 	zone_pages[zone_idx].dynamic_start = -1;
 	zone_pages[zone_idx].max_items = idx;
+	zone_pages[zone_idx].led_preview = 1;
 }
 
 // ============================================
@@ -352,6 +409,7 @@ static SettingsPage led_root_page;
 /* Zone title strings (static storage for page titles) */
 static const char* brick_zone_titles[] = {"F1 key", "F2 key", "Top bar", "L&R triggers"};
 static const char* brickpro_zone_titles[] = {"F1 key", "F2 key", "Top bar", "Joysticks", "L&R triggers"};
+
 static const char* default_zone_titles[] = {"Joystick L", "Joystick R", "Logo"};
 
 SettingsPage* led_page_create(void) {
@@ -372,7 +430,9 @@ SettingsPage* led_page_create(void) {
 		snprintf(zone_title_bufs[z], sizeof(zone_title_bufs[z]),
 				 "LED Control | %s", zone_titles[z]);
 		led_build_zone_page(z, zone_title_bufs[z]);
+		snprintf(led_cs_title[z], sizeof(led_cs_title[z]), "%s \xC2\xB7 %s", I18N_text("LED colour"), I18N_text(zone_titles[z]));
 	}
+	SettingsBos_setLedPreview(led_preview);
 
 	/* Sync all zone items */
 	for (int z = 0; z < led_num_lights; z++) {
@@ -384,8 +444,10 @@ SettingsPage* led_page_create(void) {
 	/* Build root list page */
 	int idx = 0;
 	for (int z = 0; z < led_num_lights; z++) {
-		led_root_items[idx++] = (SettingItem)ITEM_SUBMENU_INIT(
-			zone_titles[z], "", &zone_pages[z]);
+		led_root_items[idx] = (SettingItem)ITEM_SUBMENU_INIT(
+			zone_titles[z], "The lights show these settings while you are on this page, even while charging", &zone_pages[z]);
+		led_root_items[idx].dot_color = zone_dot[z];
+		led_root_items[idx++].get_display = zone_effect[z];
 	}
 
 	memset(&led_root_page, 0, sizeof(SettingsPage));
@@ -397,6 +459,7 @@ SettingsPage* led_page_create(void) {
 	led_root_page.is_list = 1;
 	led_root_page.dynamic_start = -1;
 	led_root_page.max_items = idx;
+	led_root_page.led_preview = 1;
 
 	return &led_root_page;
 }

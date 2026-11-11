@@ -82,6 +82,7 @@ typedef struct SettingItem {
 	int height;				 // mockup px of a free block (0 = a normal row)
 	const char* header;		 // starts a new group with this small title above it
 	int color_slot;
+	uint32_t (*dot_color)(void); // ไฟ LED: a colour dot (after the get_display text, if any) and a chevron
 	const char* clear_label; // X's hint (default "Clear")
 	int cursor;				 // a free block's own focus (ธีมสี's cards)
 	int keycaps;			 // the value is buttons: "MENU+R1" drawn as caps joined by "+", "MENU|Hold" adds a word
@@ -100,6 +101,7 @@ typedef struct SettingsPage {
 	int selected;
 	int scroll;
 	int is_list; // 1=category list (shrink pills), 0=settings (full-width pills)
+	int led_preview; // ไฟ LED pages: the lights show the user's own settings while this page is open
 
 	// Lifecycle callbacks (for WiFi/BT pages)
 	void (*on_show)(struct SettingsPage* page);

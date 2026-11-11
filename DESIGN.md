@@ -462,12 +462,43 @@ Boards: v2-SettingsShortcuts, v2-ShortcutSheet, v2-ShortcutChoose, v2-PickApp, v
 - **B** goes back to step 1. **A** on a system row saves it and goes back to step 1.
 
 **The key's light: which button is being set** (Brick and Brick Pro, which have a light under F1 and F2)
-- While the popup is open for F1, the light under F1 breathes slowly in `primary` (about 1.2 s a breath).
-  - The F2 light is off meanwhile, so only one light moves. (F1 and F2 share one brightness node; the breath uses a fixed
-    brightness of its own, so it shows even when the user's lights are dimmed or off.)
-- When a value is saved (A on a step 2 row, or a pick coming back), the light blinks fast 3 times (about 0.6 s), then
-  goes back to breathing while the popup stays open.
-- When the popup closes (B), the user's own light settings come back.
+- **v2 (user, 2026-11-11), replacing v1's slow breath and 3-blink save flash:**
+  - While the ปุ่ม F1 row is in focus, or F1's popup is open, the light under F1 blinks fast and without stopping
+    (Blink 1, 150 ms a blink).
+  - The colour is the one the user gave that light on the ไฟ LED page (§6.10). It is white when there is none.
+  - Only that light changes; the others keep the user's settings. F1 and F2 share one brightness node: when it is
+    under 40 the blink lifts it to 60, so the blink always shows.
+  - Moving off the row, closing the popup, leaving the page or closing Settings gives the user's own lights back.
+- v1 (replaced): a slow breath in `primary` while the popup was open, 3 fast blinks on save. On the device the user found
+  the lights confusing next to the ไฟ LED page.
+- **Heat fix (2026-11-11):** while the popup was open, Settings redrew the screen every frame (60 fps) even with no
+  input. It now redraws only while a button is down. This was the likely cause of the device warming up with no game running.
+
+### 6.10 ตั้งค่า › ไฟ LED (v1, 2026-11-11; boards v2-SettingsLED, v2-SettingsLEDZone, v2-SettingsLEDColor)
+User request: "like the theme colour page, with colour choice and a colour code".
+- **Page ไฟ LED:** large title, a group "ไฟแต่ละจุด" with one row per light.
+  - Brick Pro: ปุ่ม F1, ปุ่ม F2, แถบบน, จอยสติก, ปุ่มไหล่ L R.
+  - Each row shows its effect name, then a colour dot, then a chevron. A light with brightness 0 reads "ปิด".
+  - The description: "ไฟจริงแสดงค่าที่ตั้งตลอดเวลาที่อยู่ในหน้านี้ แม้กำลังชาร์จ".
+- **A light's page** (e.g. ปุ่ม F1):
+  - เอฟเฟกต์ ‹ › with ไหล, หายใจ, หายใจเป็นช่วง, ติดค้าง, กระพริบ 1–3 (the driver's 7).
+  - สี: a dot and a chevron. A opens the colour sheet; X puts it back to white.
+  - ความเร็ว: a slider, with right = faster (5.0 s down to 0.1 s a cycle).
+  - ความสว่าง: a slider. On F1/F2 the description says "ปุ่ม F1 และ F2 ใช้ความสว่างเดียวกัน".
+  - ความสว่างตอนชาร์จ / แบตต่ำ: a slider.
+- **Colour sheet:** the §6.8 sheet with these changes:
+  - No tabs.
+  - 12 pure colours that show well on an LED: white, red, orange, amber, yellow, lime, green, mint, sky, blue,
+    violet, pink.
+  - กำหนดเอง is a hue bar at full saturation.
+  - รหัสสี works exactly as in §6.8.
+  - Instead of the readability preview, a lit pill in the colour and the line "ไฟจริงเปลี่ยนตามทันที · B ยกเลิกได้".
+  - The real light follows every change at once. **A** ใช้สีนี้ saves it. **B** ยกเลิก puts the light back.
+- **The lights on these pages show the user's own settings**, whatever profile is active (charging, low battery).
+  - Before, an edit made while charging showed in the charging profile and looked wrong.
+  - Leaving the pages gives the active profile back.
+- Stored as before in `ledsettings_brickpro.txt` (`ledsettings_brick.txt` on the Brick). The old 110-name colour list is
+  no longer used by this page, but the file format is unchanged.
 - Why: a slow pulse says "this one, waiting" without alarm; a short fast burst says "done" (the same feedback a phone
   gives with a haptic tick). The light is on the key itself, so the user sees which physical button they are setting.
 - HOME has no light; its popup has no light effect.

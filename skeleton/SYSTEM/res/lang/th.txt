@@ -656,3 +656,19 @@ Nothing	ว่าง
 Pick for	เลือกให้
 Works everywhere, in games too	ใช้ได้ทุกที่ รวมถึงตอนเล่นเกม
 The light under %s blinks = the key being set · works everywhere, in games too	ไฟใต้ปุ่ม %s กระพริบ = ปุ่มที่กำลังตั้ง · ใช้ได้ทุกที่ รวมถึงตอนเล่นเกม
+Linear	ไหล
+Breathe	หายใจ
+Interval Breathe	หายใจเป็นช่วง
+Static	ติดค้าง
+Blink 1	กระพริบ 1
+Blink 2	กระพริบ 2
+Blink 3	กระพริบ 3
+Effect	เอฟเฟกต์
+Speed	ความเร็ว
+Charging / low battery brightness	ความสว่างตอนชาร์จ / แบตต่ำ
+LED colour	สีไฟ
+L&R triggers	ปุ่มไหล่ L R
+LED light effect	รูปแบบการเปลี่ยนแสง
+The light shows this colour now · B cancels	ไฟจริงเปลี่ยนตามทันที · B ยกเลิกได้
+The lights show these settings while you are on this page, even while charging	ไฟจริงแสดงค่าที่ตั้งตลอดเวลาที่อยู่ในหน้านี้ แม้กำลังชาร์จ
+F1 and F2 share one brightness	ปุ่ม F1 และ F2 ใช้ความสว่างเดียวกัน

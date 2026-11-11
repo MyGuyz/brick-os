@@ -313,10 +313,14 @@ static int keyCaps(SDL_Surface* s, const char* v, int x, int cy, float a, uint32
 }
 
 static void keyText(int key, int hold, char* out, size_t size);
+static int lt_want; // the lights this frame wants: 0 the profile, 1 the LED pages' preview, 2 + key: that key blinks
+static void lightsApply(void);
 static void keyRowDraw(SDL_Surface* s, const char* name, const char* value, bool tag, int mark, int x, int y, int w,
 					   int h, bool hot);
 static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h, bool hot) {
 	if (it->keybtn) {
+		if (hot)
+			lt_want = 2 + it->keybtn - 1;
 		char v[160], hv[8];
 		keyText(it->keybtn - 1, 0, v, sizeof(v));
 		BosKeys_value(it->keybtn - 1, 1, hv, sizeof(hv));
@@ -341,6 +345,13 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	char val[160] = "";
 	if (it->color_slot) // ธีมสี: the colour set now
 		k = V_DOT, cw = BOS_px(32), dotc = slotColor(it->color_slot - 1);
+	else if (it->dot_color) { // ไฟ LED: the effect (if given), then the colour
+		k = V_DOT, cw = BOS_px(32), dotc = it->dot_color() & 0xFFFFFF;
+		if (it->get_display && it->get_display()[0]) {
+			snprintf(val, sizeof(val), "%s", I18N_text(it->get_display()));
+			cw += BOS_textW(val, BOS_FS_SMALL, 400) + BOS_px(14);
+		}
+	}
 	else if (it->keycaps) { // ปุ่มลัด: the buttons, or "ไม่ได้ตั้ง"
 		const char* v = itemValue(it);
 		if (!v || !v[0] || !strcmp(v, "NONE"))
@@ -363,7 +374,7 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	}
 	bool arrows = hot && SettingsBos_isPickable(it);
 	int ar = BOS_px(28), ag = BOS_px(4), arw = arrows ? 2 * (ar + ag) : 0;
-	int chevw = it->type == ITEM_SUBMENU || it->color_slot ? BOS_px(28 + 10) : 0;
+	int chevw = it->type == ITEM_SUBMENU || it->color_slot || it->dot_color ? BOS_px(28 + 10) : 0;
 	int room = right - chevw - lx; // the label's width with nothing beside it
 	// the name is never cut for its value: when both don't fit on one line the value goes under the name. Decided
 	// from the widest choice, the focused weight and the arrows, so the row never jumps between one and two lines
@@ -426,6 +437,11 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		keyCaps(s, val, vx, vy, a, sub);
 		break;
 	case V_DOT: {
+		if (val[0]) { // ไฟ LED: the effect's name before the dot
+			int tw = BOS_textW(val, BOS_FS_SMALL, 400);
+			BOS_textMid(s, val, BOS_FS_SMALL, 400, sub, a, vx, vy);
+			vx += tw + BOS_px(14), cw = BOS_px(32);
+		}
 		// a dot with a faint ring, so a dark or light colour still shows on either row
 		BOS_rrect(s, vx - 2, vy - cw / 2 - 2, cw + 4, cw + 4, cw / 2 + 2, hot ? C_ON_SUB : BOS_C_TEXTOFF);
 		BOS_rrect(s, vx, vy - cw / 2, cw, cw, cw / 2, hot ? dotc : mix(dotc, BOS_theme()->surface, a));
@@ -659,7 +675,14 @@ static int cs_slot = -1, cs_tab, cs_row, cs_col, cs_text, cs_text_was, cs_edit, 
 static uint32_t cs_color, cs_was, cs_code_was;
 static float cs_hue;
 static const char* cs_title;
-#define CS_SAT 0.55f // the hue bar's colours: as soft as the swatches
+#define CS_SAT (cs_led ? 1.0f : 0.55f) // the hue bar's colours: as soft as the swatches; an LED's are pure
+// ไฟ LED (DESIGN §6.10): the same sheet with no tabs and pure colours; the light follows the colour live
+static int cs_led;
+static uint32_t cs_live_at;
+static void (*cs_live)(uint32_t), (*cs_set)(uint32_t);
+static const uint32_t LED_SWATCHES[12] = {0xFFFFFF, 0xFF0000, 0xFF5A00, 0xFFB000, 0xFFFF00, 0x80FF00,
+										   0x00FF40, 0x00FFC0, 0x00C0FF, 0x0040FF, 0x8000FF, 0xFF4FA0};
+#define BG_SW (cs_led ? LED_SWATCHES : SWATCHES)
 
 static int textValue(int v) { // stored text colour -> 0 auto or THEME_TEXT_RGB|rgb (old configs: 1 white, 2 black)
 	if (v == 1)
@@ -682,14 +705,14 @@ static bool swatchIs(int i, bool was) { // the swatch holds the tab's value (now
 		int v = was ? cs_text_was : cs_text;
 		return i == 0 ? v == 0 : v == (int)(THEME_TEXT_RGB | TEXT_SWATCHES[i]);
 	}
-	return SWATCHES[i] == (was ? cs_was : cs_color);
+	return BG_SW[i] == (was ? cs_was : cs_color);
 }
 static void pickSwatch(void) {
 	int i = cs_row * 6 + cs_col;
 	if (cs_tab)
 		cs_text = i == 0 ? 0 : (int)(THEME_TEXT_RGB | TEXT_SWATCHES[i]);
 	else
-		cs_color = SWATCHES[i];
+		cs_color = BG_SW[i];
 	cs_hue = hueOf(tabColor());
 }
 static void seekTab(void) { // land on the swatch holding the tab's value, else on กำหนดเอง
@@ -702,8 +725,15 @@ static void seekTab(void) { // land on the swatch holding the tab's value, else 
 	cs_hue = hueOf(tabColor());
 }
 
+void SettingsBos_ledColorOpen(const char* title, uint32_t color, void (*live)(uint32_t), void (*set)(uint32_t)) {
+	cs_slot = 99, cs_led = 1, cs_title = title, cs_tab = 0, cs_edit = 0, cs_text = cs_text_was = 0;
+	cs_color = cs_was = cs_live_at = color & 0xFFFFFF;
+	cs_live = live, cs_set = set;
+	seekTab();
+}
+
 void SettingsBos_colorSheetOpen(int slot, const char* title) {
-	cs_slot = slot, cs_title = title, cs_tab = 0, cs_edit = 0;
+	cs_slot = slot, cs_led = 0, cs_title = title, cs_tab = 0, cs_edit = 0;
 	cs_color = cs_was = slotColor(slot);
 	cs_text = cs_text_was = textValue(CFG_getTheme(slot + 1));
 	seekTab();
@@ -713,6 +743,9 @@ static void sheetInput(bool* dirty) {
 	if (PAD_justPressed(BTN_A)) { // ใช้สีนี้ (on the code row, not yet editing: edit it)
 		if (cs_row == 3 && !cs_edit) {
 			cs_edit = 1, cs_digit = 0, cs_code_was = cs_color, cs_code_text = cs_text;
+		} else if (cs_led) {
+			cs_set(cs_color);
+			cs_slot = -1, cs_led = 0;
 		} else {
 			CFG_setTheme(cs_slot, (int)cs_color);
 			CFG_setTheme(cs_slot + 1, cs_text);
@@ -722,10 +755,13 @@ static void sheetInput(bool* dirty) {
 	} else if (PAD_justPressed(BTN_B)) {
 		if (cs_edit) // leave the code as it was before editing
 			cs_color = cs_code_was, cs_text = cs_code_text, cs_hue = hueOf(tabColor()), cs_edit = 0;
-		else
+		else if (cs_led) { // the light goes back to the colour it had
+			cs_live(cs_was);
+			cs_slot = -1, cs_led = 0;
+		} else
 			cs_slot = -1;
 		*dirty = true;
-	} else if (PAD_justPressed(BTN_L1) || PAD_justPressed(BTN_R1)) {
+	} else if (!cs_led && (PAD_justPressed(BTN_L1) || PAD_justPressed(BTN_R1))) {
 		cs_tab = !cs_tab;
 		seekTab();
 		if (cs_edit)
@@ -762,6 +798,8 @@ static void sheetInput(bool* dirty) {
 		}
 		*dirty = true;
 	}
+	if (cs_led && cs_slot >= 0 && cs_color != cs_live_at) // the light shows the colour as it is picked
+		cs_live(cs_color), cs_live_at = cs_color;
 }
 
 static void triangle(SDL_Surface* s, int cx, int y, int hgt, bool up, uint32_t c) {
@@ -778,7 +816,7 @@ static void sheetRender(SDL_Surface* s) {
 	int y = top + BOS_px(24);
 	BOS_text(s, I18N_text(cs_title), 44, 700, BOS_C_TEXT, 1, px, y);
 	// the tabs: สีพื้น | สีตัวหนังสือ, right of the title
-	{
+	if (!cs_led) {
 		const char* tl[2] = {I18N_text("Background colour"), I18N_text("Text colour")};
 		int pad = BOS_px(24), segh = BOS_px(52), tw[2], tot = BOS_px(8) + BOS_px(4);
 		for (int i = 0; i < 2; i++)
@@ -799,7 +837,7 @@ static void sheetRender(SDL_Surface* s) {
 	// swatches: the one in use has a check, the focused one a ring and 1.08; the text tab's first is อัตโนมัติ
 	int d = BOS_px(92), gx = (s->w - 2 * px - 6 * d) / 5;
 	for (int i = 0; i < 12; i++) {
-		uint32_t c = cs_tab ? TEXT_SWATCHES[i] : SWATCHES[i];
+		uint32_t c = cs_tab ? TEXT_SWATCHES[i] : BG_SW[i];
 		bool autosw = cs_tab && i == 0;
 		int cx = px + (i % 6) * (d + gx) + d / 2, cy = y + (i / 6) * (d + BOS_px(20)) + d / 2;
 		bool focus = !cs_edit && cs_row == i / 6 && cs_col == i % 6;
@@ -886,6 +924,13 @@ static void sheetRender(SDL_Surface* s) {
 		}
 	}
 	y += ch + BOS_px(20);
+	if (cs_led) { // the light itself is the preview: a lit pill and what is happening
+		int ph = BOS_px(84), pw = BOS_px(56), pht = BOS_px(28);
+		BOS_rrect(s, px, y, s->w - 2 * px, ph, BOS_px(20), BOS_C_BG);
+		BOS_rrect(s, px + BOS_px(24) - BOS_px(6), y + (ph - pht) / 2 - BOS_px(6), pw + BOS_px(12), pht + BOS_px(12), (pht + BOS_px(12)) / 2, mix(cs_color, BOS_C_BG, 0.35f));
+		BOS_rrect(s, px + BOS_px(24), y + (ph - pht) / 2, pw, pht, pht / 2, cs_color);
+		BOS_textMid(s, I18N_text("The light shows this colour now \xC2\xB7 B cancels"), BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px + BOS_px(24) + pw + BOS_px(20), y + ph / 2);
+	} else {
 	// the preview: this colour with its text colour, and whether it reads well (4.5:1)
 	uint32_t fg = BOS_textOn(cs_color, cs_text);
 	bool easy = BOS_contrast(cs_color, fg) >= 4.5;
@@ -899,6 +944,7 @@ static void sheetRender(SDL_Surface* s) {
 	BOS_textMid(s, verdict, 26, 600, easy ? BOS_C_OK : BOS_C_WARN, 1, vx + BOS_px(12), y + ph / 2);
 	if (easy)
 		BOS_icon(s, "check", BOS_C_OK, 1, vx + BOS_px(12) + vw + BOS_px(6), y + (ph - ic) / 2, ic);
+	}
 	if (cs_edit) {
 		BosHint r[] = {{"A", I18N_text("Use this colour")}, {"B", I18N_text("Cancel")}};
 		BosHint l[] = {{"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Pick digit")}, {"\xE2\x86\x91 \xE2\x86\x93", I18N_text("Change value")}};
@@ -906,7 +952,7 @@ static void sheetRender(SDL_Surface* s) {
 	} else {
 		BosHint r[] = {{"A", I18N_text(cs_row == 3 ? "Edit code" : "Use this colour")}, {"B", I18N_text("Cancel")}};
 		BosHint l[] = {{"L1 R1", I18N_text("Background/Text")}};
-		BOS_hintBar(s, r, 2, l, 1);
+		BOS_hintBar(s, r, 2, l, cs_led ? 0 : 1);
 	}
 }
 
@@ -1063,7 +1109,10 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	SettingItem* cat = settings_page_visible_item(root, root->selected);
 	SettingsPage* page = right_focused ? stack[depth - 1] : (cat && cat->type == ITEM_SUBMENU ? cat->submenu : NULL);
 	SettingItem* hot = NULL;
+	lt_want = 0;
 	rightColumn(s, page, cat, right_focused, top, bottom, &hot);
+	if (right_focused && page && page->led_preview)
+		lt_want = 1;
 
 	// drawn after the columns: a scrolled category's squircle can't show through it
 	BOS_statusBar(s, I18N_text("Settings"));
@@ -1076,7 +1125,7 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 		bool cyc = it->type == ITEM_CYCLE || it->type == ITEM_COLOR;
 		if (it->keybtn)
 			r[nr++] = (BosHint){"A", I18N_text("Configure")};
-		else if (it->color_slot)
+		else if (it->color_slot || (it->dot_color && it->on_press))
 			r[nr++] = (BosHint){"A", I18N_text("Choose")};
 		else if (it->keycaps && it->on_press)
 			r[nr++] = (BosHint){"A", I18N_text("Set")};
@@ -1108,6 +1157,9 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 		else
 			pickerRender(s);
 	}
+	if (ks_key >= 0)
+		lt_want = 2 + ks_key;
+	lightsApply();
 }
 
 // ---- ปุ่มพิเศษ (DESIGN §6.9b) ----
@@ -1124,8 +1176,7 @@ static const struct {
 #define KS_NOPTS ((int)(sizeof(KS_OPTS) / sizeof(KS_OPTS[0])))
 #define KS_ROWS2 5 // step 2 rows in view
 static int ks_step, ks_hold, ks_sel, ks_top;
-static bool ks_quit;		 // Settings closes (a pick, or an action for the launcher)
-static uint32_t ks_flash_at; // the light's fast blink ends then (0: none)
+static bool ks_quit; // Settings closes (a pick, or an action for the launcher)
 
 static const char* keyName(int key) {
 	return key == BOSKEY_HOME ? "HOME button" : key == BOSKEY_F1 ? "F1 button" : "F2 button";
@@ -1155,40 +1206,55 @@ static void keyText(int key, int hold, char* out, size_t size) {
 	snprintf(out, size, "%s", b ? b + 1 : c ? c + 1 : v);
 }
 
-// the key's light (Brick, Brick Pro: one under F1 and one under F2): 1 breathes slowly in primary, 2 blinks fast,
-// 0 gives the user's own lights back. Drawn straight on the zones; LEDS_refresh puts the profile back.
-static void keyLight(int key, int mode) {
+// the key's light (Brick, Brick Pro: one under F1 and one under F2) blinks fast in the colour the user gave that
+// light (ไฟ LED), white when it has none. Only that light changes; LEDS_refresh puts the profile back.
+static void keyBlink(int key) {
 #if MAX_LIGHTS > 0
 	if ((key != BOSKEY_F1 && key != BOSKEY_F2) || !(is_brick || is_brickpro))
 		return;
-	if (mode == 0) {
-		LEDS_refresh();
-		return;
-	}
-	LightSettings on = {0}, off = {0}, scale = {0};
-	snprintf(on.filename, sizeof(on.filename), "%s", key == BOSKEY_F1 ? "f1" : "f2");
-	snprintf(off.filename, sizeof(off.filename), "%s", key == BOSKEY_F1 ? "f2" : "f1");
-	snprintf(scale.filename, sizeof(scale.filename), "f1"); // F1 and F2 share one brightness node, written via f1
-	scale.brightness = 60;
-	PLAT_setLedBrightness(&scale);
-	off.effect = 0;
-	PLAT_setLedEffect(&off);
-	on.color1 = BOS_theme()->primary & 0xFFFFFF;
-	on.effect = mode == 1 ? 2 : 5;		// Breathe, or Blink 1
-	on.speed = mode == 1 ? 1200 : 100;	// ms per cycle
-	on.cycles = mode == 1 ? -1 : 3;
+	LightSettings on = lightsDefault[key == BOSKEY_F1 ? 0 : 1], scale = lightsDefault[0];
+	if (scale.brightness < 40) // F1 and F2 share one brightness node (written via f1): dim or off would hide the blink
+		scale.brightness = 60, PLAT_setLedBrightness(&scale);
+	if (!(on.color1 & 0xFFFFFF))
+		on.color1 = 0xFFFFFF;
+	on.effect = 5;	 // Blink 1
+	on.speed = 150; // ms per blink
+	on.cycles = -1;
 	PLAT_setLedEffectCycles(&on);
 	PLAT_setLedEffectSpeed(&on);
 	PLAT_setLedColor(&on);
 	PLAT_setLedEffect(&on);
 #else
-	(void)key, (void)mode;
+	(void)key;
 #endif
 }
 
-static void keySaved(void) { // the value changed: a fast blink, then the breath again (SettingsBos_keyTick)
-	keyLight(ks_key, 2);
-	ks_flash_at = SDL_GetTicks() + 700;
+// the lights Settings draws itself, decided on every drawn frame (lt_want): a ปุ่มพิเศษ row or popup in focus blinks
+// that key; the ไฟ LED pages show the user's own settings (even while charging); anything else gives the profile back
+static int lt_now;
+static void (*lt_preview)(void);
+void SettingsBos_setLedPreview(void (*preview)(void)) {
+	lt_preview = preview;
+}
+static void lightsApply(void) {
+#if MAX_LIGHTS > 0
+	if (lt_want == lt_now)
+		return;
+	lt_now = lt_want;
+	if (lt_now == 1 && lt_preview)
+		lt_preview();
+	else
+		LEDS_refresh();
+	if (lt_now >= 2)
+		keyBlink(lt_now - 2);
+#endif
+}
+void SettingsBos_lightsDone(void) { // Settings is closing: the user's lights back
+	lt_want = 0;
+	lightsApply();
+}
+
+static void keySaved(void) {
 }
 
 void SettingsBos_keyOpen(int key) {
@@ -1196,8 +1262,6 @@ void SettingsBos_keyOpen(int key) {
 	ks_step = 1;
 	ks_hold = 0;
 	ks_sel = 0;
-	ks_flash_at = 0;
-	keyLight(key, 1);
 }
 
 void SettingsBos_keyReset(int key) {
@@ -1210,10 +1274,7 @@ void SettingsBos_keyReset(int key) {
 }
 
 static void keyClose(void) {
-	int k = ks_key;
 	ks_key = -1;
-	ks_flash_at = 0;
-	keyLight(k, 0);
 }
 
 static int keyOptIndex(void) { // step 2: the row holding the slot's value (-1: an app / console / game)
@@ -1226,7 +1287,8 @@ static int keyOptIndex(void) { // step 2: the row holding the slot's value (-1: 
 }
 
 static void keySheetInput(bool* dirty) {
-	*dirty = true;
+	if (PAD_anyPressed()) // nothing moves on the popup otherwise: no redraw (it ran at 60 fps and warmed the device)
+		*dirty = true;
 	if (ks_step == 1) {
 		if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN))
 			ks_sel = !ks_sel;
@@ -1262,7 +1324,7 @@ static void keySheetInput(bool* dirty) {
 			snprintf(line, sizeof(line), "%s\t%s\t%s", BosKeys_slot(ks_key, ks_hold), v + 5, title);
 			BosKeys_writeFile(BOS_PICK_PATH, line);
 			unlink(BOS_PICK_RESULT_PATH);
-			keyLight(ks_key, 0);
+			SettingsBos_lightsDone();
 			ks_quit = true;
 			return;
 		}
@@ -1406,13 +1468,6 @@ int SettingsBos_keyResume(void) {
 
 bool SettingsBos_keyTick(bool* quit) {
 	bool d = false;
-	if (ks_flash_at && (int32_t)(SDL_GetTicks() - ks_flash_at) >= 0) {
-		ks_flash_at = 0;
-		if (ks_key >= 0)
-			keyLight(ks_key, 1);
-		else
-			keyLight(BOSKEY_F1, 0);
-	}
 	static int n = 0;
 	if (++n >= 15) { // an action keymon left for the launcher: Settings gets out of its way (the popup ignores them)
 		n = 0;

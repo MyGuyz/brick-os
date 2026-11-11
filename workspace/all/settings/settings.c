@@ -2939,6 +2939,7 @@ int main(int argc, char* argv[]) {
 		developer_page_destroy(dev_page_ptr);
 	free_dynamic_labels();
 
+	SettingsBos_lightsDone(); // a blinking key or the LED preview: the user's own lights back
 	shortcuts_flush(); // exited straight from the shortcuts page
 	VIB_quit();
 	QuitSettings();

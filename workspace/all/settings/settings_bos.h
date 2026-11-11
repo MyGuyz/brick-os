@@ -15,6 +15,9 @@ void SettingsBos_pickerInput(bool* dirty); // while active: Up/Down (L1/R1 a pag
 // ธีมสี (DESIGN §6.8)
 void SettingsBos_preset(int i, uint32_t* focus, uint32_t* primary); // the six ธีมสำเร็จรูป
 void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h, int hot); // their cards
+void SettingsBos_ledColorOpen(const char* title, uint32_t color, void (*live)(uint32_t), void (*set)(uint32_t)); // ไฟ LED: live() on every change, set() on A, live(old) on B
+void SettingsBos_setLedPreview(void (*preview)(void)); // what shows the ไฟ LED pages' settings on the lights
+void SettingsBos_lightsDone(void); // Settings is closing: the user's lights back
 void SettingsBos_colorSheetOpen(int slot, const char* title); // THEME_FOCUS / PRIMARY / HINT; A sets, B cancels
 
 // ปุ่มลัด's "press the button you want" sheet over the page (DESIGN §6.9); secs = the countdown
