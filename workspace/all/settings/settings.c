@@ -1528,7 +1528,7 @@ static bool run_pin_dialog(const char* title, const char* error, char* pin_out) 
 static bool run_confirm_dialog(const char* title, const char* subtitle) {
 	if (!g_screen)
 		return false;
-	return UI_confirmModal(g_screen, title, subtitle, &app_quit, false, true);
+	return UI_confirmModal(g_screen, title, subtitle ? I18N_text(subtitle) : NULL, &app_quit, false, true);
 }
 
 // Every page's "Reset to defaults" asks first: one press would otherwise wipe the whole menu's choices.

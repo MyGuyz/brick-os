@@ -467,16 +467,21 @@ static void queueBuild(SettingsPage* page) {
 	int done = 0, total = 0, failed = 0;
 	pthread_mutex_lock(&qlock);
 	ScrapeQueue_stats(&queue, &done, &total, &failed);
+	bool busy = ScrapeQueue_isBusy(&queue);
+	page->title = busy ? "Settings | Downloading cover art" : "Settings | Cover art results";
 	int n = queue.count < QMAX ? queue.count : QMAX;
 	SettingItem* h = &q_items[0];
 	*h = (SettingItem)ITEM_STATIC_INIT("", "", NULL);
-	snprintf(q_head, sizeof(q_head), I18N_text("Done %d of %d games"), done, total);
+	if (busy)
+		snprintf(q_head, sizeof(q_head), I18N_text("Done %d of %d games"), done, total);
+	else
+		snprintf(q_head, sizeof(q_head), I18N_text("Found %d of %d games"), done - failed, total);
 	h->name = q_head;
 	if (failed)
 		snprintf(h->display_text, sizeof(h->display_text), I18N_text("Not found %d"), failed),
 			h->value_rgb = BOS_C_DANGER, h->value_rgb_hot = HOT_DANGER;
-	h->bar_pct = 1 + (total ? done * 100 / total : 0);
-	h->on_clear = n ? queueStop : NULL;
+	h->bar_pct = busy ? 1 + (total ? done * 100 / total : 0) : 0;
+	h->on_clear = n && busy ? queueStop : NULL;
 	h->clear_label = "Stop all";
 	for (int i = 0; i < n; i++) {
 		const ScrapeQueueItem* q = &queue.items[i];
@@ -490,7 +495,7 @@ static void queueBuild(SettingsPage* page) {
 		*it = (SettingItem)ITEM_BUTTON_INIT(q_names[i], "", fail ? queueRetry : NULL);
 		it->user_data = q_paths[i];
 		it->a_label = fail ? "Try again" : "";
-		it->on_clear = queueStop;
+		it->on_clear = busy ? queueStop : NULL;
 		it->clear_label = "Stop all";
 		if (q->status == SCRAPE_STATUS_IDLE)
 			snprintf(it->display_text, sizeof(it->display_text), "%s", "Queued");
@@ -709,11 +714,18 @@ static void artRefresh(void) {
 	int done = 0, total = 0, failed = 0;
 	pthread_mutex_lock(&qlock);
 	ScrapeQueue_stats(&queue, &done, &total, &failed);
+	bool busy = ScrapeQueue_isBusy(&queue);
 	pthread_mutex_unlock(&qlock);
 	SettingItem* q = &main_items[0];
 	q->visible = total > 0;
-	snprintf(queue_val, sizeof(queue_val), "%d/%d", done, total);
-	q->bar_pct = 1 + (total ? done * 100 / total : 0);
+	if (busy)
+		snprintf(queue_val, sizeof(queue_val), "%d/%d", done, total);
+	else if (failed)
+		snprintf(queue_val, sizeof(queue_val), I18N_text("Not found %d"), failed);
+	else
+		snprintf(queue_val, sizeof(queue_val), "%s", I18N_text("Finished"));
+	q->bar_pct = busy ? 1 + (total ? done * 100 / total : 0) : 0;
+	q->name = busy ? "Queue" : "Last download";
 	snprintf(missing_val, sizeof(missing_val), I18N_text("%d games"), totalMissing());
 	snprintf(main_sub, sizeof(main_sub), I18N_text("Has cover art: %d of %d games"), totalArt(), totalGames());
 	main_items[0].header = q->visible ? main_sub : NULL;

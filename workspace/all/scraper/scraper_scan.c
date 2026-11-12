@@ -4,11 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 static bool suffix(const char* s, const char* suf) {
 	size_t ls = strlen(s), lf = strlen(suf);
-	return ls >= lf && strcmp(s + ls - lf, suf) == 0;
+	return ls >= lf && strcasecmp(s + ls - lf, suf) == 0;
 }
 
 static bool is_dir(const char* path) {
@@ -22,7 +23,11 @@ static bool is_file(const char* path) {
 }
 
 bool Scan_hidden(const char* name) {
-	return name[0] == '.' || suffix(name, ".disabled") || strcmp(name, "map.txt") == 0;
+	// other OSes' art folders, game lists and pictures left in a console's folder (Imgs_*, miyoogamelist.xml)
+	// aren't games: the same rule as the game list (nextui/bos_games.inc)
+	return name[0] == '.' || suffix(name, ".disabled") || strcmp(name, "map.txt") == 0 ||
+		   !strncasecmp(name, "Imgs", 4) || !strncasecmp(name, "miyoogamelist", 13) || suffix(name, ".xml") ||
+		   suffix(name, ".png") || suffix(name, ".jpg");
 }
 
 bool Scan_folderGameFile(const char* dir_path, char* out, size_t out_size) {
@@ -132,6 +137,17 @@ static void walk_dir(Walk* w, const char* dir, int depth) {
 			else
 				walk_dir(w, full, depth + 1);
 		} else if (is_file(full)) {
+			// "Game (Track 2).bin" beside "Game.cue": the disc's tracks, not games
+			size_t nl = strlen(names[i]);
+			if (nl > 4 && !strcasecmp(names[i] + nl - 4, ".bin")) {
+				bool has_cue = false;
+				for (int j = 0; j < n && !has_cue; j++) {
+					size_t jl = strlen(names[j]);
+					has_cue = jl > 4 && !strcasecmp(names[j] + jl - 4, ".cue");
+				}
+				if (has_cue)
+					continue;
+			}
 			emit(w, full, full, false);
 		}
 	}

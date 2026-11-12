@@ -756,3 +756,7 @@ Only pictures this page downloaded. Your own pictures in .media are kept.	ลบ
 Deleting…	กำลังลบ…
 Stop downloading cover art?	หยุดดาวน์โหลดภาพปก?
 The games not done yet stay without pictures.	เกมที่ยังโหลดไม่เสร็จจะยังไม่มีภาพ
+Cover art results	ผลการดาวน์โหลด
+Found %d of %d games	เจอ %d จาก %d เกม
+Finished	เสร็จแล้ว
+Last download	ดาวน์โหลดล่าสุด
