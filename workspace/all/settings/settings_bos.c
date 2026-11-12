@@ -339,6 +339,8 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	}
 	float a = hot ? 1.0f : BOS_DIM;
 	uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT, sub = hot ? C_ON_SUB : BOS_C_TEXT2;
+	if (hot ? it->name_rgb_hot : it->name_rgb)
+		fg = hot ? it->name_rgb_hot : it->name_rgb;
 	int cy = y + h / 2, lx = x + BOS_px(28), right = x + w - BOS_px(24);
 	int weight = hot ? 600 : 500;
 	const char* name = I18N_text(it->name);
@@ -348,6 +350,24 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		BOS_rrect(s, lx, cy - t / 2, t, t, BOS_px(16), hot ? BOS_theme()->surface2 : mix(BOS_theme()->surface2, BOS_theme()->surface, a));
 		BOS_icon(s, it->lead_icon, it->lead_color, hot ? 1 : a, lx + (t - ic) / 2, cy - ic / 2, ic);
 		lx += t + BOS_px(22);
+	}
+	if (it->lead_image || it->lead_frame) { // ภาพปก: the game's picture, or an empty frame
+		int tw = BOS_px(50), th = BOS_px(64);
+		lx = x + BOS_px(20);
+		if (it->lead_image) {
+			SDL_Rect d = {lx + (tw - it->lead_image->w) / 2, cy - it->lead_image->h / 2, it->lead_image->w,
+						  it->lead_image->h};
+			SDL_SetSurfaceBlendMode(it->lead_image, SDL_BLENDMODE_BLEND);
+			SDL_SetSurfaceAlphaMod(it->lead_image, hot ? 255 : (Uint8)(255 * BOS_DIM));
+			SDL_BlitSurface(it->lead_image, NULL, s, &d);
+		} else {
+			BOS_rrect(s, lx, cy - th / 2, tw, th, BOS_px(8), hot ? 0x8E8E93 : 0x48484A);
+			BOS_rrect(s, lx + BOS_px(2), cy - th / 2 + BOS_px(2), tw - BOS_px(4), th - BOS_px(4), BOS_px(6),
+					  hot ? BOS_theme()->focus : BOS_theme()->surface);
+			int ic = BOS_px(26);
+			BOS_icon(s, "image", hot ? 0x8E8E93 : BOS_C_TEXTOFF, 1, lx + (tw - ic) / 2, cy - ic / 2, ic);
+		}
+		lx += tw + BOS_px(22);
 	}
 	if (it->lifted && hot) { // ▲▼ in place of the value
 		int ar = BOS_px(30);
@@ -393,6 +413,13 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 			snprintf(val, sizeof(val), "%s", I18N_text(v));
 			k = V_TEXT, cw = BOS_textW(val, BOS_FS_SMALL, 400);
 		}
+	}
+	if (k == V_TEXT || (k == V_NONE && it->bar_pct)) { // ภาพปก: a progress bar and an icon before a text value
+		k = V_TEXT;
+		if (it->bar_pct)
+			cw += BOS_px(110 + 16);
+		if (it->value_icon && val[0])
+			cw += BOS_px(26 + 10);
 	}
 	bool arrows = hot && SettingsBos_isPickable(it);
 	int ar = BOS_px(28), ag = BOS_px(4), arw = arrows ? 2 * (ar + ag) : 0;
@@ -481,8 +508,25 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		BOS_rrect(s, vx, vy - cw / 2, cw, cw, cw / 2, hot ? dotc : mix(dotc, BOS_theme()->surface, a));
 		break;
 	}
-	default:
-		BOS_textMarquee(s, val, BOS_FS_SMALL, 400, sub, a, vx, vy, cw);
+	default: {
+		uint32_t vc = (hot ? it->value_rgb_hot : it->value_rgb) ? (hot ? it->value_rgb_hot : it->value_rgb) : sub;
+		int x2 = vx;
+		if (it->bar_pct) {
+			int bw = BOS_px(110), bh = BOS_px(10), pct = it->bar_pct - 1;
+			BOS_rrect(s, x2, vy - bh / 2, bw, bh, bh / 2, hot ? 0xC8C8CE : 0x48484A);
+			if (pct > 0)
+				BOS_rrect(s, x2, vy - bh / 2, bw * (pct > 100 ? 100 : pct) / 100, bh, bh / 2,
+						  hot ? BOS_theme()->onfocus : BOS_theme()->primary);
+			x2 += bw + BOS_px(16);
+		}
+		if (it->value_icon && val[0]) {
+			int ic = BOS_px(26);
+			BOS_icon(s, it->value_icon, vc, hot ? 1 : a, x2, vy - ic / 2, ic);
+			x2 += ic + BOS_px(10);
+		}
+		if (val[0])
+			BOS_textMarquee(s, val, BOS_FS_SMALL, 400, vc, a, x2, vy, cw - (x2 - vx));
+	}
 	}
 	if (arrows)
 		BOS_icon(s, "chev", sub, 1, vx + cw + ag, vy - ar / 2, ar);
@@ -1152,7 +1196,7 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	BOS_statusBar(s, I18N_text("Settings"));
 
 	// hint bar: A opens (เปิด/ปิด on a toggle, เลือก on a value row), ← → changes a value, X clears, B back
-	BosHint r[3], l[1];
+	BosHint r[4], l[1];
 	int nr = 0, nl = 0;
 	SettingItem* it = right_focused ? hot : cat;
 	if (it && right_focused && it->lhint_keys)
@@ -1186,6 +1230,8 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	r[nr++] = (BosHint){"B", I18N_text(it && right_focused && it->b_label ? it->b_label : "Back")};
 	if (it && right_focused && it->on_clear)
 		r[nr++] = (BosHint){"X", I18N_text(it->clear_label ? it->clear_label : "Clear")};
+	if (it && right_focused && it->y_label)
+		r[nr++] = (BosHint){"Y", I18N_text(it->y_label)};
 	BOS_hintBar(s, r, nr, l, nl);
 	if (pk_item || cs_slot >= 0 || ks_key >= 0) { // a sheet over the page, which dims to 60 %
 		shadeScreen(s);

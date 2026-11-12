@@ -99,6 +99,14 @@ typedef struct SettingItem {
 	const char* b_label;
 	const char* lhint_keys; // a left hint ("▲▼" ย้าย)
 	const char* lhint_label;
+	// ภาพปก (DESIGN §6.7d)
+	const char* y_label;			   // Y's hint (the row's on_input takes Y)
+	uint32_t value_rgb, value_rgb_hot; // a coloured value text (0 = the usual text2)
+	const char* value_icon;			   // an icon before the value text
+	int bar_pct;					   // 1 + percent: a progress bar before the value (0 = none)
+	uint32_t name_rgb, name_rgb_hot;   // a coloured name (danger rows)
+	SDL_Surface* lead_image;		   // a game's picture (fits 50x64) before the name
+	int lead_frame;					   // no picture yet: an empty 50x64 frame with an image icon
 } SettingItem;
 
 // ============================================

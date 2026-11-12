@@ -1206,8 +1206,55 @@ static int run_headless_scan(void) {
 	return 0;
 }
 
+// Headless modes for Settings › ภาพปก (DESIGN §6.7d), which draws the pages and leaves the work to this program.
+// --caps: "devkey=0|1". --userinfo: "<requests today> <max>" (needs a key and an account; "0 0" when it fails).
+// --reset: deletes the downloaded pictures, prints the count. --optimize <status>: Optimize images, writing
+// "<done> <total>" to the status file after each picture; touch <status>.stop to stop it.
+static int run_headless_tool(const char* mode, const char* status) {
+	SDL_Init(0);
+	ScraperAPI_init();
+	if (!strcmp(mode, "--caps")) {
+		printf("devkey=%d\n", ScraperAPI_hasDevKey() ? 1 : 0);
+		return 0;
+	}
+	if (!strcmp(mode, "--userinfo")) {
+		loadCredentials();
+		ScraperUserInfo u = {0};
+		if (ScraperAPI_hasDevKey() && ScraperAPI_hasUserCredentials())
+			u = ScraperAPI_fetchUserInfo();
+		printf("%d %d\n", u.valid ? u.requests_today : 0, u.valid ? u.max_requests_per_day : 0);
+		return 0;
+	}
+	if (!strcmp(mode, "--reset")) {
+		printf("%d\n", Scraper_deleteAllArtwork(ROMS_PATH));
+		return 0;
+	}
+	if (!strcmp(mode, "--optimize") && status) {
+		OptimizeList list = {0};
+		if (!Optimize_collect(ROMS_PATH, &list))
+			return 1;
+		char stop[MAX_PATH], line[64];
+		snprintf(stop, sizeof(stop), "%s.stop", status);
+		for (int i = 0; i < list.count && !exists(stop); i++) {
+			long long saved = 0;
+			Optimize_file(list.paths[i], &saved);
+			snprintf(line, sizeof(line), "%d %d", i + 1, list.count);
+			putFile((char*)status, line);
+		}
+		snprintf(line, sizeof(line), "%d %d", list.count, list.count);
+		if (!list.count)
+			putFile((char*)status, "0 0");
+		Optimize_freeList(&list);
+		return 0;
+	}
+	return 2;
+}
+
 int main(int argc, char* argv[]) {
 	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--caps") || !strcmp(argv[i], "--userinfo") || !strcmp(argv[i], "--reset") ||
+			!strcmp(argv[i], "--optimize"))
+			return run_headless_tool(argv[i], i + 1 < argc ? argv[i + 1] : NULL);
 		if (strcmp(argv[i], "--fetch") == 0)
 			return run_headless_fetch(argc, argv);
 		if (strcmp(argv[i], "--scan") == 0)

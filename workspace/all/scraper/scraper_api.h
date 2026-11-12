@@ -27,6 +27,9 @@ void ScraperAPI_init(void);
 // Both can be NULL or empty to use anonymous access
 void ScraperAPI_setUserCredentials(const char* username, const char* password);
 
+// True when the build has a ScreenScraper developer key (without one the pictures come from libretro-thumbnails)
+bool ScraperAPI_hasDevKey(void);
+
 // Check if user credentials are configured
 bool ScraperAPI_hasUserCredentials(void);
 

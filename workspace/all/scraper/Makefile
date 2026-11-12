@@ -29,7 +29,7 @@ PLATFORM_PATH = ../../$(PLATFORM)
 include ../common/ui/ui.mk
 SOURCE = scraper.c scrape_queue.c scraper_api.c scraper_parse.c scraper_names.c scraper_compositor.c scraper_systems.c scraper_core.c scraper_paths.c \
          scraper_optimize.c scraper_prefs.c $(COMMON_PATH)/png_palette.c $(COMMON_PATH)/image_probe.c ../nextui/area_scale.c \
-         scraper_fetch.c scraper_scan.c \
+         scraper_fetch.c scraper_scan.c scraper_libretro.c \
          $(COMMON_PATH)/utils.c $(COMMON_PATH)/api.c $(COMMON_PATH)/text_shape.c $(COMMON_PATH)/audio_manager.c \
          $(COMMON_PATH)/config.c $(COMMON_PATH)/scaler.c \
          $(COMMON_PATH)/http.c $(COMMON_PATH)/wifi.c \

@@ -701,3 +701,58 @@ Disabled	ปิด
 auto	อัตโนมัติ
 False	ปิด
 True	เปิด
+Cover art	ภาพปก
+Downloading cover art	กำลังดาวน์โหลด
+Downloading	กำลังโหลด
+Queue	คิว
+Download missing pictures	โหลดภาพที่ขาด
+Every game without cover art, on every console.	ดาวน์โหลดภาพของทุกเกมที่ยังไม่มีภาพปก ทุกเครื่อง
+Download	ดาวน์โหลด
+Download again	ดาวน์โหลดใหม่
+Download all missing	โหลดที่ขาดทั้งเครื่อง
+Console list	เครื่อง
+Pictures to download	ภาพที่ดาวน์โหลด
+ScreenScraper account	บัญชี ScreenScraper
+Make pictures smaller	ลดขนาดไฟล์ภาพ
+Saves the downloaded pictures with fewer colours to free space.	บันทึกภาพที่ดาวน์โหลดด้วยสีที่น้อยลง เพื่อประหยัดพื้นที่
+Delete downloaded pictures	ลบภาพที่ดาวน์โหลด
+Your own pictures in .media are kept.	ภาพที่คุณใส่เองใน .media จะไม่ถูกลบ
+Has cover art: %d of %d games	มีภาพปกแล้ว %d จาก %d เกม
+A–Z	ก–ฮ
+Not supported	ไม่รองรับ
+%d kinds	%d แบบ
+Queued	รอคิว
+Not found	ไม่เจอ
+Have it	มีแล้ว
+Missing	ยังไม่มี
+Done %d of %d games	เสร็จ %d จาก %d เกม
+Not found %d	ไม่เจอ %d
+Stop all	หยุดทั้งหมด
+Always	เสมอ
+Screenshot and 3D box art	ภาพเกมและกล่อง 3D
+Always downloaded.	ดาวน์โหลดเสมอ
+2D box art	กล่อง 2D
+Also download the flat box art.	ดาวน์โหลดภาพกล่องแบบแบนด้วย
+Game logo	โลโก้เกม
+Also download the game's logo	ดาวน์โหลดโลโก้ของเกมด้วย
+Needed by the mix	ภาพรวมต้องใช้ จึงเปิดไว้
+Mix	ภาพรวม
+Screenshot, box and logo in one picture, for the list view. Downloading is slower and uses more space; turns the game logo on.	รวมภาพเกม กล่อง และโลโก้เป็นภาพเดียว ใช้ในมุมมองรายชื่อ · ดาวน์โหลดช้าลงและใช้พื้นที่มากขึ้น · เปิดโลโก้เกมด้วย
+Username	ชื่อผู้ใช้
+Password	รหัสผ่าน
+ScreenScraper is a website of game cover art. It works without an account but slower. Sign up free at screenscraper.fr	ScreenScraper คือเว็บรวมภาพปกเกม · ไม่มีบัญชีก็โหลดได้ แต่ช้ากว่า · สมัครฟรีที่ screenscraper.fr
+Used today	ใช้วันนี้
+Account	บัญชี
+Log out	ออกจากระบบ
+Log out of ScreenScraper?	ออกจากระบบ ScreenScraper?
+The username and password are removed from this device.	ชื่อผู้ใช้และรหัสผ่านจะถูกลบออกจากเครื่องนี้
+Cover art is downloading	กำลังดาวน์โหลดภาพปกอยู่
+Wait for the queue to finish first.	รอให้คิวเสร็จก่อน
+Make the pictures smaller?	ลดขนาดไฟล์ภาพ?
+Saves the downloaded pictures with fewer colours: about a third of the space.	บันทึกภาพที่ดาวน์โหลดด้วยสีที่น้อยลง ใช้พื้นที่ราว 1 ใน 3
+Making the pictures smaller…	กำลังลดขนาดไฟล์ภาพ…
+Delete the downloaded pictures?	ลบภาพที่ดาวน์โหลด?
+Only pictures this page downloaded. Your own pictures in .media are kept.	ลบเฉพาะภาพที่หน้านี้ดาวน์โหลด · ภาพที่คุณใส่เองใน .media ยังอยู่
+Deleting…	กำลังลบ…
+Stop downloading cover art?	หยุดดาวน์โหลดภาพปก?
+The games not done yet stay without pictures.	เกมที่ยังโหลดไม่เสร็จจะยังไม่มีภาพ

@@ -6,6 +6,7 @@
 #include "api.h"
 #include "wifi.h"
 #include "ca_bundle.h"
+#include "scraper_libretro.h"
 
 #include <pthread.h>
 #include <stdio.h>
@@ -68,6 +69,12 @@ void ScraperAPI_setUserCredentials(const char* username, const char* password) {
 		snprintf(ss_password, sizeof(ss_password), "%s", password);
 	else
 		ss_password[0] = '\0';
+}
+
+bool ScraperAPI_hasDevKey(void) {
+	char devid[64], devpass[64];
+	ss_decodeDevCredentials(devid, devpass);
+	return devid[0] != 0 && devpass[0] != 0;
 }
 
 bool ScraperAPI_hasUserCredentials(void) {
@@ -141,6 +148,10 @@ bool ScraperAPI_search(const char* rom_filename, const char* rom_path,
 
 	memset(info, 0, sizeof(ScraperGameInfo));
 	info->found = false;
+
+	// no developer key: ScreenScraper refuses every request, so the pictures come from libretro-thumbnails
+	if (!ScraperAPI_hasDevKey())
+		return ScraperLibretro_search(rom_filename, system_id, info);
 
 	// URL-encode the filename (with extension for romnom)
 	char* encoded_name = HTTP_urlEncode(rom_filename);

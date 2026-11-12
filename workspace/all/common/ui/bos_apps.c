@@ -19,7 +19,7 @@ int bos_npins;
 static const char* DEFAULT_PINS[] = {"games", "YouTube", "Music Player", "Media Player", "ports", "Settings"};
 
 // Paks that are no longer apps of their own: their work moved into Settings (DESIGN §6.1b, §6.7c)
-static const char* MERGED[] = {"Emulator Settings"};
+static const char* MERGED[] = {"Emulator Settings", "Artwork Manager"};
 
 static const struct {
 	const char* pak;

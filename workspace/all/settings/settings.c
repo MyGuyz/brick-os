@@ -1494,6 +1494,9 @@ SettingsPage* pins_page_create(void);
 const char* pins_count_text(void);
 SettingsPage* emu_page_create(void);
 const char* emu_count_text(void);
+SettingsPage* art_page_create(void); // ภาพปก (DESIGN 6.7d)
+const char* art_count_text(void);
+bool SettingsArt_busy(void);
 static SettingsPage simple_mode_page;
 static SettingsPage main_page;
 static SettingsPage battery_page;
@@ -1529,6 +1532,14 @@ static bool run_confirm_dialog(const char* title, const char* subtitle) {
 }
 
 // Every page's "Reset to defaults" asks first: one press would otherwise wipe the whole menu's choices.
+// for the pages in other files (ภาพปก)
+bool settings_confirm(const char* title, const char* subtitle) {
+	return run_confirm_dialog(title, subtitle);
+}
+SDL_Surface* settings_screen(void) {
+	return g_screen;
+}
+
 static bool confirm_reset_page(void) {
 	return run_confirm_dialog("Reset to defaults?", "Every option in this menu goes back to its default value.");
 }
@@ -2407,6 +2418,8 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	idx = 0;
 	homegames_items[idx] = (SettingItem)ITEM_SUBMENU_INIT("Pinned apps", "", pins_page_create()); // DESIGN 6.7b
 	homegames_items[idx++].get_display = pins_count_text;
+	homegames_items[idx] = (SettingItem)ITEM_SUBMENU_INIT("Cover art", "", art_page_create()); // DESIGN 6.7d
+	homegames_items[idx++].get_display = art_count_text;
 	homegames_items[idx] = (SettingItem)ITEM_CYCLE_INIT(
 		"Default view", "The initial view to show on boot",
 		default_view_labels, DEFAULT_VIEW_COUNT, default_view_values, get_default_view, set_default_view,
@@ -2919,6 +2932,13 @@ int main(int argc, char* argv[]) {
 		settings_menu_handle_input(&quit, &dirty);
 		if (SettingsBos_keyTick(&quit))
 			dirty = true;
+		if (quit && SettingsArt_busy() && // ภาพปก is still downloading: ask first (DESIGN 6.7d)
+			!run_confirm_dialog("Stop downloading cover art?", "The games not done yet stay without pictures.")) {
+			quit = false;
+			dirty = true;
+			if (!settings_menu_current())
+				settings_menu_push(&main_page);
+		}
 
 		if (settings_menu_glide_active() || BOS_marqueeActive()) // a focused long name scrolls
 			dirty = true;
