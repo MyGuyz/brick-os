@@ -2900,6 +2900,7 @@ int main(int argc, char* argv[]) {
 	if (dev_page_ptr)
 		dev_page_ptr->screen = screen;
 	about_page.screen = screen;
+	update_page.screen = screen; // อัปเดต (DESIGN 6.7a): the updater draws its pages on it
 
 	settings_menu_init();
 	settings_menu_push(&main_page);

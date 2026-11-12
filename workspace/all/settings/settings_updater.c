@@ -827,10 +827,10 @@ void updater_check_for_updates(void) {
 	// If update available, show info and install
 	if (auto_state == UPDATE_AVAILABLE) {
 		SettingsPage* page = settings_menu_current();
-		if (!page || !page->screen)
+		SDL_Surface* settings_screen(void);
+		SDL_Surface* screen = page && page->screen ? page->screen : settings_screen();
+		if (!screen)
 			return;
-
-		SDL_Surface* screen = page->screen;
 
 		int dr = fetch_release_details(screen, &cached_release);
 		if (dr < 0) {

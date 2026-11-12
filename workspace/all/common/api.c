@@ -4890,6 +4890,7 @@ void LEDS_setProfile(int profile) {
 		break;
 	case LIGHT_PROFILE_SLEEP:
 		new_lights = lightsSleep;
+		indicator = false; // the normal brightness: a zone set off stays off
 		break;
 	case LIGHT_PROFILE_AMBIENT:
 		new_lights = lightsAmbient;
@@ -5014,10 +5015,8 @@ void LEDS_initLeds() {
 		lightsCharging[i].color1 = 0x00FF00;
 		lightsCharging[i].cycles = -1; // infinite
 
-		// LIGHT_PROFILE_SLEEP
+		// LIGHT_PROFILE_SLEEP: the user's own lights, as set in ตั้งค่า › ไฟ LED
 		lightsSleep[i] = lightsDefault[i];
-		lightsSleep[i].effect = 2; // breathe
-		lightsSleep[i].cycles = 5;
 
 		// LIGHT_PROFILE_AMBIENT
 		// just to have sensible defaults, will be updated by GFX_setAmbientColor
