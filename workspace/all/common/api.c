@@ -4929,7 +4929,10 @@ void LEDS_applyRules() {
 	// of LightProfile enum.
 	// e.g.
 	// - if charging and low battery, charging takes priority
-	if (pwr.initialized && SDL_AtomicGet(&pwr.is_charging)) {
+	// - asleep: all off, over everything (charging and battery warnings included)
+	if (LEDS_getProfileOverride() == LIGHT_PROFILE_SLEEP) {
+		LEDS_setProfile(LIGHT_PROFILE_SLEEP);
+	} else if (pwr.initialized && SDL_AtomicGet(&pwr.is_charging)) {
 		LEDS_setProfile(LIGHT_PROFILE_CHARGING);
 	}
 	// - if critical battery, critical battery takes priority over everything
@@ -5015,8 +5018,10 @@ void LEDS_initLeds() {
 		lightsCharging[i].color1 = 0x00FF00;
 		lightsCharging[i].cycles = -1; // infinite
 
-		// LIGHT_PROFILE_SLEEP: the user's own lights, as set in ตั้งค่า › ไฟ LED
+		// LIGHT_PROFILE_SLEEP: every light off while asleep (brightness 0 = static black, LEDS_updateLeds)
 		lightsSleep[i] = lightsDefault[i];
+		lightsSleep[i].brightness = 0;
+		lightsSleep[i].inbrightness = 0;
 
 		// LIGHT_PROFILE_AMBIENT
 		// just to have sensible defaults, will be updated by GFX_setAmbientColor
