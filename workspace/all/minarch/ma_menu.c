@@ -12,6 +12,9 @@
 #include "ui_buttonhintbar.h"
 #include "ui_menubar.h"
 #include "ma_menu.h"
+#include "ma_menu_bos.h"
+#include "i18n.h"
+#include <sys/stat.h>
 #include "ma_png.h"
 #include "ma_present.h"
 #include "ma_frontend_opts.h"
@@ -66,6 +69,8 @@ static struct {
 	int slot;
 	int save_exists;
 	int preview_exists;
+	time_t save_time;					// the chosen slot's save, when it was written
+	bool slot_used[MENU_SLOT_COUNT];	// which slots hold a save (read when the menu opens)
 } menu = {
 	.bitmap = NULL,
 	.disc = -1,
@@ -1032,6 +1037,55 @@ static void getArcadeTitle(const char* path, char* name) {
 }
 
 
+// The rows of an options page for the kit (DESIGN.md 7.1): an Off/On pair is a switch, a run of numbers a slider
+// with its number, other values cycle, a binding shows its buttons, a row that opens something has a chevron.
+static bool optIsToggle(char** values, int n) {
+	return n == 2 && ((!strcmp(values[0], "Off") && !strcmp(values[1], "On")) ||
+					  (!strcmp(values[0], "On") && !strcmp(values[1], "Off")));
+}
+static bool optIsNumeric(char** values, int n) {
+	if (n < 5)
+		return false;
+	for (int i = 0; i < n; i++) {
+		const char* v = values[i];
+		if (!v || !v[0])
+			return false;
+		for (const char* c = v; *c; c++)
+			if ((*c < '0' || *c > '9') && *c != '%' && !(*c == '-' && c == v))
+				return false;
+	}
+	return true;
+}
+static void optRow(MenuList* list, MenuItem* mi, bool waiting, MenuBosRow* r) {
+	*r = (MenuBosRow){.name = I18N_text(mi->name), .kind = MB_ROW_NONE};
+	if (waiting) {
+		r->kind = MB_ROW_TEXT, r->value = "...";
+	} else if (mi->values && mi->values != button_labels) {
+		int n = 0;
+		while (mi->values[n])
+			n++;
+		const char* cur = mi->value >= 0 && mi->value < n ? mi->values[mi->value] : "";
+		if (optIsToggle(mi->values, n))
+			r->kind = MB_ROW_TOGGLE, r->on = !strcmp(cur, "On");
+		else if (optIsNumeric(mi->values, n))
+			r->kind = MB_ROW_SLIDER, r->value = cur, r->frac = n > 1 ? (float)mi->value / (n - 1) : 0;
+		else
+			r->kind = MB_ROW_CYCLE, r->value = I18N_text(cur);
+	} else if (mi->values == button_labels) {
+		int n = 0;
+		while (mi->values[n])
+			n++;
+		r->kind = MB_ROW_BIND;
+		r->value = mi->value >= 0 && mi->value < n ? PAD_buttonLabel(mi->values[mi->value]) : "";
+	} else if (mi->submenu || mi->on_confirm || list->on_confirm)
+		r->kind = MB_ROW_NAV;
+}
+
+// the pages open now, so a page's left column shows the one it was opened from
+static MenuList* opt_stack[8];
+static int* opt_sel[8];
+static int opt_depth;
+
 int Menu_options(MenuList* list) {
 	MenuItem* items = list->items;
 	int type = list->type;
@@ -1054,6 +1108,11 @@ int Menu_options(MenuList* list) {
 	OptionAchievements_updateDesc();
 
 	int defer_menu = false;
+	if (opt_depth < 8) {
+		opt_stack[opt_depth] = list;
+		opt_sel[opt_depth] = &selected;
+	}
+	opt_depth++;
 	while (show_options) {
 		if (await_input) {
 			defer_menu = true;
@@ -1126,7 +1185,16 @@ int Menu_options(MenuList* list) {
 		} else if (PAD_justPressed(BTN_A)) {
 			MenuItem* item = &items[selected];
 			int result = MENU_CALLBACK_NOP;
-			if (item->on_confirm)
+			int nv = 0;
+			while (item->values && item->values != button_labels && item->values[nv])
+				nv++;
+			if (!item->on_confirm && !item->submenu && !list->on_confirm && optIsToggle(item->values, nv)) {
+				item->value = !item->value; // a switch: A flips it (DESIGN.md 6.6)
+				if (item->on_change)
+					item->on_change(list, selected);
+				else if (list->on_change)
+					list->on_change(list, selected);
+			} else if (item->on_confirm)
 				result = item->on_confirm(list, selected); // item-specific action, eg. Save for all games
 			else if (item->submenu)
 				result = Menu_options(item->submenu); // drill down, eg. main options menu
@@ -1192,75 +1260,94 @@ int Menu_options(MenuList* list) {
 				scroll = 0;
 		}
 
+		if (MenuBos_optMoving())
+			dirty = true;
 		if (dirty) {
-			GFX_clear(screen);
-
-			// Dimmed game screenshot background
-			if (menu.bitmap)
-				GFX_drawOnLayer(menu.bitmap, 0, 0, DEVICE_WIDTH, DEVICE_HEIGHT, 0.15f, 1, 0);
-
-			// Top bar with category/list name (legacy lists without a title
-			// keep showing their desc there). A page inside Options names it (LIST-LAYOUT §10.1):
-			// "Options | Core Options"; the Options page itself is plain "Options".
-			if (list->title && strcmp(list->title, "Options") != 0)
-				UI_renderMenuBarPage(screen, "Options", list->title);
-			else
-				UI_renderMenuBar(screen, list->title ? list->title : (list->desc ? list->desc : ""));
-
-			// Build UISettingsItem array from MenuItems
-			UISettingsItem settings_items[count];
-			for (int i = 0; i < count; i++) {
-				MenuItem* mi = &items[i];
-				settings_items[i] = (UISettingsItem){
-					.label = mi->name,
-					.value = NULL,
-					.swatch = -1,
-					.cycleable = 0,
-					// Titled lists show their section-wide desc as the bottom
-					// hint for items without one of their own
-					.desc = mi->desc ? mi->desc : (list->title ? list->desc : NULL),
-					.custom_draw = NULL,
-					.custom_draw_ctx = NULL,
-				};
-
-				if (await_input && i == selected) {
-					settings_items[i].value = "...";
-					settings_items[i].cycleable = 0;
-				} else if (mi->values && mi->values != button_labels) {
-					// Has selectable values — show current value
-					if (mi->value >= 0) {
-						int vc = 0;
-						while (mi->values[vc])
-							vc++;
-						if (mi->value < vc)
-							settings_items[i].value = mi->values[mi->value];
-					}
-					settings_items[i].cycleable = 1;
-				} else if (mi->values == button_labels) {
-					// Button binding — show current binding without cycle arrows
-					if (mi->value >= 0) {
-						int vc = 0;
-						while (mi->values[vc])
-							vc++;
-						if (mi->value < vc)
-							settings_items[i].value = PAD_buttonLabel(mi->values[mi->value]);
-					}
-					settings_items[i].cycleable = 0;
-				} else if (mi->submenu || mi->on_confirm || (list->on_confirm && !mi->values)) {
-					// Navigation item — show ">" as value
-					settings_items[i].value = ">";
-					settings_items[i].cycleable = 0;
+			// Brick OS (DESIGN.md 7.1): Settings' two columns over the paused game
+			MenuBosRow rows[count > 0 ? count : 1];
+			for (int i = 0; i < count; i++)
+				optRow(list, &items[i], await_input && i == selected, &rows[i]);
+			MenuBosOptView v = {0};
+			int d = opt_depth - 1;
+			static const char* root_icons[] = {"display", "cpu", "spark", "pencil", "pad", "keyboard", "trophy", "save", NULL, NULL};
+			static const uint32_t root_colors[] = {0x5E5CE6, 0x0A84FF, 0xBF5AF2, 0xFF9F0A, 0x8E8E93, 0x30B0C7, 0xFFD60A, 0x30D158, 0, 0};
+			MenuList* left = d == 0 || d > 8 ? list : opt_stack[d - 1];
+			int nl = 0;
+			while (left->items[nl].name)
+				nl++;
+			const char* lnames[nl > 0 ? nl : 1];
+			const char* licons[nl > 0 ? nl : 1];
+			for (int i = 0; i < nl; i++) {
+				lnames[i] = I18N_text(left->items[i].name);
+				licons[i] = NULL;
+				if (left == &options_menu) {
+					const char* nm = left->items[i].name;
+					licons[i] = !strcmp(nm, "Frontend")		  ? "display"
+								: !strcmp(nm, "Core Options") ? "cpu"
+								: !strcmp(nm, "Shaders")	  ? "spark"
+								: !strcmp(nm, "Cheats")		  ? "pencil"
+								: !strcmp(nm, "Controls")	  ? "pad"
+								: !strcmp(nm, "Shortcuts")	  ? "keyboard"
+								: !strcmp(nm, "Achievements") ? "trophy"
+															  : "save";
 				}
 			}
-
-			UI_renderSettingsPage(screen, &layout, settings_items, count, selected, &scroll, NULL);
-
-			// Bottom bar
-			if (type == MENU_INPUT)
-				UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", "X", "CLEAR", "A", "SET", NULL});
-			else
-				UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", "A", "OKAY", NULL});
-
+			uint32_t lcolors[nl > 0 ? nl : 1];
+			for (int i = 0; i < nl; i++) {
+				const char* ic = licons[i];
+				lcolors[i] = !ic ? 0x2C2C30
+							 : !strcmp(ic, "display")  ? root_colors[0]
+							 : !strcmp(ic, "cpu")	   ? root_colors[1]
+							 : !strcmp(ic, "spark")	   ? root_colors[2]
+							 : !strcmp(ic, "pencil")   ? root_colors[3]
+							 : !strcmp(ic, "pad")	   ? root_colors[4]
+							 : !strcmp(ic, "keyboard") ? root_colors[5]
+							 : !strcmp(ic, "trophy")   ? root_colors[6]
+													   : root_colors[7];
+			}
+			(void)root_icons;
+			v.left = lnames, v.nleft = nl;
+			v.left_icons = left == &options_menu ? licons : NULL;
+			v.left_colors = lcolors;
+			char head_desc[512] = "";
+			if (d == 0) { // the Options page itself: the focus on the left, the right says what the row holds
+				v.left_sel = selected, v.left_focused = true;
+				v.head = count > 0 ? I18N_text(items[selected].name) : "";
+				if (count > 0 && items[selected].desc)
+				{
+					snprintf(head_desc, sizeof(head_desc), "%s", I18N_text(items[selected].desc));
+					for (char* c = head_desc; *c; c++)
+						if (*c == '\n')
+							*c = ' ';
+				}
+				v.head_desc = head_desc;
+			} else {
+				v.left_sel = d - 1 < 8 ? *opt_sel[d - 1] : 0;
+				v.head = I18N_text(list->title ? list->title : (list->desc ? list->desc : ""));
+				v.rows = rows, v.nrows = count, v.sel = selected, v.scroll = &scroll;
+				const char* dsc = count > 0 && items[selected].desc ? items[selected].desc : (list->title ? list->desc : NULL);
+				static char flat[1024]; // one paragraph: the line breaks were for the old narrow layout
+				snprintf(flat, sizeof(flat), "%s", dsc ? I18N_text(dsc) : "");
+				for (char* c = flat; *c; c++)
+					if (*c == '\n')
+						*c = ' ';
+				v.desc = flat;
+			}
+			BosHint r[3], l[1];
+			int nr = 0, nlh = 0;
+			MenuBosRow* hot = d > 0 && count > 0 ? &rows[selected] : NULL;
+			if (type == MENU_INPUT) {
+				r[nr++] = (BosHint){"A", I18N_text("Set")};
+				r[nr++] = (BosHint){"X", I18N_text("Clear")};
+			} else if (d == 0 || (hot && hot->kind == MB_ROW_NAV))
+				r[nr++] = (BosHint){"A", I18N_text("Open")};
+			else if (hot && hot->kind == MB_ROW_TOGGLE)
+				r[nr++] = (BosHint){"A", I18N_text("On/Off")};
+			if (hot && (hot->kind == MB_ROW_CYCLE || hot->kind == MB_ROW_SLIDER || hot->kind == MB_ROW_TOGGLE))
+				l[nlh++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change")};
+			r[nr++] = (BosHint){"B", I18N_text("Back")};
+			v.hints = r, v.nhints = nr, v.left_hints = l, v.nleft_hints = nlh;
+			MenuBos_renderOptions(screen, &v);
 			GFX_flip(screen);
 			dirty = false;
 		} else {
@@ -1270,6 +1357,7 @@ int Menu_options(MenuList* list) {
 		hdmimon();
 	}
 
+	opt_depth--;
 	return 0;
 }
 
@@ -1301,6 +1389,20 @@ void Menu_updateState(void) {
 
 	menu.save_exists = exists(save_path);
 	menu.preview_exists = menu.save_exists && exists(menu.bmp_path);
+	struct stat st;
+	menu.save_time = menu.save_exists && stat(save_path, &st) == 0 ? st.st_mtime : 0;
+}
+
+// which of the eight slots hold a save (the strip under the slot's picture)
+static void Menu_readSlots(void) {
+	int last_slot = state_slot;
+	for (int i = 0; i < MENU_SLOT_COUNT; i++) {
+		char path[MAX_PATH];
+		state_slot = i;
+		State_getPath(path);
+		menu.slot_used[i] = exists(path);
+	}
+	state_slot = last_slot;
 }
 
 typedef struct {
@@ -1730,6 +1832,26 @@ void Menu_loop(void) {
 
 	int selected = 0; // resets every launch
 	Menu_initState();
+	Menu_readSlots();
+	MenuBos_open(menu.bitmap, DEVICE_WIDTH, DEVICE_HEIGHT);
+	// the console, from the game's folder ("Game Boy Advance (GBA)" -> "Game Boy Advance")
+	char console_name[MAX_PATH] = "";
+	{
+		char dir[MAX_PATH];
+		snprintf(dir, sizeof(dir), "%s", game.path);
+		char* sl = strrchr(dir, '/');
+		if (sl) {
+			*sl = '\0';
+			char* b = strrchr(dir, '/');
+			snprintf(console_name, sizeof(console_name), "%s", b ? b + 1 : dir);
+			char* paren = strrchr(console_name, '(');
+			if (paren && paren > console_name) {
+				*paren = '\0';
+				for (char* e = paren - 1; e >= console_name && *e == ' '; e--)
+					*e = '\0';
+			}
+		}
+	}
 
 	IndicatorType show_setting = INDICATOR_NONE;
 	bool dirty = true;
@@ -1881,119 +2003,58 @@ void Menu_loop(void) {
 		}
 
 		PWR_update(&dirty, &show_setting, Menu_beforeSleep, Menu_afterSleep);
+		if (MenuBos_moving())
+			dirty = true;
 		if (dirty) {
-			GFX_clear(screen);
-
-			GFX_drawOnLayer(menu.bitmap, 0, 0, DEVICE_WIDTH, DEVICE_HEIGHT, 0.15f, 1, 0);
-
-
-			UI_renderMenuBar(screen, rom_name);
-
-			if (!mp_active && selected == ITEM_LOAD && State_hasUndo())
-				UI_renderButtonHintBar(screen, (char*[]){"X", "UNDO LOAD", "B", "BACK", "A", "LOAD", NULL});
-			else if (selected == ITEM_QUIT && Menu_canAutosaveQuit())
-				UI_renderButtonHintBar(screen, (char*[]){"X", "QUIT", "B", "BACK", "A", "SAVE & QUIT", NULL});
-			else
-				UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", "A", "SELECT", NULL});
-
-			// list: the text on the 14 dp list inset under the title, the pill edge 14 dp left of it (LIST-LAYOUT §10.1)
-			int oy = (((DEVICE_HEIGHT / FIXED_SCALE) - PADDING * 2) - (MENU_ITEM_COUNT * PILL_SIZE)) / 2;
-			int pill_x = UI_listPillX();
-			int text_x = UI_listTextX();
-			for (int i = 0; i < MENU_ITEM_COUNT; i++) {
-				char* item = menu.items[i];
-				SDL_Color text_color = COLOR_WHITE;
-
-				if (i == selected) {
-					text_color = uintToColour(THEME_COLOR5_255);
-
-					// disc change: "< Disc N >" like a cycleable settings value
-					if (menu.total_discs > 1 && i == ITEM_CONT) {
-						GFX_blitPillDark(ASSET_WHITE_PILL, screen, &(SDL_Rect){pill_x, SCALE1(oy + PADDING), screen->w - SCALE1(PADDING) - pill_x, SCALE1(PILL_SIZE)});
-						char disc_label[32];
-						snprintf(disc_label, sizeof(disc_label), "< %s >", disc_name);
-						SDL_Surface* disc_text = GFX_renderText(font.large, disc_label, text_color);
-						if (disc_text) {
-							SDL_BlitSurface(disc_text, NULL, screen, &(SDL_Rect){screen->w - SCALE1(PADDING + BUTTON_PADDING) - disc_text->w, SCALE1(oy + PADDING + 4)});
-							SDL_FreeSurface(disc_text);
-						}
-					}
-
-					int ow;
-					GFX_measureText(font.large, item, &ow, NULL);
-					ow += SCALE1(BUTTON_PADDING * 2);
-
-					// pill
-					GFX_blitPillDark(ASSET_WHITE_PILL, screen, &(SDL_Rect){pill_x, SCALE1(oy + PADDING + (i * PILL_SIZE)), ow, SCALE1(PILL_SIZE)});
-				}
-
-				// text
-				SDL_Surface* text = GFX_renderText(font.large, item, text_color);
-				if (text) {
-					SDL_BlitSurface(text, NULL, screen, &(SDL_Rect){text_x, SCALE1(oy + PADDING + (i * PILL_SIZE) + 4)});
-					SDL_FreeSurface(text);
-				}
+			// Brick OS (DESIGN.md 7.1): the kit's page over the paused game
+			MenuBosView v = {0};
+			v.title = rom_name;
+			v.game = rom_name;
+			v.console = console_name;
+			static const char* names[MENU_ITEM_COUNT] = {"Continue", "Save", "Load", "Options", "Quit game"};
+			for (int i = 0; i < MENU_ITEM_COUNT; i++)
+				v.items[i] = I18N_text(i == ITEM_OPTS && simple_mode ? "Reset" : names[i]);
+			v.item_off[ITEM_SAVE] = v.item_off[ITEM_LOAD] = mp_active;
+			v.selected = selected;
+			char disc_label[32] = "";
+			if (menu.total_discs > 1) {
+				snprintf(disc_label, sizeof(disc_label), I18N_text("Disc %d"), menu.disc + 1);
+				v.disc = disc_label;
 			}
-
-			// slot preview
+			v.slots = selected == ITEM_SAVE || selected == ITEM_LOAD;
+			v.slot = menu.slot;
+			for (int i = 0; i < MENU_SLOT_COUNT && i < MENU_BOS_SLOTS; i++)
+				v.slot_used[i] = menu.slot_used[i];
+			v.save_exists = menu.save_exists;
+			v.preview_path = menu.preview_exists ? menu.bmp_path : NULL;
+			v.save_time = menu.save_time;
+			BosHint r[3], l[1];
+			int nr = 0, nl = 0;
+			char a_label[64];
 			if (selected == ITEM_SAVE || selected == ITEM_LOAD) {
-#define WINDOW_RADIUS 4 // TODO: this logic belongs in blitRect?
-#define PAGINATION_HEIGHT 6
-				// unscaled
-				int hw = DEVICE_WIDTH / 2;
-				int hh = DEVICE_HEIGHT / 2;
-				int pw = hw + SCALE1(WINDOW_RADIUS * 2);
-				int ph = hh + SCALE1(WINDOW_RADIUS * 2 + PAGINATION_HEIGHT + WINDOW_RADIUS);
-				int ox = DEVICE_WIDTH - pw - SCALE1(PADDING);
-				oy = (DEVICE_HEIGHT - ph) / 2;
-
-				// window
-				GFX_blitRect(ASSET_STATE_BG, screen, &(SDL_Rect){ox, oy, pw, ph});
-				ox += SCALE1(WINDOW_RADIUS);
-				oy += SCALE1(WINDOW_RADIUS);
-
-				if (menu.preview_exists) { // has save, has preview
-					// decode the slot screenshot only when the slot changes
-					if (!exactMatch(preview_path, menu.bmp_path)) {
-						preview_valid = 0;
-						SDL_Surface* bmp = IMG_Load(menu.bmp_path);
-						if (bmp) {
-							SDL_Surface* raw_preview = SDL_ConvertSurfaceFormat(bmp, screen->format->format, 0);
-							if (raw_preview) {
-								SDL_FreeSurface(bmp);
-								bmp = raw_preview;
-							}
-							SDL_BlitScaled(bmp, NULL, preview, NULL);
-							SDL_FreeSurface(bmp);
-							preview_valid = 1;
-						}
-						snprintf(preview_path, sizeof(preview_path), "%s", menu.bmp_path);
-					}
-					SDL_Rect preview_rect = {ox, oy, hw, hh};
-					SDL_FillRect(screen, &preview_rect, SDL_MapRGBA(screen->format, 0, 0, 0, 255));
-					if (preview_valid)
-						SDL_BlitSurface(preview, NULL, screen, &(SDL_Rect){ox, oy});
-					else
-						GFX_blitMessage(font.large, "No Preview", screen, &preview_rect);
-				} else {
-					SDL_Rect preview_rect = {ox, oy, hw, hh};
-					SDL_FillRect(screen, &preview_rect, SDL_MapRGBA(screen->format, 0, 0, 0, 255));
-					if (menu.save_exists)
-						GFX_blitMessage(font.large, "No Preview", screen, &preview_rect);
-					else
-						GFX_blitMessage(font.large, "Empty Slot", screen, &preview_rect);
+				l[nl++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Choose slot")};
+				if (selected == ITEM_SAVE) {
+					snprintf(a_label, sizeof(a_label), I18N_text("Save to slot %d"), menu.slot + 1);
+					r[nr++] = (BosHint){"A", a_label};
+				} else if (menu.save_exists) {
+					snprintf(a_label, sizeof(a_label), I18N_text("Load slot %d"), menu.slot + 1);
+					r[nr++] = (BosHint){"A", a_label};
 				}
-
-				// pagination
-				ox += (pw - SCALE1(15 * MENU_SLOT_COUNT)) / 2;
-				oy += hh + SCALE1(WINDOW_RADIUS);
-				for (int i = 0; i < MENU_SLOT_COUNT; i++) {
-					if (i == menu.slot)
-						GFX_blitAsset(ASSET_PAGE, NULL, screen, &(SDL_Rect){ox + SCALE1(i * 15), oy});
-					else
-						GFX_blitAsset(ASSET_DOT, NULL, screen, &(SDL_Rect){ox + SCALE1(i * 15) + 4, oy + SCALE1(2)});
-				}
+				if (!mp_active && selected == ITEM_LOAD && State_hasUndo())
+					r[nr++] = (BosHint){"X", I18N_text("Undo load")};
+				r[nr++] = (BosHint){"B", I18N_text("Back")};
+			} else if (selected == ITEM_QUIT && Menu_canAutosaveQuit()) {
+				r[nr++] = (BosHint){"A", I18N_text("Save & quit")};
+				r[nr++] = (BosHint){"X", I18N_text("Quit without saving")};
+				r[nr++] = (BosHint){"B", I18N_text("Resume")};
+			} else {
+				if (selected == ITEM_CONT && menu.total_discs > 1)
+					l[nl++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change disc")};
+				r[nr++] = (BosHint){"A", I18N_text("Select")};
+				r[nr++] = (BosHint){"B", I18N_text("Resume")};
 			}
+			v.hints = r, v.nhints = nr, v.left_hints = l, v.nleft = nl;
+			MenuBos_render(screen, &v);
 			GFX_flip(screen);
 			dirty = false;
 		} else {
@@ -2004,6 +2065,7 @@ void Menu_loop(void) {
 	}
 
 	SDL_FreeSurface(preview);
+	MenuBos_close();
 	if (menu.bitmap) {
 		SDL_FreeSurface(menu.bitmap);
 		menu.bitmap = NULL;

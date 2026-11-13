@@ -859,3 +859,68 @@ Failed to start update check	เริ่มตรวจอัปเดตไม
 4m	4 นาที
 6m	6 นาที
 10m	10 นาที
+Quit game	ออกจากเกม
+Saved %s	บันทึกเมื่อ %s
+Slot %d	ช่อง %d
+No preview	ไม่มีภาพตัวอย่าง
+No save yet	ยังไม่มีเซฟ
+Choose slot	เลือกช่อง
+Save to slot %d	บันทึกช่อง %d
+Load slot %d	โหลดช่อง %d
+Undo load	ยกเลิกการโหลด
+Save & quit	บันทึกแล้วออก
+Quit without saving	ออกไม่บันทึก
+Change disc	เปลี่ยนแผ่น
+Disc %d	แผ่น %d
+Jan	ม.ค.
+Feb	ก.พ.
+Mar	มี.ค.
+Apr	เม.ย.
+May	พ.ค.
+Jun	มิ.ย.
+Jul	ก.ค.
+Aug	ส.ค.
+Sep	ก.ย.
+Oct	ต.ค.
+Nov	พ.ย.
+Dec	ธ.ค.
+Audio Resampling Quality	คุณภาพเสียง
+Ambient Mode	ไฟตามภาพ
+Overlay	กรอบภาพ
+Offset screen X	เลื่อนภาพแนวนอน
+Offset screen Y	เลื่อนภาพแนวตั้ง
+Core Sync	จังหวะภาพ
+CPU Speed	ความเร็ว CPU
+Debug HUD	แสดงข้อมูลประสิทธิภาพ
+Rewind Buffer (MB)	หน่วยความจำย้อนเวลา (MB)
+Rewind Interval	ความถี่ย้อนเวลา
+Rewind Compression	บีบอัดข้อมูลย้อนเวลา
+Rewind Compression Speed	ความเร็วการบีบอัด
+Aspect	ตามสัดส่วน
+Aspect Screen	ตามสัดส่วนจอ
+Top	ขอบบน
+Top/LR	ขอบบน/L R
+Line	เส้น
+NEAREST	คม
+LINEAR	นุ่ม
+Emulated	ตามเกม
+Powersave	ประหยัดไฟ
+Resampling quality higher takes more CPU	คุณภาพยิ่งสูงยิ่งใช้ CPU มาก
+Makes your leds follow on screen colors	ให้ไฟ LED เปลี่ยนสีตามภาพในเกม
+Grid simulates an LCD grid.\nLine simulates CRT scanlines.\nEffects usually look best at native scaling.	ตาราง: เหมือนจอ LCD · เส้น: เหมือนจอ CRT · ดูดีที่สุดเมื่อขยายภาพแบบตามจริง
+Choose a custom overlay png from the Overlays folder	เลือกกรอบภาพ (png) จากโฟลเดอร์ Overlays
+Offset X pixels	เลื่อนภาพไปทางซ้ายหรือขวา (พิกเซล)
+Offset Y pixels	เลื่อนภาพขึ้นหรือลง (พิกเซล)
+LINEAR smooths lines, but works better when final image is at higher resolution, so either core that outputs higher resolution or upscaling with shaders	นุ่ม: เส้นเนียนขึ้น เหมาะกับภาพความละเอียดสูงหรือใช้เชดเดอร์ขยาย
+Play or mute audio when fast forwarding.	เปิดหรือปิดเสียงตอนเร่งเกม
+Compress rewind snapshots to save memory at the cost of CPU.	บีบอัดข้อมูลย้อนเวลาให้กินหน่วยความจำน้อยลง แต่ใช้ CPU มากขึ้น
+Native uses integer scaling.\nAspect uses core reported aspect ratio.\nAspect screen uses screen aspect ratio\nFullscreen has non-square pixels.	ตามจริง: ขยายเป็นจำนวนเต็มเท่า · ตามสัดส่วน: เต็มจอแต่ไม่ยืดภาพ · ตามสัดส่วนจอ: ใช้สัดส่วนของจอ · เต็มจอ: ยืดเต็มจอ
+Native uses integer scaling. Aspect uses core nreported aspect ratio.\nAspect screen uses screen aspect ratio\n Fullscreen has non-square\npixels. Cropped is integer scaled then cropped.	ตามจริง: ขยายเป็นจำนวนเต็มเท่า · ตามสัดส่วน: เต็มจอแต่ไม่ยืดภาพ · ตามสัดส่วนจอ: ใช้สัดส่วนของจอ · เต็มจอ: ยืดเต็มจอ · ครอป: ขยายเต็มเท่าแล้วตัดขอบ
+Choose what should be used as a\nreference for the frame rate.\n"Native" uses the emulator frame rate,\n"Screen" uses the frame rate of the screen,\n"Emulated" follows the game's own timing\n(GPU cores).	เลือกสิ่งที่ใช้กำหนดจังหวะภาพ · ตามจริง: ตามอีมูเลเตอร์ · ตามจอ: ตามรีเฟรชของจอ · ตามเกม: ตามจังหวะของเกมเอง (คอร์ GPU)
+Over- or underclock the CPU to prioritize\npure performance or power savings.	ปรับความเร็ว CPU เน้นแรงหรือเน้นประหยัดแบต
+Show frames per second, cpu load,\nresolution, and scaler information.	แสดง FPS, การใช้ CPU, ความละเอียด และการขยายภาพ
+Fast forward will not exceed the\nselected speed (but may be less\ndepending on game and emulator).	ตอนเร่ง เกมจะไม่เร็วเกินค่านี้ (อาจช้ากว่าได้แล้วแต่เกม)
+Enable in-memory rewind buffer.\nMust set a shortcut to access rewind during gameplay.\nUses extra CPU and memory.	เปิดการย้อนเวลา ต้องตั้งปุ่มลัดก่อนใช้ในเกม ใช้ CPU และหน่วยความจำเพิ่ม
+Memory reserved for rewind snapshots.\nIncrease for longer rewind times.	หน่วยความจำสำหรับย้อนเวลา ยิ่งมากยิ่งย้อนได้นาน
+Interval between rewind snapshots.\nShorter intervals improve smoothness during rewind,\nbut increase CPU and memory usage.	ระยะห่างของจุดย้อนเวลา ยิ่งถี่ยิ่งลื่นแต่ใช้ CPU และหน่วยความจำมากขึ้น
+LZ4 acceleration used for rewind snapshots.\nLower values compress more but use more CPU.	ค่าต่ำบีบอัดได้มากกว่าแต่ใช้ CPU มากกว่า

@@ -720,7 +720,28 @@ User request: "like the theme colour page, with colour choice and a colour code"
 - WiFi off: the screen shows "เปิด WiFi ก่อน" and an A button that opens ตั้งค่า › WiFi.
 - Hint bar: **B** ปิด · **X** รหัสใหม่.
 
-## 7. Round 2 (not redrawn yet)
-YouTube, the keyboard, the in-game menu, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
+## 7. Round 2
+YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
+
+### 7.1 เมนูในเกม (MENU in a game; boards `design/round2/v2-GameMenu*`, approved 2026-11-14)
+- **Behind:** the paused game, blurred (averaged to 1/16 and scaled back) at 28 % of its light. Status bar (§5.1) with the game's name.
+- **Left:** one group (§5.6), 380 wide, rows 84, a 56 squircle icon and the name 34/500:
+  เล่นต่อ (green, `play`) · บันทึก (blue, `save`) · โหลด (indigo, `update`) · ตัวเลือก (grey, `settings`; รีเซ็ต in simple mode) ·
+  ออกจากเกม (red, `power`, name in `danger`). Focus as everywhere (focus colour, x1.04, glides 120 ms).
+  In netplay บันทึก and โหลด are greyed. A game with more than one disc shows ‹ แผ่น 2 › on เล่นต่อ (← → change it).
+- **Right (x 440, 552 wide):**
+  - เล่นต่อ / ตัวเลือก / ออก: the paused frame, 552x414, radius 24; under it the game 34/700 and the console (from its folder) 30 `text2`.
+  - บันทึก / โหลด: the slot's picture in a 4 px focus-colour ring with a "ช่อง N" badge; an empty slot is `surface` with
+    "ช่องว่าง" in `textoff`. Under it "บันทึกเมื่อ 14 พ.ย. 02:33" (or "ยังไม่มีเซฟ"), then the eight slots: 44x44, radius 12;
+    the chosen one in the focus colour, a slot with a save `surface2`, an empty one an outline. ← → choose.
+- **Hints:** A เลือก · B เล่นต่อ. On a slot: ←→ เลือกช่อง · A บันทึกช่อง N / โหลดช่อง N · X ยกเลิกการโหลด (after a load) · B กลับ.
+  On ออกจากเกม with auto-resume: A บันทึกแล้วออก · X ออกไม่บันทึก · B เล่นต่อ.
+- **ตัวเลือก:** Settings' two columns (§6.6) over the same backdrop. Left: the page it was opened from (at the Options
+  page itself the focus is there and the right side shows the row's title and what it holds); its open row in `surface2`.
+  Right: the page's large title and its rows as in Settings: an Off/On value is a switch (A flips it too), a run of
+  numbers a slider with its number, other values ‹ value › on focus, a binding its buttons, a page a chevron; the focused
+  row's description under the group in one paragraph. Option names, values and descriptions are translated
+  (`res/lang/th.txt`).
+- Not redrawn yet: the achievements pages, a cheat's details, the binding prompt and the message boxes of minarch.
 
 Still with no mockup at all: PortMaster, Xtras, ภาพปก (ex-Artwork Manager), ตั้งค่าแยกเครื่อง (ex-Emulator Settings), the YouTube player, boot and sleep screens.
