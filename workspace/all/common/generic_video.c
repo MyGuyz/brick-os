@@ -2149,10 +2149,128 @@ static void uploadChangedRows(void) {
 		band_shadow_y[b] = -1; // the bands' copies may be stale now
 }
 
+static bool upload_skip = false;
+void PLAT_skipUpload(void) {
+	upload_skip = true;
+}
+
+// ---- Brick OS page moves ----
+static SDL_Texture* page_tex = NULL;
+static int page_tw, page_th;
+static struct {
+	bool on, black, from_top, zoom;
+	SDL_Rect area, zsrc, zdst;
+	int from_dx, to_dx;
+	float from_light, to_light, to_alpha, zlight;
+} page_q;
+
+bool PLAT_pageGrab(const SDL_Rect* area) {
+	if (!vid.renderer || !vid.stream_layer1 || !vid.screen)
+		return false;
+	if (!area)
+		return true;
+	if (area->w <= 0 || area->h <= 0)
+		return false;
+	if (!page_tex || page_tw != area->w || page_th != area->h) {
+		if (page_tex)
+			SDL_DestroyTexture(page_tex);
+		page_tex = SDL_CreateTexture(vid.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, area->w, area->h);
+		page_tw = area->w, page_th = area->h;
+	}
+	if (!page_tex)
+		return false;
+	SDL_BlendMode was = SDL_BLENDMODE_BLEND;
+	SDL_GetTextureBlendMode(vid.stream_layer1, &was);
+	SDL_SetTextureBlendMode(vid.stream_layer1, SDL_BLENDMODE_NONE);
+	SDL_SetTextureBlendMode(page_tex, SDL_BLENDMODE_NONE);
+	int bad = SDL_SetRenderTarget(vid.renderer, page_tex);
+	if (!bad)
+		bad = SDL_RenderCopy(vid.renderer, vid.stream_layer1, area, NULL);
+	SDL_SetRenderTarget(vid.renderer, NULL);
+	SDL_SetTextureBlendMode(vid.stream_layer1, was);
+	return !bad;
+}
+
+void PLAT_pageShow(const SDL_Rect* area, bool black, bool from_top, int from_dx, float from_light, int to_dx,
+				   float to_light, float to_alpha) {
+	if (!area)
+		return;
+	page_q.on = true, page_q.zoom = false;
+	page_q.area = *area, page_q.black = black, page_q.from_top = from_top;
+	page_q.from_dx = from_dx, page_q.from_light = from_light;
+	page_q.to_dx = to_dx, page_q.to_light = to_light, page_q.to_alpha = to_alpha;
+}
+
+void PLAT_pageZoom(const SDL_Rect* src, const SDL_Rect* dst, float light) {
+	if (!page_q.on || !src || !dst)
+		return;
+	page_q.zoom = true, page_q.zsrc = *src, page_q.zdst = *dst, page_q.zlight = light;
+}
+
+static Uint8 lightByte(float v) {
+	return v <= 0 ? 0 : v >= 1 ? 255 : (Uint8)(v * 255);
+}
+
+// over the screen's texture, under the sprites and the upper layers
+static void drawPageMove(void) {
+	if (!page_q.on)
+		return;
+	page_q.on = false;
+	if (!vid.screen || !vid.stream_layer1)
+		return;
+	int ow = 0, oh = 0;
+	SDL_GetRendererOutputSize(vid.renderer, &ow, &oh);
+	float kx = (float)ow / vid.screen->w, ky = (float)oh / vid.screen->h;
+#define PAGE_SC(r, dx) \
+	(SDL_Rect) { (int)(((r).x + (dx)) * kx), (int)((r).y * ky), (int)((r).w * kx + 0.5f), (int)((r).h * ky + 0.5f) }
+	SDL_Rect clip = PAGE_SC(page_q.area, 0);
+	SDL_RenderSetClipRect(vid.renderer, &clip);
+	SDL_BlendMode was = SDL_BLENDMODE_BLEND;
+	SDL_GetTextureBlendMode(vid.stream_layer1, &was);
+	for (int pass = 0; pass < 2; pass++) {
+		bool from = (pass == 0) != page_q.from_top;
+		if (from) {
+			if (page_q.black) {
+				SDL_SetRenderDrawColor(vid.renderer, 0, 0, 0, 255);
+				SDL_RenderFillRect(vid.renderer, &clip);
+			} else if (page_tex && page_q.from_light >= 0) {
+				Uint8 c = lightByte(page_q.from_light);
+				SDL_SetTextureColorMod(page_tex, c, c, c);
+				SDL_Rect dst = PAGE_SC(page_q.area, page_q.from_dx);
+				SDL_RenderCopy(vid.renderer, page_tex, NULL, &dst);
+			}
+		} else if (page_q.to_alpha > 0) {
+			Uint8 c = lightByte(page_q.to_light), a = lightByte(page_q.to_alpha);
+			SDL_SetTextureColorMod(vid.stream_layer1, c, c, c);
+			SDL_SetTextureAlphaMod(vid.stream_layer1, a);
+			SDL_SetTextureBlendMode(vid.stream_layer1, a < 255 ? SDL_BLENDMODE_BLEND : SDL_BLENDMODE_NONE);
+			SDL_Rect dst = PAGE_SC(page_q.area, page_q.to_dx);
+			SDL_RenderCopy(vid.renderer, vid.stream_layer1, &page_q.area, &dst);
+		}
+	}
+	if (page_q.zoom) {
+		Uint8 c = lightByte(page_q.zlight);
+		SDL_SetTextureColorMod(vid.stream_layer1, c, c, c);
+		SDL_SetTextureAlphaMod(vid.stream_layer1, 255);
+		SDL_SetTextureBlendMode(vid.stream_layer1, SDL_BLENDMODE_NONE);
+		SDL_Rect dst = PAGE_SC(page_q.zdst, 0);
+		SDL_RenderCopy(vid.renderer, vid.stream_layer1, &page_q.zsrc, &dst);
+	}
+#undef PAGE_SC
+	SDL_SetTextureColorMod(vid.stream_layer1, 255, 255, 255);
+	SDL_SetTextureAlphaMod(vid.stream_layer1, 255);
+	SDL_SetTextureBlendMode(vid.stream_layer1, was);
+	SDL_RenderSetClipRect(vid.renderer, NULL);
+}
+
 // The screen into its texture: all of it, or just the bands set for this flip that changed (the screen's size kept).
 static void uploadScreen(bool size_kept) {
 	int n = upload_band_n;
 	upload_band_n = 0;
+	bool skip = upload_skip;
+	upload_skip = false;
+	if (skip && size_kept)
+		return;
 	if (!size_kept) {
 		SDL_UpdateTexture(vid.stream_layer1, NULL, vid.screen->pixels, vid.screen->pitch);
 		bandShadowInvalidate();
@@ -2253,6 +2371,7 @@ static void compositeLayers(void) {
 	} else {
 		SDL_RenderCopy(vid.renderer, vid.stream_layer1, NULL, NULL);
 	}
+	drawPageMove();
 	drawSpriteList(sprites, sprite_count, true);
 	if (layer_has_content[3])
 		SDL_RenderCopy(vid.renderer, vid.target_layer3, NULL, NULL);
@@ -3123,11 +3242,22 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 	capture_check();
 	if (!vid.blit) {
 		int kept_w = vid.width, kept_h = vid.height;
+		static int bench = -1; // BOS_BENCH=1: what a flip is made of
+		if (bench < 0)
+			bench = getenv("BOS_BENCH") != NULL;
+		Uint64 b0 = bench ? SDL_GetPerformanceCounter() : 0;
 		resizeVideo(device_width, device_height, FIXED_PITCH); // !!!???
 		uploadScreen(kept_w == vid.width && kept_h == vid.height);
+		Uint64 b1 = bench ? SDL_GetPerformanceCounter() : 0;
 		compositeLayers();
 		capture_write();
+		Uint64 b2 = bench ? SDL_GetPerformanceCounter() : 0;
 		SDL_RenderPresent(vid.renderer);
+		if (bench) {
+			double k = 1000.0 / SDL_GetPerformanceFrequency();
+			fprintf(stderr, "upload=%.1f comp=%.1f present=%.1f ", (b1 - b0) * k, (b2 - b1) * k,
+					(SDL_GetPerformanceCounter() - b2) * k);
+		}
 		return;
 	}
 

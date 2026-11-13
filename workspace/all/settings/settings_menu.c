@@ -1,4 +1,5 @@
 #include "settings_bos.h"
+#include "bos_ui.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -295,21 +296,29 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 	}
 
 	// Navigation
+	// the ends wrap on a fresh press; a held direction stops there with a knock (DESIGN 5.7)
 	if (PAD_justRepeated(BTN_UP)) {
-		page->selected--;
-		if (page->selected < 0)
+		if (page->selected > 0)
+			page->selected--;
+		else if (PAD_justPressed(BTN_UP))
 			page->selected = vis_count - 1;
+		else
+			BOS_bump(-1);
 		changed = 1;
 	}
 	if (PAD_justRepeated(BTN_DOWN)) {
-		page->selected++;
-		if (page->selected >= vis_count)
+		if (page->selected < vis_count - 1)
+			page->selected++;
+		else if (PAD_justPressed(BTN_DOWN))
 			page->selected = 0;
+		else
+			BOS_bump(1);
 		changed = 1;
 	}
 
 	// Value cycling (disabled when input_blocked)
 	if (!page->input_blocked && sel && (sel->type == ITEM_CYCLE || sel->type == ITEM_COLOR)) {
+		int idx_was = sel->current_idx;
 		int r1 = PAD_justRepeated(BTN_R1);
 		int l1 = PAD_justRepeated(BTN_L1);
 		int step = (r1 || l1) ? 10 : 1;
@@ -326,6 +335,8 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 			cycle_item_next(sel, 1);
 			changed = 1;
 		}
+		if (sel->current_idx != idx_was && SettingsBos_isToggle(sel)) // a switch has its own two sounds
+			BOS_sfx(SettingsBos_toggleOn(sel) ? BOS_SFX_ON : BOS_SFX_OFF);
 		if (sel->on_clear && PAD_justPressed(BTN_X)) {
 			sel->on_clear();
 			settings_item_sync(sel);
@@ -624,6 +635,10 @@ static void render_hints_for_page(SDL_Surface* screen, SettingsPage* page) {
 // ============================================
 // Main Render
 // ============================================
+
+void settings_menu_before_render(SDL_Surface* screen) {
+	SettingsBos_before(screen, stack_depth);
+}
 
 void settings_menu_render(SDL_Surface* screen, IndicatorType show_setting) {
 	SettingsPage* page = settings_menu_current();

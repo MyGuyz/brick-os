@@ -689,13 +689,32 @@ void QuitSettings(void) {
 	if (is_host)
 		shm_unlink(SHM_KEY);
 }
-static inline void SaveSettings(void) {
+static int save_deferred, save_pending;
+static void SaveSettingsNow(void) {
+	__atomic_store_n(&save_pending, 0, __ATOMIC_SEQ_CST); // a change made while writing marks it again
 	int fd = open(SettingsPath, O_CREAT | O_WRONLY, 0644);
 	if (fd >= 0) {
 		write(fd, settings, shm_size);
 		fsync(fd);
 		close(fd);
 	}
+}
+static inline void SaveSettings(void) {
+	if (save_deferred) {
+		__atomic_store_n(&save_pending, 1, __ATOMIC_SEQ_CST);
+		return;
+	}
+	SaveSettingsNow();
+}
+void SetSettingsSaveDeferred(int on) {
+	save_deferred = on;
+}
+int SettingsSavePending(void) {
+	return __atomic_load_n(&save_pending, __ATOMIC_SEQ_CST);
+}
+void FlushSettings(void) {
+	if (settings && SettingsSavePending())
+		SaveSettingsNow();
 }
 
 ///////// Getters exposed in public API

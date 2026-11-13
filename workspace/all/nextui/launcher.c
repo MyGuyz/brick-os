@@ -18,6 +18,7 @@
 #include "path_stack.h"
 #include "menutabs.h"
 #include "shortcuts.h"
+#include "bos_ui.h"
 
 // The ROM behind a row launched from a collection's list, beside LAST_PATH (which saves the row by its file name):
 // one game on two consoles in a collection has two rows of that name. Transient, like LAST_PATH.
@@ -25,10 +26,21 @@
 
 ///////////////////////////////////////
 
+extern SDL_Surface* screen;
+extern int bos_last_page;
+extern bool bos_zoom_ok, bos_launched_out;
+const SDL_Rect* HomeBos_launchRect(void);
+
 static void queueNext(char* cmd) {
 	LOG_info("cmd: %s\n", cmd);
 	putFile("/tmp/next", cmd);
 	quit = true;
+	BOS_sfx(BOS_SFX_LAUNCH);
+	if (bos_last_page) { // from one of Brick OS's pages: the chosen picture grows as the page goes dark (§5.7)
+		BOS_sfxFlush();
+		BOS_launchOut(screen, bos_zoom_ok ? HomeBos_launchRect() : NULL);
+		bos_launched_out = true;
+	}
 	// Every external launch (rom, pak, script, auto-resume) comes through here and then leaves nextui with
 	// _exit, so CollCount_quit never runs: write the collection counts now (the worker defers its writes).
 	CollCount_flush();

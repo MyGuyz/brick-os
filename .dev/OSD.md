@@ -237,6 +237,53 @@ the release before the panel comes up.
 Daemon md5s after both patches: brick 1781c904…, brickpro 086f6d70…, smartpro
 9d5ca562…, smartpros 3e8b2247… (the `scripts/patch-osdd-layout.sh` table).
 
+### HUD patch (Brick Pro daemon + its `.xbox` variant, 2026-11-14)
+
+Brick OS shows the volume / brightness level as a toast (DESIGN.md 5.9), one every 100 ms while the key is held.
+`scripts/hudlat.c` times each toast from writing `/tmp/trimui_osd/osd_toast_msg` to the daemon deleting it
+(it does that after adding the toast and redrawing the layer). Stock: a held key took 16-49 ms a step, except one step
+in every ~12 that took 880-940 ms; a first press took 124-230 ms.
+
+- The stalls: the main loop counts 33 per turn and at 1000 runs every quick-panel widget's `update` script through
+  `system()` (12 shells forked from a 200 MB process: 550 ms wall, 650 ms CPU a round). It did this whether or not the
+  panel was open: every ~1.2 s while a toast was up, and every ~6 s with nothing on screen (~10% of a core, idle).
+- The first press: with neither the panel nor a toast up the loop sleeps 200 ms a turn.
+
+`scripts/patch-osdd-hud.py` (byte-verified, refuses another build):
+
+| vaddr (file offset = vaddr - 0x400000) | was | now |
+|---|---|---|
+| 0x402420 | `cmp w0,#0` (7100001f) | `bl trimui_osd_is_actived` (94002758): widgets only while the panel is open |
+| 0x402424 | `b.le 0x402448` (5400012d) | `cbz w0,0x402448` (34000120) |
+| 0x402538 | `mov w0,#0xd40` (5281a800) | `mov w0,#0x8234` (52904680): idle turn 33 ms, not 200 |
+| 0x40253c | `movk w0,#3,lsl 16` (72a00060) | `nop` |
+
+After: held key 13-49 ms a step (worst 49 of 80 steps), first press 15-45 ms. The idle main loop now wakes 30 times a
+second (1.9% of a core, against the widget scripts' ~10% before). The brick daemon matches every checked word too but
+is not patched (not tested on a Brick). keymon no longer writes `msettings.bin` (with fsync, 5-10 ms) on every step:
+`SetSettingsSaveDeferred(1)` + a saver thread write it once, 800 ms after the last step.
+
+Daemon md5s now: brickpro 8c3de0f7…, brickpro .xbox 3fda0b79… (the `patch-osdd-layout.sh` table names the patched
+source).
+
+### Widget states from keymon, brightness widget (Brick Pro, 2026-11-14)
+
+With the HUD patch the widget refresh only runs while the panel is open, but there it still ran every widget's
+`update` script once a second: `scripts/panellat.c` (a key on the virtual pad, timed to the next g2d interrupt,
+i.e. the panel's redraw) measured 16-55 ms a press, and 650-880 ms for one press in every ~7.
+
+- The Brick Pro layer (`device/brickpro/widgets/*/config.json`) gives those widgets an empty `"update"`. The daemon
+  still re-reads each widget's status file every round; tg5040 keymon writes them (`osd_status_write`, plain C: cpu
+  freq, used RAM, hottest cpu/gpu zone, BT `HCIGETDEVINFO` up flag, LED `max_scale`, mute, rumble, screenshot /
+  screen-record pid, `wlan0` flags, brightness, volume) right before it opens the panel and every second while it is
+  open. After: 18-54 ms a press, no stall, no process started while the panel is open.
+- The daemon's slider is pictures only, it cannot show the level. `device/brickpro/osdlayout.json` replaces
+  `com.trimui.osd.slider.backlight` with `com.brickos.osd.app.backlight`: an app widget drawn by
+  `workspace/all/osdbright` (`osdbright.elf`, the protocol of osdmusic: FIFO `/tmp/trimui_bright/widget_cmd`, canvas
+  `/tmp/trimui_bright/vfb_osd`, 556x124, 30 fps). Same tile, sun, 14 px track and white fill as the slider; the level
+  right-aligned after the bar; A enters (fill in the accent), left/right step, B leaves. It sets brightness through
+  msettings with deferred saving (one write 800 ms after the last step).
+
 ### Idle wait shim (`libosdwait.so`)
 
 Measured 2026-09-19 with the panel hidden and the pad at rest, the daemon

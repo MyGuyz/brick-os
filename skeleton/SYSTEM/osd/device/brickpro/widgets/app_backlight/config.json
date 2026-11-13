@@ -1,0 +1,22 @@
+{
+    "type":"app",
+    "package":"com.brickos.osd.app.backlight",
+    "label":"Backlight",
+    "label.ch.lang":"背光",
+    "gridwidth":4,
+    "gridheight":1,
+    "icon0":"icon-brightness.png",
+    "icon1":"",
+    "launch":"launch.sh",
+    "update":"",
+    "set":"",
+    "status":"",
+    "cmd" : "/tmp/trimui_bright/widget_cmd",
+    "canvasv" : "/tmp/trimui_bright/vfb_osd",
+    "canvasp" : "",
+    "canvaswidth" : 556,
+    "canvasheight" : 124,
+    "canvasbpp" : 32,
+    "canvasfps" : 30,
+    "description":"Brick OS brightness: the slider with its level"
+}

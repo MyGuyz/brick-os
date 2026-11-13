@@ -72,6 +72,8 @@ void CFG_defaults(NextUISettings* cfg) {
 		.showNetplayHint = CFG_DEFAULT_SHOWNETPLAYHINT,
 		.showMenuAnimations = CFG_DEFAULT_SHOWMENUANIMATIONS,
 		.showMenuTransitions = CFG_DEFAULT_SHOWMENUTRANSITIONS,
+		.menuSounds = CFG_DEFAULT_MENUSOUNDS,
+		.menuSoundPack = CFG_DEFAULT_MENUSOUNDPACK,
 		.showRecents = CFG_DEFAULT_SHOWRECENTS,
 		.showTools = CFG_DEFAULT_SHOWTOOLS,
 		.showHome = CFG_DEFAULT_SHOWHOME,
@@ -210,6 +212,14 @@ void CFG_init(FontLoad_callback_t cb, ColorSet_callback_t ccb) {
 			}
 			if (sscanf(line, "menutransitions=%i", &temp_value) == 1) {
 				CFG_setMenuTransitions((bool)temp_value);
+				continue;
+			}
+			if (sscanf(line, "menusounds=%i", &temp_value) == 1) {
+				CFG_setMenuSounds(temp_value);
+				continue;
+			}
+			if (sscanf(line, "menusoundpack=%i", &temp_value) == 1) {
+				CFG_setMenuSoundPack(temp_value);
 				continue;
 			}
 			if (sscanf(line, "recents=%i", &temp_value) == 1) {
@@ -719,6 +729,24 @@ bool CFG_getMenuTransitions(void) {
 
 void CFG_setMenuTransitions(bool show) {
 	settings.showMenuTransitions = show;
+	CFG_sync();
+}
+
+int CFG_getMenuSounds(void) {
+	return settings.menuSounds;
+}
+
+void CFG_setMenuSounds(int v) {
+	settings.menuSounds = v < 0 ? 0 : v > 2 ? 2 : v;
+	CFG_sync();
+}
+
+int CFG_getMenuSoundPack(void) {
+	return settings.menuSoundPack;
+}
+
+void CFG_setMenuSoundPack(int v) {
+	settings.menuSoundPack = v < 0 || v > 2 ? 0 : v;
 	CFG_sync();
 }
 
@@ -1352,6 +1380,10 @@ void CFG_get(const char* key, char* value) {
 		sprintf(value, "%i", CFG_getMenuAnimations());
 	} else if (strcmp(key, "menutransitions") == 0) {
 		sprintf(value, "%i", CFG_getMenuTransitions());
+	} else if (strcmp(key, "menusounds") == 0) {
+		sprintf(value, "%i", CFG_getMenuSounds());
+	} else if (strcmp(key, "menusoundpack") == 0) {
+		sprintf(value, "%i", CFG_getMenuSoundPack());
 	} else if (strcmp(key, "recents") == 0) {
 		sprintf(value, "%i", CFG_getShowRecents());
 	} else if (strcmp(key, "tools") == 0) {
@@ -1478,6 +1510,8 @@ static int CFG_serialize(char* buf, size_t cap) {
 	EMIT("netplayhint=%i\n", settings.showNetplayHint);
 	EMIT("menuanim=%i\n", settings.showMenuAnimations);
 	EMIT("menutransitions=%i\n", settings.showMenuTransitions);
+	EMIT("menusounds=%i\n", settings.menuSounds);
+	EMIT("menusoundpack=%i\n", settings.menuSoundPack);
 	EMIT("recents=%i\n", settings.showRecents);
 	EMIT("tools=%i\n", settings.showTools);
 	EMIT("showhome=%i\n", settings.showHome);
@@ -1743,6 +1777,8 @@ void CFG_print(void) {
 	printf("\t\"netplayhint\": %i,\n", settings.showNetplayHint);
 	printf("\t\"menuanim\": %i,\n", settings.showMenuAnimations);
 	printf("\t\"menutransitions\": %i,\n", settings.showMenuTransitions);
+	printf("\t\"menusounds\": %i,\n", settings.menuSounds);
+	printf("\t\"menusoundpack\": %i,\n", settings.menuSoundPack);
 	printf("\t\"recents\": %i,\n", settings.showRecents);
 	printf("\t\"tools\": %i,\n", settings.showTools);
 	printf("\t\"showhome\": %i,\n", settings.showHome);

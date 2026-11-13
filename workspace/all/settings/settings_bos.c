@@ -172,6 +172,56 @@ static const char* pageTitle(SettingsPage* page, SettingItem* cat) {
 // ---- left column: the categories, iOS groups of rows 84 / label 34, a squircle each ----
 static int lscroll; // content px scrolled off the top
 
+// A sheet comes up from the bottom (§5.7): set when it opens, 220 ms.
+static uint32_t sheet_t0;
+static int sheetOff(SDL_Surface* s) {
+	int ms = BOS_motionMs(220);
+	if (!sheet_t0 || ms < 220) { // น้อย and ปิด: it is simply there
+		sheet_t0 = 0;
+		return 0;
+	}
+	float t = (float)(SDL_GetTicks() - sheet_t0) / (float)ms;
+	if (t >= 1) {
+		sheet_t0 = 0;
+		return 0;
+	}
+	return (int)((1 - BOS_ease(t)) * s->h * 0.6f);
+}
+static BosGlide *pf_lg[2], *pf_rg[2]; // the glides of the left and of the right column
+static SDL_Rect pf_lrect, pf_rrect;	 // what they move in
+static bool pf_was;					 // the last frame drew only one of them
+
+bool SettingsBos_moving(void) {
+	return sheet_t0 != 0 || pf_was;
+}
+
+// One category row. style 0: as it lies, 1: the open category (focus is on the right), 2: under the focus.
+static void leftRow(SDL_Surface* s, SettingItem* it, int x, int yy, int w, int h, int style, bool marquee) {
+	const Cat* c = catOf(it->name);
+	if (style == 2) { // focus: x1.04
+		int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
+		x -= gw / 2, w += gw, yy -= gh / 2, h += gh;
+	}
+	float a = style ? 1.0f : BOS_DIM;
+	int sq = BOS_px(56), sx = x + BOS_px(20), sy = yy + (h - sq) / 2;
+	// สีไอคอน: the category's colour, white on grey, or the theme's primary
+	int im = BOS_theme()->icon_mode;
+	uint32_t sqc = im == 1 ? BOS_theme()->surface2 : im == 2 ? BOS_theme()->primary : c->color;
+	uint32_t icc = im == 2 ? BOS_theme()->onprimary : 0xFFFFFF;
+	BOS_rrect(s, sx, sy, sq, sq, BOS_px(15), mix(sqc, BOS_theme()->surface, a));
+	int ic = BOS_px(36);
+	BOS_icon(s, c->icon, icc, a, sx + (sq - ic) / 2, sy + (sq - ic) / 2, ic);
+	char name[128];
+	int nx = sx + sq + BOS_px(22);
+	if (style == 2 && marquee)
+		BOS_textMarquee(s, I18N_text(it->name), 34, 600, BOS_theme()->onfocus, a, nx, yy + h / 2, x + w - BOS_px(20) - nx);
+	else {
+		int wt = style == 2 ? 600 : 500;
+		BOS_fit(I18N_text(it->name), 34, wt, x + w - BOS_px(20) - nx, name, sizeof(name));
+		BOS_textMid(s, name, 34, wt, style == 2 ? BOS_theme()->onfocus : BOS_C_TEXT, a, nx, yy + h / 2);
+	}
+}
+
 static void leftColumn(SDL_Surface* s, SettingsPage* root, bool focused, int top, int bottom) {
 	int lx = BOS_px(24), lw = BOS_px(380), rh = BOS_px(84), gap = BOS_px(14), r = BOS_px(22);
 	int n = settings_page_visible_count(root);
@@ -200,7 +250,13 @@ static void leftColumn(SDL_Surface* s, SettingsPage* root, bool focused, int top
 	if (lscroll < 0)
 		lscroll = 0;
 	SDL_Rect clip = {0, top, lx + lw + BOS_px(14), view};
-	SDL_SetClipRect(s, &clip);
+	pf_lrect = clip;
+	BOS_clip(s, &clip);
+	// the list and the highlight travel to where they belong (§5.7); lscroll is where the list is going
+	static BosGlide g_scroll, g_pill;
+	pf_lg[0] = &g_scroll, pf_lg[1] = &g_pill;
+	int lscroll_to = lscroll;
+	lscroll = (int)BOS_glideTo(&g_scroll, (float)lscroll_to, 180, false);
 
 	// group boxes, then separators, then the rows
 	for (int i = 0; i < n;) {
@@ -213,46 +269,55 @@ static void leftColumn(SDL_Surface* s, SettingsPage* root, bool focused, int top
 				SDL_FillRect(s, &(SDL_Rect){lx + BOS_px(96), top + ry[k] + rh - lscroll - 1, lw - BOS_px(96), 1}, BOS_map(s, C_SEP));
 		i = j + 1;
 	}
-	for (int i = 0; i < n; i++) {
+	for (int i = 0; i < n; i++) { // every row as it lies
 		SettingItem* it = settings_page_visible_item(root, i);
-		if (!it)
-			continue;
-		const Cat* c = catOf(it->name);
-		int x = lx, w = lw, h = rh, yy = top + ry[i] - lscroll;
-		bool hot = i == sel && focused, open = i == sel && !focused;
-		if (hot) { // focus: white fill, x1.04
-			int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
-			x -= gw / 2, w += gw, yy -= gh / 2, h += gh;
-			BOS_rrect(s, x, yy, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
-		} else if (open)
-			BOS_rrect(s, x, yy, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->surface2);
-		float a = hot || open ? 1.0f : BOS_DIM;
-		int sq = BOS_px(56), sx = x + BOS_px(20), sy = yy + (h - sq) / 2;
-		// สีไอคอน: the category's colour, white on grey, or the theme's primary
-		int im = BOS_theme()->icon_mode;
-		uint32_t sqc = im == 1 ? BOS_theme()->surface2 : im == 2 ? BOS_theme()->primary : c->color;
-		uint32_t icc = im == 2 ? BOS_theme()->onprimary : 0xFFFFFF;
-		BOS_rrect(s, sx, sy, sq, sq, BOS_px(15), mix(sqc, BOS_theme()->surface, a));
-		int ic = BOS_px(36);
-		BOS_icon(s, c->icon, icc, a, sx + (sq - ic) / 2, sy + (sq - ic) / 2, ic);
-		char name[128];
-		int nx = sx + sq + BOS_px(22);
-		if (hot)
-			BOS_textMarquee(s, I18N_text(it->name), 34, 600, BOS_theme()->onfocus, a, nx, yy + h / 2, x + w - BOS_px(20) - nx);
-		else {
-			BOS_fit(I18N_text(it->name), 34, 500, x + w - BOS_px(20) - nx, name, sizeof(name));
-			BOS_textMid(s, name, 34, 500, BOS_C_TEXT, a, nx, yy + h / 2);
+		if (it)
+			leftRow(s, it, lx, top + ry[i] - lscroll, lw, rh, 0, false);
+	}
+	// the highlight; the rows it covers are drawn again in its colours, cut to its shape
+	int px = lx, pw = lw, ph = rh;
+	int py = top + (int)BOS_glideTo(&g_pill, (float)ry[sel], 120, false) - lscroll + (focused ? BOS_bumpPx() : 0);
+	bool moving = BOS_glideMoving(&g_pill);
+	if (focused) {
+		int gw = (int)(lw * BOS_ROW_SCALE) - lw, gh = (int)(rh * BOS_ROW_SCALE) - rh;
+		px -= gw / 2, pw += gw, py -= gh / 2, ph += gh;
+	}
+	BOS_rrect(s, px, py, pw, ph, BOS_px(BOS_RADIUS_ROW), focused ? BOS_theme()->focus : BOS_theme()->surface2);
+	SDL_Rect pill = {px, py, pw, ph}, cut;
+	if (SDL_IntersectRect(&pill, &clip, &cut)) {
+		for (int i = 0; i < n; i++) {
+			int yy = top + ry[i] - lscroll;
+			if (i != sel && (!moving || yy + rh <= py || yy >= py + ph))
+				continue;
+			SettingItem* it = settings_page_visible_item(root, i);
+			if (!it)
+				continue;
+			BOS_clip(s, &cut);
+			leftRow(s, it, lx, moving ? yy : py + (ph - rh) / 2, lw, rh, focused ? 2 : 1, i == sel && !moving);
 		}
 	}
-	SDL_SetClipRect(s, NULL);
+	BOS_clip(s, NULL);
+	lscroll = lscroll_to;
 }
 
 // ---- right column: the page's large title and its group of rows 96 ----
-static void toggle(SDL_Surface* s, int x, int cy, bool on, bool hot, float a) {
+static void toggle(SDL_Surface* s, int x, int cy, float pos, bool hot, float a) { // pos 0 off .. 1 on
 	int w = BOS_px(80), h = BOS_px(46), k = BOS_px(38), p = BOS_px(4);
-	uint32_t track = on ? BOS_theme()->primary : hot ? BOS_C_TEXTOFF : BOS_theme()->surface2;
+	uint32_t track = mix(BOS_theme()->primary, hot ? BOS_C_TEXTOFF : BOS_theme()->surface2, pos);
 	BOS_rrect(s, x, cy - h / 2, w, h, h / 2, hot ? track : mix(track, BOS_theme()->surface, a));
-	BOS_rrect(s, on ? x + w - p - k : x + p, cy - k / 2, k, k, k / 2, hot ? 0xFFFFFF : mix(0xFFFFFF, BOS_theme()->surface, a));
+	BOS_rrect(s, x + p + (int)((w - 2 * p - k) * pos), cy - k / 2, k, k, k / 2,
+			  hot ? 0xFFFFFF : mix(0xFFFFFF, BOS_theme()->surface, a));
+}
+
+// the room the widest of a slider's values takes (its number after the bar)
+static int sliderNumW(SettingItem* it) {
+	int w = 0;
+	for (int i = 0; i < it->label_count; i++) {
+		int t = it->labels[i] ? BOS_textW(it->labels[i], BOS_FS_SMALL, 600) : 0;
+		if (t > w)
+			w = t;
+	}
+	return w;
 }
 
 static void slider(SDL_Surface* s, int x, int w, int cy, float frac, bool hot, float a) {
@@ -316,6 +381,7 @@ static int keyCaps(SDL_Surface* s, const char* v, int x, int cy, float a, uint32
 }
 
 static void keyText(int key, int hold, char* out, size_t size);
+static bool row_nofill; // the focused row without its fill: the highlight is drawn by the list, on its way
 static int lt_want; // the lights this frame wants: 0 the profile, 1 the LED pages' preview, 2 + key: that key blinks
 static void lightsApply(void);
 static void keyRowDraw(SDL_Surface* s, const char* name, const char* value, bool tag, int mark, int x, int y, int w,
@@ -335,7 +401,8 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		x -= gw / 2, w += gw, y -= gh / 2, h += gh;
 		if (it->lifted) // จัดเรียง: picked up, as Home's (DESIGN §6.1)
 			y -= BOS_px(12);
-		BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+		if (!row_nofill)
+			BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
 	}
 	float a = hot ? 1.0f : BOS_DIM;
 	uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT, sub = hot ? C_ON_SUB : BOS_C_TEXT2;
@@ -358,8 +425,7 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 			SDL_Rect d = {lx + (tw - it->lead_image->w) / 2, cy - it->lead_image->h / 2, it->lead_image->w,
 						  it->lead_image->h};
 			SDL_SetSurfaceBlendMode(it->lead_image, SDL_BLENDMODE_BLEND);
-			SDL_SetSurfaceAlphaMod(it->lead_image, hot ? 255 : (Uint8)(255 * BOS_DIM));
-			SDL_BlitSurface(it->lead_image, NULL, s, &d);
+			BOS_blit(it->lead_image, s, d.x, d.y, hot ? 1 : BOS_DIM);
 		} else {
 			BOS_rrect(s, lx, cy - th / 2, tw, th, BOS_px(8), hot ? 0x8E8E93 : 0x48484A);
 			BOS_rrect(s, lx + BOS_px(2), cy - th / 2 + BOS_px(2), tw - BOS_px(4), th - BOS_px(4), BOS_px(6),
@@ -404,7 +470,7 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	else if (ts >= 0)
 		k = V_TOGGLE, cw = BOS_px(80);
 	else if (numericRange(it))
-		k = V_SLIDER, cw = BOS_px(240);
+		k = V_SLIDER, cw = BOS_px(240) + BOS_px(18) + sliderNumW(it);
 	else if (it->type == ITEM_COLOR && it->values && it->current_idx >= 0 && it->current_idx < it->label_count)
 		k = V_DOT, cw = BOS_px(32), dotc = (uint32_t)it->values[it->current_idx] & 0xFFFFFF;
 	else {
@@ -488,12 +554,27 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		vx += ar + ag;
 	}
 	switch (k) {
-	case V_TOGGLE:
-		toggle(s, vx, vy, ts == 1, hot, a);
+	case V_TOGGLE: {
+		static SettingItem* tg_it; // the focused switch: its knob slides, 150 ms
+		static BosGlide tg_g;
+		float pos = ts == 1 ? 1.0f : 0.0f;
+		if (hot) {
+			if (tg_it != it)
+				tg_it = it, tg_g.set = false;
+			pos = BOS_glideTo(&tg_g, pos, 150, false);
+		}
+		toggle(s, vx, vy, pos, hot, a);
 		break;
-	case V_SLIDER:
-		slider(s, vx, cw, vy, it->label_count > 1 ? (float)it->current_idx / (it->label_count - 1) : 0, hot, a);
+	}
+	case V_SLIDER: {
+		int nw = sliderNumW(it), bw = cw - nw - BOS_px(18);
+		slider(s, vx, bw, vy, it->label_count > 1 ? (float)it->current_idx / (it->label_count - 1) : 0, hot, a);
+		const char* num = it->current_idx >= 0 && it->current_idx < it->label_count ? it->labels[it->current_idx] : "";
+		if (num && num[0]) // right-aligned: the bar never moves
+			BOS_textMid(s, num, BOS_FS_SMALL, 600, hot ? BOS_theme()->onfocus : BOS_C_TEXT2, a,
+						vx + cw - BOS_textW(num, BOS_FS_SMALL, 600), vy);
 		break;
+	}
 	case V_CAPS:
 		keyCaps(s, val, vx, vy, a, sub);
 		break;
@@ -564,7 +645,7 @@ static int freeColumn(SDL_Surface* s, SettingsPage* page, bool focused, int rx, 
 	if (sc < 0)
 		sc = 0;
 	SDL_Rect clip = {rx - BOS_px(24), list_y, rw + BOS_px(48), view};
-	SDL_SetClipRect(s, &clip);
+	BOS_clip(s, &clip);
 	// the groups: runs of normal rows, broken by a free block or a header
 	for (int i = 0; i < n;) {
 		SettingItem* it = settings_page_visible_item(page, i);
@@ -598,7 +679,7 @@ static int freeColumn(SDL_Surface* s, SettingsPage* page, bool focused, int rx, 
 			itemRow(s, it, rx, list_y + ys[sel] - sc, rw, hs[sel], true);
 		*hot_item = it;
 	}
-	SDL_SetClipRect(s, NULL);
+	BOS_clip(s, NULL);
 	// rounded fills ignore the clip: wipe what spilled above and below the view (the title is drawn after)
 	uint32_t bg = BOS_map(s, BOS_theme()->bg);
 	SDL_FillRect(s, &(SDL_Rect){rx - BOS_px(24), BOS_px(BOS_BAR_H), rw + BOS_px(48), list_y - BOS_px(BOS_BAR_H)}, bg);
@@ -621,6 +702,7 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 	int foot_h = BOS_px(8) + 2 * BOS_lineH(26);
 	const char* foot = NULL;
 	*hot_item = NULL;
+	pf_rrect.w = 0;
 	if (!page) {
 		if (cat && cat->desc && cat->desc[0])
 			foot = cat->desc;
@@ -659,31 +741,64 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 		first = page->scroll;
 	}
 	if (rows > 0) {
+		// the rows scroll and the highlight travels (§5.7); another page, or the focus arriving, starts in place
+		static BosGlide g_scroll, g_pill;
+		static SettingsPage* g_page;
+		static int g_sel = -2;
+		bool snap = g_page != page || (sel < 0) != (g_sel < 0);
+		g_page = page, g_sel = sel;
+		pf_rg[0] = &g_scroll, pf_rg[1] = &g_pill;
+		int sc = (int)BOS_glideTo(&g_scroll, (float)(first * rh), 180, snap);
+		int gw = (int)(rw * BOS_ROW_SCALE) - rw, gh = (int)(rh * BOS_ROW_SCALE) - rh;
+		if (!has_lock)
+			pf_rrect = (SDL_Rect){rx - gw, list_y - gh - BOS_px(12), rw + 2 * gw, rows * rh + 2 * gh + BOS_px(24)};
+		SDL_Rect box = {rx, list_y, rw, rows * rh};
 		BOS_rrect(s, rx, list_y, rw, rows * rh, BOS_px(24), BOS_theme()->surface);
-		for (int r = 0; r < rows - 1; r++) {
-			int i = first + r;
-			if (i != sel && i + 1 != sel)
-				SDL_FillRect(s, &(SDL_Rect){rx + BOS_px(28), list_y + (r + 1) * rh - 1, rw - BOS_px(28), 1}, BOS_map(s, C_SEP));
-		}
-		int hot_r = -1;
-		for (int r = 0; r < rows; r++) {
-			int i = first + r;
+		BOS_clip(s, &box);
+		int r0 = sc / rh;
+		for (int i = r0; i < n; i++) {
+			int yy = list_y + i * rh - sc;
+			if (yy >= box.y + box.h)
+				break;
 			SettingItem* it = settings_page_visible_item(page, i);
 			if (!it)
 				continue;
 			if (it->type == ITEM_CYCLE || it->type == ITEM_COLOR)
 				settings_item_sync(it);
-			if (i == sel) {
-				hot_r = r;
-				continue; // drawn last, over its neighbours (it is scaled up)
+			BOS_clip(s, &box);
+			itemRow(s, it, rx, yy, rw, rh, false);
+			if (i != sel && i + 1 != sel && yy + rh < box.y + box.h)
+				SDL_FillRect(s, &(SDL_Rect){rx + BOS_px(28), yy + rh - 1, rw - BOS_px(28), 1}, BOS_map(s, C_SEP));
+		}
+		if (sel >= 0) {
+			SettingItem* hit = settings_page_visible_item(page, sel);
+			float pyf = BOS_glideTo(&g_pill, (float)(sel * rh), 120, snap);
+			bool moving = BOS_glideMoving(&g_pill);
+			int lift = hit && hit->lifted ? BOS_px(12) : 0, bump = BOS_bumpPx();
+			int px = rx - gw / 2, pw = rw + gw, ph = rh + gh, py = list_y + (int)pyf - sc - gh / 2 + bump - lift;
+			SDL_Rect wide = {rx - gw, list_y - gh - BOS_px(12), rw + 2 * gw, rows * rh + 2 * gh + BOS_px(24)};
+			SDL_Rect pill = {px, py, pw, ph}, cut;
+			if (SDL_IntersectRect(&pill, &wide, &cut)) {
+				BOS_clip(s, &cut);
+				BOS_rrect(s, px, py, pw, ph, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+				row_nofill = true;
+				for (int i = r0; i < n; i++) {
+					int yy = list_y + i * rh - sc;
+					if (yy >= py + ph + lift)
+						break;
+					if (i != sel && (!moving || yy + rh <= py))
+						continue;
+					SettingItem* it = settings_page_visible_item(page, i);
+					if (!it)
+						continue;
+					BOS_clip(s, &cut);
+					itemRow(s, it, rx, yy + bump, rw, rh, true);
+				}
+				row_nofill = false;
 			}
-			itemRow(s, it, rx, list_y + r * rh, rw, rh, false);
+			*hot_item = hit;
 		}
-		if (hot_r >= 0) {
-			SettingItem* it = settings_page_visible_item(page, first + hot_r);
-			itemRow(s, it, rx, list_y + hot_r * rh, rw, rh, true);
-			*hot_item = it;
-		}
+		BOS_clip(s, NULL);
 		// a scroll mark when the page has more rows than fit
 		if (n > rows && rows > 0) {
 			int th = rows * rh, mh = th * rows / n, my = list_y + (th - mh) * first / (n - rows);
@@ -804,6 +919,8 @@ static void seekTab(void) { // land on the swatch holding the tab's value, else 
 }
 
 void SettingsBos_ledColorOpen(const char* title, uint32_t color, void (*live)(uint32_t), void (*set)(uint32_t)) {
+	sheet_t0 = SDL_GetTicks();
+	BOS_sfx(BOS_SFX_OPEN);
 	cs_slot = 99, cs_led = 1, cs_title = title, cs_tab = 0, cs_edit = 0, cs_text = cs_text_was = 0;
 	cs_color = cs_was = cs_live_at = color & 0xFFFFFF;
 	cs_live = live, cs_set = set;
@@ -811,6 +928,8 @@ void SettingsBos_ledColorOpen(const char* title, uint32_t color, void (*live)(ui
 }
 
 void SettingsBos_colorSheetOpen(int slot, const char* title) {
+	sheet_t0 = SDL_GetTicks();
+	BOS_sfx(BOS_SFX_OPEN);
 	cs_slot = slot, cs_led = 0, cs_title = title, cs_tab = 0, cs_edit = 0;
 	cs_color = cs_was = slotColor(slot);
 	cs_text = cs_text_was = textValue(CFG_getTheme(slot + 1));
@@ -889,7 +1008,7 @@ static void triangle(SDL_Surface* s, int cx, int y, int hgt, bool up, uint32_t c
 
 static void sheetRender(SDL_Surface* s) {
 	const BosTheme* th = BOS_theme();
-	int bar = BOS_px(BOS_BAR_H), sh = BOS_px(590), top = s->h - bar - sh, px = BOS_px(48);
+	int bar = BOS_px(BOS_BAR_H), sh = BOS_px(590), top = s->h - bar - sh + sheetOff(s), px = BOS_px(48);
 	BOS_rrect(s, 0, top, s->w, sh + bar, BOS_px(32), th->surface);
 	int y = top + BOS_px(24);
 	BOS_text(s, I18N_text(cs_title), 44, 700, BOS_C_TEXT, 1, px, y);
@@ -1036,13 +1155,16 @@ static void sheetRender(SDL_Surface* s) {
 
 // ---- the value list (A on a Left/Right row): every value at once, a §5.7 sheet over the page ----
 static SettingItem* pk_item;
-static int pk_sel, pk_top;
+static int pk_sel, pk_top, pk_gen;
 #define PK_ROWS 6
 
 void SettingsBos_pickerOpen(SettingItem* it) {
 	if (!SettingsBos_isPickable(it))
 		return;
 	pk_item = it;
+	pk_gen++;
+	sheet_t0 = SDL_GetTicks();
+	BOS_sfx(BOS_SFX_OPEN);
 	pk_sel = it->current_idx >= 0 && it->current_idx < it->label_count ? it->current_idx : 0;
 	pk_top = pk_sel - PK_ROWS / 2;
 	if (pk_top > it->label_count - PK_ROWS)
@@ -1052,6 +1174,9 @@ void SettingsBos_pickerOpen(SettingItem* it) {
 }
 
 static int ks_key = -1;
+// What the kept picture of the dimmed page (see SettingsBos_render) was taken for: the open picker's item, or &ks_key
+// for the key sheet. NULL = take it again; the key sheet clears it whenever it changes step, as a pick changes the page.
+static const void* under_for = NULL;
 static void keySheetInput(bool* dirty);
 static void keySheetRender(SDL_Surface* s);
 
@@ -1071,10 +1196,19 @@ void SettingsBos_pickerInput(bool* dirty) {
 	if (!pk_item)
 		return;
 	int n = pk_item->label_count;
+	// the ends wrap, as the pages' lists do — on a fresh press only: a held key stops at the end
 	if (PAD_justRepeated(BTN_UP) && pk_sel > 0)
 		pk_sel--, *dirty = true;
 	else if (PAD_justRepeated(BTN_DOWN) && pk_sel < n - 1)
 		pk_sel++, *dirty = true;
+	else if (PAD_justPressed(BTN_UP) && n > 1)
+		pk_sel = n - 1, *dirty = true;
+	else if (PAD_justPressed(BTN_DOWN) && n > 1)
+		pk_sel = 0, *dirty = true;
+	else if (PAD_justRepeated(BTN_UP) && n > 1) // held against the end
+		BOS_bump(-1), *dirty = true;
+	else if (PAD_justRepeated(BTN_DOWN) && n > 1)
+		BOS_bump(1), *dirty = true;
 	else if (PAD_justRepeated(BTN_L1))
 		pk_sel = pk_sel > PK_ROWS ? pk_sel - PK_ROWS : 0, *dirty = true;
 	else if (PAD_justRepeated(BTN_R1))
@@ -1094,43 +1228,76 @@ void SettingsBos_pickerInput(bool* dirty) {
 		pk_top = pk_sel - PK_ROWS + 1;
 }
 
+static void pickerRow(SDL_Surface* s, int i, int xx, int yy, int ww, int hh, bool hot, bool marquee) {
+	if (hot) {
+		int gw = (int)(ww * BOS_ROW_SCALE) - ww, gh = (int)(hh * BOS_ROW_SCALE) - hh;
+		xx -= gw / 2, ww += gw, yy -= gh / 2, hh += gh;
+	}
+	uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT;
+	float a = hot ? 1.0f : BOS_DIM;
+	int cyy = yy + hh / 2, cx = xx + ww - BOS_px(20) - BOS_px(32);
+	if (i == pk_item->current_idx) // the value set now
+		BOS_icon(s, "check", hot ? BOS_theme()->onfocus : BOS_theme()->primary, 1, cx, cyy - BOS_px(16), BOS_px(32));
+	if (pk_item->type == ITEM_COLOR && pk_item->values) {
+		int d = BOS_px(32);
+		BOS_rrect(s, xx + BOS_px(20), cyy - d / 2, d, d, d / 2, (uint32_t)pk_item->values[i] & 0xFFFFFF);
+	}
+	int lx = xx + BOS_px(20) + (pk_item->type == ITEM_COLOR && pk_item->values ? BOS_px(48) : 0);
+	const char* label = I18N_text(pk_item->labels[i] ? pk_item->labels[i] : "");
+	if (hot && marquee)
+		BOS_textMarquee(s, label, BOS_FS_BODY, 600, fg, a, lx, cyy, cx - BOS_px(12) - lx);
+	else {
+		char l[160];
+		BOS_fit(label, BOS_FS_BODY, hot ? 600 : 500, cx - BOS_px(12) - lx, l, sizeof(l));
+		BOS_textMid(s, l, BOS_FS_BODY, hot ? 600 : 500, fg, a, lx, cyy);
+	}
+}
+
 static void pickerRender(SDL_Surface* s) {
 	int n = pk_item->label_count, rows = n < PK_ROWS ? n : PK_ROWS;
 	int rh = BOS_px(84), pad = BOS_px(24), w = BOS_px(600), th = BOS_px(44 * 1.2f);
 	int h = pad + th + BOS_px(12) + rows * rh + pad;
-	int x = (s->w - w) / 2, y = BOS_px(BOS_BAR_H) + (s->h - 2 * BOS_px(BOS_BAR_H) - h) / 2;
+	int x = (s->w - w) / 2, y = BOS_px(BOS_BAR_H) + (s->h - 2 * BOS_px(BOS_BAR_H) - h) / 2 + sheetOff(s);
 	BOS_rrect(s, x, y, w, h, BOS_px(28), BOS_theme()->surface);
 	char t[160];
 	BOS_fit(I18N_text(pk_item->name), 44, 700, w - 2 * pad, t, sizeof(t));
 	BOS_text(s, t, 44, 700, BOS_C_TEXT, 1, x + pad, y + pad);
 	int ry = y + pad + th + BOS_px(12);
-	for (int r = 0; r < rows; r++) {
-		int i = pk_top + r, yy = ry + r * rh, xx = x + BOS_px(12), ww = w - 2 * BOS_px(12), hh = rh;
-		bool hot = i == pk_sel;
-		if (hot) {
-			int gw = (int)(ww * BOS_ROW_SCALE) - ww, gh = (int)(hh * BOS_ROW_SCALE) - hh;
-			xx -= gw / 2, ww += gw, yy -= gh / 2, hh += gh;
-			BOS_rrect(s, xx, yy, ww, hh, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
-		}
-		uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT;
-		float a = hot ? 1.0f : BOS_DIM;
-		int cyy = yy + hh / 2, cx = xx + ww - BOS_px(20) - BOS_px(32);
-		if (i == pk_item->current_idx) // the value set now
-			BOS_icon(s, "check", hot ? BOS_theme()->onfocus : BOS_theme()->primary, 1, cx, cyy - BOS_px(16), BOS_px(32));
-		if (pk_item->type == ITEM_COLOR && pk_item->values) {
-			int d = BOS_px(32);
-			BOS_rrect(s, xx + BOS_px(20), cyy - d / 2, d, d, d / 2, (uint32_t)pk_item->values[i] & 0xFFFFFF);
-		}
-		int lx = xx + BOS_px(20) + (pk_item->type == ITEM_COLOR && pk_item->values ? BOS_px(48) : 0);
-		char l[160];
-		BOS_fit(I18N_text(pk_item->labels[i] ? pk_item->labels[i] : ""), BOS_FS_BODY, hot ? 600 : 500, cx - BOS_px(12) - lx, l,
-				sizeof(l));
-		if (hot)
-			BOS_textMarquee(s, I18N_text(pk_item->labels[i] ? pk_item->labels[i] : ""), BOS_FS_BODY, 600, fg, a, lx, cyy,
-							cx - BOS_px(12) - lx);
-		else
-			BOS_textMid(s, l, BOS_FS_BODY, 500, fg, a, lx, cyy);
+	// the rows scroll and the highlight travels; a list just opened starts in place
+	static BosGlide g_scroll, g_pill;
+	static int g_gen;
+	bool snap = g_gen != pk_gen;
+	g_gen = pk_gen;
+	int sc = (int)BOS_glideTo(&g_scroll, (float)(pk_top * rh), 180, snap);
+	int xx = x + BOS_px(12), ww = w - 2 * BOS_px(12);
+	int gw = (int)(ww * BOS_ROW_SCALE) - ww, gh = (int)(rh * BOS_ROW_SCALE) - rh;
+	SDL_Rect box = {x, ry, w, rows * rh};
+	int r0 = sc / rh;
+	for (int i = r0; i < n; i++) {
+		int yy = ry + i * rh - sc;
+		if (yy >= box.y + box.h)
+			break;
+		BOS_clip(s, &box);
+		pickerRow(s, i, xx, yy, ww, rh, false, false);
 	}
+	int px = xx - gw / 2, pw = ww + gw, ph = rh + gh, bump = BOS_bumpPx();
+	int py = ry + (int)BOS_glideTo(&g_pill, (float)(pk_sel * rh), 120, snap) - sc - gh / 2 + bump;
+	bool moving = BOS_glideMoving(&g_pill);
+	SDL_Rect wide = {x, ry - gh, w, rows * rh + 2 * gh}, pill = {px, py, pw, ph}, cut;
+	if (SDL_IntersectRect(&pill, &wide, &cut)) {
+		BOS_clip(s, &cut);
+		BOS_rrect(s, px, py, pw, ph, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+		for (int i = r0; i < n; i++) {
+			int yy = ry + i * rh - sc;
+			if (yy >= py + ph)
+				break;
+			if (i != pk_sel && (!moving || yy + rh <= py))
+				continue;
+			BOS_clip(s, &cut);
+			pickerRow(s, i, xx, yy + bump, ww, rh, true, i == pk_sel && !moving);
+		}
+	}
+	BOS_clip(s, NULL);
 	if (n > rows) { // a scroll mark inside the sheet
 		int tt = rows * rh, mh = tt * rows / n, my = ry + (tt - mh) * pk_top / (n - rows);
 		BOS_rrect(s, x + w - BOS_px(10), my, BOS_px(5), mh, BOS_px(2), BOS_C_TEXTOFF);
@@ -1140,6 +1307,25 @@ static void pickerRender(SDL_Surface* s) {
 }
 
 static void shadeScreen(SDL_Surface* s) { // the page under a sheet dims to 60 %
+	// On a 32-bit screen each pixel is scaled to 40 % in place, two channels at a time: blending a black layer over
+	// the whole screen through SDL took 23 ms a frame for as long as a sheet was open.
+	if (s->format->BytesPerPixel == 4) {
+		if (SDL_MUSTLOCK(s))
+			SDL_LockSurface(s);
+		uint32_t am = s->format->Amask;
+		for (int y = 0; y < s->h; y++) {
+			uint32_t* p = (uint32_t*)((uint8_t*)s->pixels + y * s->pitch);
+			for (int x = 0; x < s->w; x++) {
+				uint32_t v = p[x];
+				uint32_t lo = ((v & 0x00FF00FFu) * 102 >> 8) & 0x00FF00FFu;
+				uint32_t hi = (((v >> 8) & 0x00FF00FFu) * 102 >> 8) & 0x00FF00FFu;
+				p[x] = ((lo | hi << 8) & ~am) | (v & am);
+			}
+		}
+		if (SDL_MUSTLOCK(s))
+			SDL_UnlockSurface(s);
+		return;
+	}
 	static SDL_Surface* shade = NULL;
 	if (!shade || shade->w != s->w || shade->h != s->h) {
 		if (shade)
@@ -1179,21 +1365,58 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 	if (depth <= 0)
 		return;
 	SettingsPage* root = stack[0];
-	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
-	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	BOS_benchLap(NULL);
+	// A picker or the key sheet is open over a page that cannot change until it closes: the dimmed page is kept from
+	// the sheet's first frame and copied back, instead of drawing and dimming the whole page again for every row moved
+	// (30 ms a frame on the Brick Pro, against 15 for the page alone).
+	static SDL_Surface* under = NULL;
+	const void* sheet_of = ks_key >= 0 ? (const void*)&ks_key : cs_slot >= 0 ? NULL : (const void*)pk_item;
+	if (sheet_of && under_for == sheet_of && under && under->w == s->w && under->h == s->h) {
+		SDL_BlitSurface(under, NULL, s, NULL);
+		if (ks_key >= 0) {
+			keySheetRender(s);
+			lt_want = 2 + ks_key;
+		} else
+			pickerRender(s);
+		pf_was = false;
+		BOS_benchLap("sheet_kept");
+		lightsApply();
+		return;
+	}
+	under_for = NULL;
 	bool right_focused = depth > 1;
+	{
+		SettingItem* c0 = settings_page_visible_item(root, root->selected);
+		SettingsPage* p0 = right_focused ? stack[depth - 1] : (c0 && c0->type == ITEM_SUBMENU ? c0->submenu : NULL);
+		uint32_t key = BOS_keyMix(BOS_keyMix(BOS_keyMix(40 + right_focused, root->selected), depth), (uint32_t)(size_t)p0);
+		key = BOS_keyMix(BOS_keyMix(key, settings_page_visible_count(root)), (uint32_t)(time(NULL) / 60));
+		if (p0)
+			key = BOS_keyMix(BOS_keyMix(key, p0->selected), p0->scroll);
+		BosGlide** g = right_focused ? pf_rg : pf_lg;
+		const SDL_Rect* pr = right_focused ? &pf_rrect : &pf_lrect;
+		bool ok = !pk_item && cs_slot < 0 && ks_key < 0 && !sheet_t0 && g[0] && pr->w > 0 && !PAD_anyJustPressed() &&
+				  (BOS_glideMoving(g[0]) || BOS_glideMoving(g[1]));
+		pf_was = BOS_partialBeginR(s, key, ok, pr);
+	}
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_benchLap("fill");
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
 	leftColumn(s, root, !right_focused, top, bottom);
+	BOS_benchLap("left");
 
 	SettingItem* cat = settings_page_visible_item(root, root->selected);
 	SettingsPage* page = right_focused ? stack[depth - 1] : (cat && cat->type == ITEM_SUBMENU ? cat->submenu : NULL);
 	SettingItem* hot = NULL;
 	lt_want = 0;
 	rightColumn(s, page, cat, right_focused, top, bottom, &hot);
+	BOS_benchLap("right");
 	if (right_focused && page && page->led_preview)
 		lt_want = 1;
 
 	// drawn after the columns: a scrolled category's squircle can't show through it
-	BOS_statusBar(s, I18N_text("Settings"));
+	if (!pf_was)
+		BOS_statusBar(s, I18N_text("Settings"));
+	BOS_benchLap("status");
 
 	// hint bar: A opens (เปิด/ปิด on a toggle, เลือก on a value row), ← → changes a value, X clears, B back
 	BosHint r[4], l[1];
@@ -1232,19 +1455,42 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 		r[nr++] = (BosHint){"X", I18N_text(it->clear_label ? it->clear_label : "Clear")};
 	if (it && right_focused && it->y_label)
 		r[nr++] = (BosHint){"Y", I18N_text(it->y_label)};
-	BOS_hintBar(s, r, nr, l, nl);
+	if (!pf_was)
+		BOS_hintBar(s, r, nr, l, nl);
+	BOS_partialEnd(s);
+	BOS_benchLap("hints");
 	if (pk_item || cs_slot >= 0 || ks_key >= 0) { // a sheet over the page, which dims to 60 %
 		shadeScreen(s);
-		if (ks_key >= 0)
-			keySheetRender(s);
-		else if (cs_slot >= 0)
-			sheetRender(s);
-		else
-			pickerRender(s);
+		if (cs_slot >= 0 && ks_key < 0)
+			sheetRender(s); // the colour sheet: the page under it shows the colour being changed
+		else {
+			if (!under || under->w != s->w || under->h != s->h) {
+				if (under)
+					SDL_FreeSurface(under);
+				under = SDL_CreateRGBSurfaceWithFormat(0, s->w, s->h, s->format->BitsPerPixel, s->format->format);
+				if (under)
+					SDL_SetSurfaceBlendMode(under, SDL_BLENDMODE_NONE);
+			}
+			if (under) {
+				SDL_BlendMode was;
+				SDL_GetSurfaceBlendMode(s, &was);
+				SDL_SetSurfaceBlendMode(s, SDL_BLENDMODE_NONE); // a plain copy of the dimmed page
+				SDL_BlitSurface(s, NULL, under, NULL);
+				SDL_SetSurfaceBlendMode(s, was);
+				under_for = sheet_of;
+			}
+			if (ks_key >= 0)
+				keySheetRender(s);
+			else
+				pickerRender(s);
+		}
+		BOS_benchLap("sheet");
 	}
 	if (ks_key >= 0)
 		lt_want = 2 + ks_key;
+	BOS_benchLap(NULL);
 	lightsApply();
+	BOS_benchLap("lights");
 }
 
 // ---- ปุ่มพิเศษ (DESIGN §6.9b) ----
@@ -1350,11 +1596,15 @@ void SettingsBos_lightsDone(void) { // Settings is closing: the user's lights ba
 }
 
 static void keySaved(void) {
+	under_for = NULL; // the page under the sheet shows the new value
 }
 
 void SettingsBos_keyOpen(int key) {
+	sheet_t0 = SDL_GetTicks();
+	BOS_sfx(BOS_SFX_OPEN);
 	ks_key = key;
 	ks_step = 1;
+	under_for = NULL;
 	ks_hold = 0;
 	ks_sel = 0;
 }
@@ -1398,6 +1648,7 @@ static void keySheetInput(bool* dirty) {
 		} else if (PAD_justPressed(BTN_A)) {
 			ks_hold = ks_sel;
 			ks_step = 2;
+			under_for = NULL;
 			int i = keyOptIndex();
 			ks_sel = i >= 0 ? i : 0;
 			ks_top = ks_sel - KS_ROWS2 + 1 > 0 ? ks_sel - KS_ROWS2 + 1 : 0;
@@ -1408,8 +1659,13 @@ static void keySheetInput(bool* dirty) {
 		ks_sel--;
 	else if (PAD_justRepeated(BTN_DOWN) && ks_sel < KS_NOPTS - 1)
 		ks_sel++;
+	else if (PAD_justPressed(BTN_UP)) // the ends wrap on a fresh press
+		ks_sel = KS_NOPTS - 1;
+	else if (PAD_justPressed(BTN_DOWN))
+		ks_sel = 0;
 	else if (PAD_justPressed(BTN_B)) {
 		ks_step = 1;
+		under_for = NULL;
 		ks_sel = ks_hold;
 	} else if (PAD_justPressed(BTN_A)) {
 		const char* v = KS_OPTS[ks_sel].value;
@@ -1425,6 +1681,7 @@ static void keySheetInput(bool* dirty) {
 		}
 		BosKeys_set(ks_key, ks_hold, v, NULL);
 		ks_step = 1;
+		under_for = NULL;
 		ks_sel = ks_hold;
 		keySaved();
 	}
@@ -1440,7 +1697,8 @@ static void keyRowDraw(SDL_Surface* s, const char* name, const char* value, bool
 	if (hot) {
 		int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
 		x -= gw / 2, w += gw, y -= gh / 2, h += gh;
-		BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+		if (!row_nofill)
+			BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
 	}
 	float a = hot ? 1.0f : BOS_DIM;
 	uint32_t fg = hot ? BOS_theme()->onfocus : BOS_C_TEXT, sub = hot ? C_ON_SUB : BOS_C_TEXT2;
@@ -1481,7 +1739,7 @@ static void keySheetRender(SDL_Surface* s) {
 	// step 1 fits its title, two rows and the note line; step 2 is 600 tall
 	int bar = BOS_px(BOS_BAR_H), px = BOS_px(48);
 	int sh = ks_step == 1 ? BOS_px(24 + 16 + 2 * 96 + 14 + 22) + BOS_lineH(44) + BOS_lineH(26) : BOS_px(600);
-	int top = s->h - bar - sh;
+	int top = s->h - bar - sh + sheetOff(s);
 	BOS_rrect(s, 0, top, s->w, sh + bar, BOS_px(32), th->surface);
 	int y = top + BOS_px(24);
 	char title[160];
@@ -1514,7 +1772,7 @@ static void keySheetRender(SDL_Surface* s) {
 		return;
 	}
 	int rows = KS_NOPTS < KS_ROWS2 ? KS_NOPTS : KS_ROWS2, cur = keyOptIndex();
-	SDL_SetClipRect(s, &(SDL_Rect){0, y, s->w, s->h - bar - y});
+	BOS_clip(s, &(SDL_Rect){0, y, s->w, s->h - bar - y});
 	BOS_rrect(s, gx, y, gw, rows * rh, BOS_px(24), th->surface2);
 	for (int r = 0; r < rows; r++) {
 		int i = ks_top + r;
@@ -1522,7 +1780,7 @@ static void keySheetRender(SDL_Surface* s) {
 		keyRowDraw(s, I18N_text(KS_OPTS[i].name), NULL, false, pick ? 1 : i == cur ? 2 : 0, gx, y + r * rh, gw, rh,
 				   i == ks_sel);
 	}
-	SDL_SetClipRect(s, NULL);
+	BOS_clip(s, NULL);
 	if (KS_NOPTS > rows) { // a scroll mark inside the sheet
 		int tt = rows * rh, mh = tt * rows / KS_NOPTS, my = y + (tt - mh) * ks_top / (KS_NOPTS - rows);
 		BOS_rrect(s, s->w - BOS_px(18), my, BOS_px(6), mh, BOS_px(3), BOS_C_TEXTOFF);
@@ -1578,4 +1836,23 @@ bool SettingsBos_keyTick(bool* quit) {
 		d = true;
 	}
 	return d;
+}
+
+// ---- motion between pages (§5.7) ----
+bool SettingsBos_toggleOn(SettingItem* it) {
+	return toggleState(it) == 1;
+}
+
+// Before a frame is drawn, while the screen still holds the last one: Settings arrives out of black, and a page
+// opened from a page (or left for the one before) slides in the right column.
+void SettingsBos_before(SDL_Surface* s, int depth) {
+	static int was = -1;
+	if (was < 0)
+		BOS_transBegin(s, BOS_TR_ARRIVE, NULL);
+	else if (depth != was && depth >= 2 && was >= 2 && !SettingsBos_pickerActive()) {
+		int rx = BOS_px(24 + 380 + 14), top = BOS_px(BOS_BAR_H);
+		SDL_Rect area = {rx, top, s->w - rx, s->h - 2 * top};
+		BOS_transBegin(s, depth > was ? BOS_TR_PUSH : BOS_TR_POP, &area);
+	}
+	was = depth;
 }

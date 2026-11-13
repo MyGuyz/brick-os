@@ -358,7 +358,15 @@ void PLAT_setCPUSpeed(int speed) {
 		// over the 16.6ms vblank and made boot-time daemons visibly steal frames;
 		// 1008 stays on the low-voltage plateau of the A53 table (408 600 816
 		// 1008 | 1200 1416 1608 1800 2000).
-		setFreqRange(CPU_FREQ_MIN, 1008000);
+		// Brick OS: 1416 while navigating (a moving page is 14-18 ms a frame at 1008, 10-13 at 1416); idle is 600.
+		{
+			static int menu_freq; // BOS_MENU_FREQ=<kHz>: to compare
+			if (!menu_freq) {
+				const char* e = getenv("BOS_MENU_FREQ");
+				menu_freq = e && atoi(e) > 0 ? atoi(e) : 1416000;
+			}
+			setFreqRange(menu_freq, menu_freq); // held there: schedutil only gets halfway up for a 10 ms frame
+		}
 		break;
 	case CPU_SPEED_MENU_IDLE:
 		// No input for a few seconds (nextui/cpu_policy.h). schedutil parks at

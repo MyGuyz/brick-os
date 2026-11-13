@@ -1113,7 +1113,19 @@ unsigned GFX_flipCount(void) {
 
 void GFX_flip(SDL_Surface* screen) {
 	flip_count++;
+	// BOS_BENCH=1: one line per drawn frame, ms spent before the flip (input + drawing) and in the flip itself
+	static int bos_bench = -1;
+	if (bos_bench < 0)
+		bos_bench = getenv("BOS_BENCH") != NULL;
+	uint32_t bench_t0 = SDL_GetTicks();
 	PLAT_flip(screen, 0);
+	if (bos_bench) {
+		static uint32_t bench_last;
+		uint32_t bench_now = SDL_GetTicks();
+		fprintf(stderr, "[bosbench] work=%u flip=%u gap=%u\n", bench_t0 - frame_start, bench_now - bench_t0,
+				bench_last ? bench_now - bench_last : 0);
+		bench_last = bench_now;
+	}
 
 	perf.fps = current_fps;
 	fps_counter++;
@@ -2562,6 +2574,11 @@ static int hardwareGroupDraw(SDL_Surface* dst, IndicatorType show_setting, int y
 	// the right inset: the screen's edge padding, as the hint bar's left one
 	int pad = SCALE1(PADDING);
 
+	static int bos_hud = -1;
+	if (bos_hud < 0)
+		bos_hud = access("/usr/trimui/osd/hud/vol_00.png", F_OK) == 0;
+	if (bos_hud)
+		show_setting = INDICATOR_NONE; // Brick OS: the level HUD is keymon's (DESIGN.md 5.9)
 	if (show_setting && !GetHDMI()) {
 		// the indicator keeps its own size (INDICATOR_SCALE), centred in the top bar
 		int oh;
@@ -3602,6 +3619,22 @@ static void PAD_applyLayout(int* btn, int* id) {
 	}
 }
 
+void (*PAD_pollHook)(void) = NULL;
+int PAD_repeatAccel = 0;
+static unsigned char pad_repeats[BTN_ID_COUNT];
+int PAD_heldRepeats(int btns) {
+	int m = 0;
+	for (int i = 0; i < BTN_ID_COUNT; i++)
+		if (((btns >> i) & 1) && pad_repeats[i] > m)
+			m = pad_repeats[i];
+	return m;
+}
+void PAD_pollHooked(void) {
+	PLAT_pollInput();
+	if (PAD_pollHook)
+		PAD_pollHook();
+}
+
 FALLBACK_IMPLEMENTATION void PLAT_pollInput(void) {
 	// Dirty-flag apps can idle for minutes without a flip; this is the one
 	// spot every main loop passes through, so let the capture system publish
@@ -3639,9 +3672,13 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void) {
 	uint32_t tick = SDL_GetTicks();
 	for (int i = 0; i < BTN_ID_COUNT; i++) {
 		int btn = 1 << i;
-		if ((pad.is_pressed & btn) && (tick >= pad.repeat_at[i])) {
+		if (!(pad.is_pressed & btn))
+			pad_repeats[i] = 0;
+		else if (tick >= pad.repeat_at[i]) {
 			pad.just_repeated |= btn; // set
-			pad.repeat_at[i] += PAD_REPEAT_INTERVAL;
+			if (pad_repeats[i] < 255)
+				pad_repeats[i]++;
+			pad.repeat_at[i] += PAD_repeatAccel && pad_repeats[i] >= 12 ? 45 : PAD_REPEAT_INTERVAL;
 		}
 	}
 
@@ -4610,6 +4647,13 @@ void PWR_update(bool* _dirty, IndicatorType* _show_setting, PWR_callback_t befor
 
 	LEDS_applyRules();
 
+	// Brick OS: keymon's HUD shows the level over every app (DESIGN.md 5.9), so the app draws none of its own
+	static int bos_hud = -1;
+	if (bos_hud < 0)
+		bos_hud = access("/usr/trimui/osd/hud/vol_00.png", F_OK) == 0;
+	if (bos_hud)
+		show_setting = INDICATOR_NONE; // and no frame is owed: a held SELECT or START costs nothing
+
 	if (show_setting)
 		dirty = true; // shm is slow or keymon is catching input on the next frame
 	// Callers that pass no _show_setting (keyboard, confirm dialog) restart
@@ -4832,6 +4876,16 @@ int PWR_preventAutosleep(void) {
 
 int PWR_isOnline(void) {
 	return SDL_AtomicGet(&pwr.is_online);
+}
+void PWR_getBattery(int* is_charging, int* charge) {
+	if (!pwr.initialized) { // no power thread in this app: ask the hardware
+		PLAT_getBatteryStatusFine(is_charging, charge);
+		return;
+	}
+	if (is_charging)
+		*is_charging = SDL_AtomicGet(&pwr.is_charging);
+	if (charge)
+		*charge = SDL_AtomicGet(&pwr.charge);
 }
 
 ///////////////////////////////

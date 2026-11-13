@@ -13,6 +13,9 @@
 #include "bos_tokens.h"
 
 int BOS_px(float mockup_px); // mockup px (1024-wide panel) -> device px
+// BOS_BENCH=1: prints the ms since the last lap as "name=ms " on stderr (name NULL only restarts the clock).
+// Costs one test when the switch is off. With GFX_flip's "[bosbench]" line this says where a frame's time goes.
+void BOS_benchLap(const char* name);
 
 // ---- theme (ธีมสี; defaults from bos_tokens.h) ----
 typedef struct {
@@ -72,5 +75,67 @@ int BOS_largeTitle(SDL_Surface* dst, int y, const char* title, const char* sub);
 
 int BOS_tweenMs(void); // the focus/carousel tween's length, from ตั้งค่า › หน้าตา › ภาพเคลื่อนไหว
 void BOS_quit(void); // frees fonts and icons
+
+// ---- menu sounds (§5.10, bos_sfx.c) ----
+typedef enum {
+	BOS_SFX_NONE,
+	BOS_SFX_MOVE,	// focus moved
+	BOS_SFX_OK,		// A
+	BOS_SFX_BACK,	// B
+	BOS_SFX_BUMP,	// a held direction reached the end
+	BOS_SFX_ON,		// a switch went on
+	BOS_SFX_OFF,	// a switch went off
+	BOS_SFX_OPEN,	// a sheet came up
+	BOS_SFX_LAUNCH, // a game or app starts
+	BOS_SFX_COUNT
+} BosSfx;
+void BOS_sfxInit(void);		   // after PAD_init. From then every press makes its usual sound by itself
+void BOS_sfx(BosSfx id);	   // the sound for the press being handled, instead of the usual one (NONE: silence)
+void BOS_sfxFlush(void);	   // plays the usual sound now (before a long render) instead of at the next poll
+void BOS_sfxQuit(int wait_ms); // lets the playing sound finish, up to wait_ms
+
+// ---- motion (§5.7, bos_motion.c) ----
+float BOS_ease(float t);		// 0..1 -> 0..1, quick off the mark, soft landing
+int BOS_motionMs(int full_ms);	// the time a move takes under ภาพเคลื่อนไหว: full, 120 at most (น้อย), 0 (ปิด)
+typedef enum {
+	BOS_TR_PUSH,  // a page deeper: in from the right
+	BOS_TR_POP,	  // back: out to the right
+	BOS_TR_FADE,  // one page into another
+	BOS_TR_ARRIVE // an app's first frame, from black
+} BosTrans;
+// Before the new page is drawn, while the screen still holds the old one. area NULL = the whole screen.
+void BOS_transBegin(SDL_Surface* s, BosTrans kind, const SDL_Rect* area);
+bool BOS_transFrame(SDL_Surface* s); // after every draw of the page: puts the move's frame on s. True while moving
+bool BOS_transFrameOnly(SDL_Surface* s); // the same, for a frame whose page was NOT drawn again (s is as it was)
+bool BOS_transMoving(void);
+bool BOS_transActive(void);
+void BOS_transCancel(void);
+bool BOS_transHold(SDL_Surface* s, int max_ms); // the new page is not ready: the old one stays on s. False: go
+void BOS_launchOut(SDL_Surface* s, const SDL_Rect* focus); // a game or app starts: 260 ms, blocking
+void BOS_bump(int dir); // a held direction has nowhere to go (-1 up/left, 1 down/right): the knock and the nudge
+int BOS_bumpPx(void);	// the nudge now, to add to the highlight's place
+bool BOS_bumpActive(void);
+typedef struct {
+	bool set;
+	float from, to, cur;
+	uint32_t t0;
+} BosGlide;
+// A value following its target (a highlight's place, a scroll, a switch's knob); snap lands at once.
+float BOS_glideTo(BosGlide* g, float target, int full_ms, bool snap);
+bool BOS_glideMoving(const BosGlide* g);
+bool BOS_motionBusy(void); // something is still moving: keep drawing frames
+// A frame of which only the rows [y, y+h) differ from the last one drawn (a carousel sliding, a highlight gliding).
+// key: a number made of everything that shows OUTSIDE those rows; ok: the page allows it this frame. True: the
+// surface is clipped to the band (draw only what is in it); false: draw the whole page. Always followed by
+// BOS_partialEnd once the page is drawn. BOS_clip: a page's own clip, kept inside the band.
+bool BOS_partialBegin(SDL_Surface* s, uint32_t key, bool ok, int y, int h);
+bool BOS_partialBeginR(SDL_Surface* s, uint32_t key, bool ok, const SDL_Rect* r); // the same, any rectangle
+void BOS_partialEnd(SDL_Surface* s);
+void BOS_partialCancel(void); // something else is drawn over the page this frame: the whole screen goes up
+bool BOS_partialOn(void);
+void BOS_clip(SDL_Surface* s, const SDL_Rect* r); // NULL: back to the band (or the whole surface)
+uint32_t BOS_keyMix(uint32_t key, uint32_t v);
+// A picture (ARGB8888, with its own alpha) onto the page at opacity a, inside the page's clip
+void BOS_blit(SDL_Surface* pic, SDL_Surface* s, int x, int y, float a);
 
 #endif

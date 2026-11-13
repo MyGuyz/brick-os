@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "notification.h"
 #include "defines.h"
 #include "api.h"
@@ -534,6 +535,12 @@ void Notification_showSystemIndicator(SystemIndicatorType type) {
 	if (!initialized)
 		return;
 	if (type == SYSTEM_INDICATOR_NONE)
+		return;
+	// Brick OS: keymon's HUD shows the level over every app (DESIGN.md 5.9)
+	static int bos_hud = -1;
+	if (bos_hud < 0)
+		bos_hud = access("/usr/trimui/osd/hud/vol_00.png", F_OK) == 0;
+	if (bos_hud)
 		return;
 
 	// Update or start the indicator

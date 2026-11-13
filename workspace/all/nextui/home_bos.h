@@ -20,6 +20,10 @@ bool HomeBos_active(void); // Home is showing in the Brick OS layout
 void HomeBos_reset(void);  // rebuild the cards and counts on the next frame
 void HomeBos_render(SDL_Surface* screen);
 bool HomeBos_animating(void);
+bool HomeBos_pending(void);                 // the page just drawn is still waiting for a picture
+int HomeBos_page(void);						// 1 Home, 2 แอปทั้งหมด (page changes slide, nextui.c)
+const SDL_Rect* HomeBos_launchRect(void); // the focused cover or tile of the page last drawn, NULL if none
+int BosGames_page(void);					// 10 the wheel, 11 a console's games
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu);
 void HomeBos_quit(void);
 Entry* HomeBos_focusedGame(void); // the เล่นต่อ card in focus, NULL on the app row
@@ -43,6 +47,7 @@ bool BosSwitcher_animating(void);
 typedef enum { BOSGAMES_UNHANDLED, BOSGAMES_HANDLED, BOSGAMES_SEARCH, BOSGAMES_HOME, BOSGAMES_OPTIONS, BOSGAMES_SWITCHER } BosGamesInput;
 bool BosGames_active(void);
 void BosGames_reset(void);
+void BosGames_restore(const char* console_path, const char* rom_path); // เกม on this console's games, on this game
 void BosGames_render(SDL_Surface* screen);
 bool BosGames_animating(void);
 BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu, bool tap_select);

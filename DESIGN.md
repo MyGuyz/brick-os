@@ -179,9 +179,50 @@ Nothing on screen is smaller than 22.
 | Focus, carousel, wheel | The highlight or slots tween to their new place | 120–180 ms |
 | Sheet / pop-up | Slides up from the bottom; the page behind dims to 60 % black | 220 ms |
 | Toggle | The knob slides; the track colour cross-fades | 150 ms |
+| End of a list | A held direction with nowhere to go: the page nudges 12 px towards the wall and back, once per hold (§5.10 bump) | 160 ms |
 
+- **As built (2026-11-13; board `design/v2-MotionSound.html`, kit `common/ui/bos_motion.c`):**
+  - One curve everywhere: out-quart (the board's `cubic-bezier(.2,.8,.2,1)`).
+  - A move starts from where the thing is: a new press mid-way bends the path, nothing jumps.
+  - Wait for the picture: when the coming page still loads its art, the old page stays up for at most 150 ms, then the move starts with what is there.
+  - A page that is not moving draws nothing (0 % CPU measured on Home, the wheel and the lists).
+  - **60 fps budget (measured 2026-11-13, average time between frames 16.0–16.9 ms on Home, the wheel, covers, lists and Settings):**
+    - Pictures, text and icons are drawn by `BOS_blit`. SDL's blit with an alpha or colour mod on a picture that has its own alpha is its slowest path (a dimmed row cost 0.4 ms, a cover 2 ms).
+    - While only one part of a page moves, only that part is drawn (`BOS_partialBegin` / `BOS_partialBeginR`, page clips through `BOS_clip`): Home's Continue row, the wheel, the covers down to the hint bar, the list rows, one column of Settings. The frame after the last such frame is a whole one.
+    - A page change moves two GPU pictures of the old and the new page; the page itself is drawn once.
+    - Sending the changed rows to the GPU is 3 ms (a few rows) to 10 ms (the whole screen) and does not get faster with a faster clock. A press that changes the whole page is therefore one frame of about 20 ms.
+    - The menu clock is held at 1416 MHz while a page moves (the governor never climbed in time for 10 ms frames); idle is 408–600.
 - **ตั้งค่า › หน้าตา › ภาพเคลื่อนไหว:** เต็ม (default) / น้อย (fades only, 120 ms) / ปิด.
 - This replaces v1's "Show menu animations" and "Show menu transitions".
+
+### 5.9 System overlay: level HUD, quick panel, toasts (2026-11-13)
+TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube included. Brick OS keeps the daemon and replaces everything it shows: no stock picture is left. All pictures come from `scripts/osd/make_osd.py` (tokens of §2, Inter), into `skeleton/SYSTEM/osd`. They are used as drawn: the launcher no longer tints them with the accent.
+
+- **Level HUD (volume, brightness = SELECT + volume, colour temperature = START + volume):**
+  - A 440×76 pill, centred, 12 px under the status bar (x 292, y 76). `surface`, 1 px `surface2` edge, fully round.
+  - Left: the icon, 38 px (`sound`; `mute` in `text2` at 0; `sun`; `moon`). Middle: a 10 px bar, track `#3A3A3E`, fill `focus`. Right: the number, 30/600, right-aligned.
+  - Up for 1.2 s after the last press. A new level replaces the picture that is up; the three kinds share one place.
+  - How: one picture per level (`osd/common/hud/vol_00–20`, `bri_00–10`, `ct_00–40`). `keymon` shows it as a toast whose background is that picture. So it is the same over the menus, a game and YouTube, and the apps draw **no** indicator of their own (the old NextUI pill is off whenever the HUD pictures are on the card).
+  - As built (2026-11-14): the daemon puts a step on screen 13-49 ms after the key (`.dev/OSD.md`, HUD patch); before
+    the patch one step in ~12 hung for ~900 ms while it refreshed the quick panel's widgets.
+- **Quick panel (HOME key):** layout unchanged (`osdlayout.json`), new skin.
+  - Every level bar shows its number (2026-11-14): the brightness tile has the level right-aligned after the bar (30/600,
+    `text`), as the HUD pill does; the bar keeps its length whatever the number. Settings' sliders the same: the value
+    (`small`/600, `text2`, `onfocus` on the focused row) after the bar, in the room of the widest value.
+  - Scrim: black 85 %. Tiles: `surface`, radius 28. Focus: a 4 px `focus` ring outside the tile (§2 focus for pictures).
+  - Switches: an 80 px disc. Off = `surface2` with a `text2` glyph. On = `focus` with a dark glyph. Recording and power-off use `danger`.
+  - Read-outs (CPU, RAM, TEMP): a `surface2` chip with the word in 26/700 `text2`.
+  - Slider: 14 px track `#3A3A3E`, fill `focus`.
+- **Toasts:** a `surface` pill 72 tall, radius 24, 1 px `surface2` edge; text 26. Centred, y 608 (above the hint bar). Icons 40 px: a round badge in `ok` / `danger` / `warn` / `primary` with a dark mark.
+- Not ours yet: the daemon's own text font, and the toast wording (English).
+
+### 5.10 Menu sounds (2026-11-13; board `design/v2-MotionSound.html`, kit `common/ui/bos_sfx.c`)
+- Eight sounds: move, ok (A), back (B), bump (end of a list), on, off (switches), open (a sheet), launch (a game or app).
+- Short tones made in code, no files. Three sets, **ตั้งค่า › เสียง › ชุดเสียง:** Soft (default), Click, Retro. **เสียงเมนู:** ปิด / เบา / ปกติ.
+- They follow the system volume and mute, and mix over background music.
+- A held direction ticks once per step; at the wall it knocks once, then stays silent.
+- A `.wav` named after a sound (`move.wav` …) in `.userdata/shared/sounds/` replaces it in every set.
+- Never late: a sound that could not start within 250 ms is dropped.
 
 ### 5.8 Growth rules (anything the user adds must fit without a redesign)
 - **Apps:** every `Tools/*.pak`, shipped or installed (e.g. PortMaster), appears in แอปทั้งหมด by itself. An app with no icon gets the generic `box` icon in `secondary`.
@@ -207,7 +248,7 @@ Nothing on screen is smaller than 22.
 5. Hint bar: carousel: left **MENU** ตัวเลือก (§6.10); right **A** เล่นต่อ · **X** ปิด (closes the game: it leaves เล่นต่อ and สลับเกม; its save stays, as §6.5) · **Y** ค้นหา. App row: **A** เปิด · **X** จัดเรียง · **Y** ค้นหา.
 - **System keys, unchanged from v1** (checked in `keymon.c` / `home.c` 2026-11-10):
   - MENU tap on a game = ตัวเลือกเกม (§6.10). MENU held = สลับเกม (§6.5), on every screen.
-  - HOME key (Brick Pro) = TrimUI's own quick panel (the stock OSD: brightness, volume, WiFi, BT …). It draws over any app, games included, so Brick OS keeps it and does **not** add its own quick-settings panel. Round 2 re-skins its PNG assets (`bg.png` …) to the theme.
+  - HOME key (Brick Pro) = the quick panel (TrimUI's overlay daemon: brightness, WiFi, BT …). It draws over any app, games included, so Brick OS keeps the daemon and does **not** add its own quick-settings panel. Its look is ours: §5.9.
 - Up/Down moves between the carousel and the app row.
 - **จัดเรียง (reorder, board v2-HomeReorder):** X on a pinned app picks it up.
   - The picked app is drawn focused, lifted 12 px, with a 40 px `<` `>` on each side. Nothing else changes: no wobble, no shadow.

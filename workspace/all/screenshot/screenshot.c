@@ -78,7 +78,7 @@ static void osd_toast(const char* msg, int duration_ms) {
 			"    \"duration\":%d,\n"
 			"    \"size\":1,\n"
 			"    \"x\":%d,\n"
-			"    \"y\":500,\n"
+			"    \"y\":608,\n"
 			"    \"w\":300,\n"
 			"    \"h\":80,\n"
 			"    \"message\":\"%s\",\n"

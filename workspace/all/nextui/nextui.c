@@ -46,6 +46,7 @@
 #include "../musicplayer/music_service_client.h"
 #include "bos_keys.h"
 #include "home_bos.h"
+#include "bos_ui.h"
 
 // Boot-phase stamps into the same file the launch scripts write, so a slow
 // boot can be attributed (script phase vs GFX init vs content scan vs first
@@ -74,6 +75,11 @@ ResumeState resume = {0};
 RestoreState restore = {.depth = -1, .relative = -1};
 static bool simple_mode = false;
 static int animationdirection = 0;
+// Brick OS motion (§5.7): the page of the frame last drawn (0: not one of ours), whether a launch from it may grow
+// the focused picture, and that the launch's fade to black has been shown (nothing is drawn after it).
+int bos_last_page = 0;
+bool bos_zoom_ok = false;
+bool bos_launched_out = false;
 
 static void Menu_init(void) {
 	stack = Array_new(); // array of open Directories
@@ -88,6 +94,18 @@ static void Menu_init(void) {
 		getFile(LAST_PATH, last_path, sizeof(last_path));
 	MenuTabs_openRoot(MenuTabs_initialTab(last_path));
 	loadLast(); // restore state when available
+	// Brick OS: back from a game, loadLast has walked into the console's folder, which shows the old list page
+	// (เกม draws only at the root). Pop back to the root and put เกม on that console and game instead.
+	if (MenuTabs_current() == MENU_TAB_CONSOLES && stack->count > 1) {
+		Directory* console = stack->items[1];
+		char console_path[MAX_PATH], rom_path[MAX_PATH] = "";
+		snprintf(console_path, sizeof(console_path), "%s", console->path);
+		if (top->entries && top->selected >= 0 && top->selected < top->entries->count)
+			snprintf(rom_path, sizeof(rom_path), "%s", ((Entry*)top->entries->items[top->selected])->path);
+		while (stack->count > 1)
+			closeDirectory();
+		BosGames_restore(console_path, rom_path);
+	}
 
 	GameList_init(simple_mode);
 }
@@ -252,6 +270,8 @@ int main(int argc, char* argv[]) {
 	bootStamp("after gfx init");
 
 	PAD_init();
+	BOS_sfxInit();
+	PAD_repeatAccel = 1; // a long hold races through a long list
 	VIB_init();
 	PWR_init();
 	if (!HAS_POWER_BUTTON && !simple_mode)
@@ -475,7 +495,49 @@ int main(int argc, char* argv[]) {
 		if (drawScreen == SCREEN_GAMESWITCHER && GameSwitcher_isBos() && BosSwitcher_animating())
 			dirty = true; // สลับเกม: the cover row slides, a picture loads
 
-		if (dirty) {
+		if (BOS_motionBusy())
+			dirty = true;
+		int bos_page = 0; // which of Brick OS's pages this frame is
+		if (!startgame) {
+			if (ContextMenu_isOpen())
+				bos_page = bos_last_page; // a sheet over the page: the same page
+			else if (drawScreen == SCREEN_GAMESWITCHER)
+				bos_page = GameSwitcher_isBos() ? 20 : 0;
+			else if (HomeBos_active())
+				bos_page = HomeBos_page();
+			else if (BosGames_active())
+				bos_page = BosGames_page();
+		}
+		// a page change under way: its two pictures are moved, the page itself is not drawn again until it lands.
+		// Any press ends it at once.
+		bool trans_only = BOS_transMoving();
+		if (trans_only && (PAD_anyJustPressed() || startgame || quit)) {
+			BOS_transCancel();
+			trans_only = false;
+			dirty = true;
+		}
+		if (bos_launched_out)
+			dirty = trans_only = false; // the launch went to black: it stays black
+
+		if (trans_only) {
+			if (!BOS_transFrameOnly(screen))
+				dirty = true;
+			GFX_flip(screen);
+			last_frame_flip = GFX_flipCount();
+		} else if (dirty) {
+			static bool bos_arrived = false;
+			bool bos_held = false;
+			if (bos_page && bos_last_page && bos_page != bos_last_page && animationdirection == ANIM_NONE)
+				BOS_transBegin(screen,
+							   bos_page == 20 || bos_last_page == 20 ? BOS_TR_FADE
+							   : bos_page > bos_last_page			 ? BOS_TR_PUSH
+																	 : BOS_TR_POP,
+							   NULL);
+			else if (!bos_arrived && bos_page && bos_page != 20 && !held_frame)
+				BOS_transBegin(screen, BOS_TR_ARRIVE, NULL); // the first page fades up from black
+			bos_arrived = true;
+			bos_last_page = bos_page;
+			bos_zoom_ok = bos_page && bos_page != 20 && !ContextMenu_isOpen();
 			SDL_Surface* tmpOldScreen = NULL;
 			bool frame_animated = animationdirection != ANIM_NONE;
 			if (animationdirection != ANIM_NONE) {
@@ -511,7 +573,10 @@ int main(int argc, char* argv[]) {
 			// (they fill their body themselves): any other (a List, Home's) is drawn over a clear body, or the
 			// sprite frame's black stays in it, over the art under the screen (Home's List back from Consoles).
 			bool screen_clear = false; // the whole screen is clear (0,0,0,0) here: the top fade can be written, not blended
-			if (!(drawScreen == SCREEN_GAMELIST && !startgame && RowView_paintsScreen())) {
+			bool bos_fills = drawScreen == SCREEN_GAMELIST && !startgame && (HomeBos_active() || BosGames_active());
+			if (bos_fills) {
+				// nothing to clear
+			} else if (!(drawScreen == SCREEN_GAMELIST && !startgame && RowView_paintsScreen())) {
 				bool body_kept = sprites_last && GFX_flipCount() == last_frame_flip && drawScreen == SCREEN_GAMELIST &&
 								 !startgame &&
 								 (GridView_active() || RowView_active() || MinView_active());
@@ -538,6 +603,7 @@ int main(int argc, char* argv[]) {
 			// A Backdrop game list's picture: the bottom-most layer, under the band and the bar. With it on screen
 			// the eased top band is skipped and the bar's text gets the dark "over art" shadows. (Never at the root:
 			// a main-menu tab has no picture.)
+			BOS_sfxFlush(); // the press's sound before the frame is drawn, not after
 			bool over_art = drawScreen == SCREEN_GAMELIST && !startgame && RowView_renderPicture(screen);
 
 			// render top menu bar
@@ -759,6 +825,11 @@ int main(int argc, char* argv[]) {
 					RowView_gameSprites())
 					PLAT_setScreenDrawBands(bar_ys, bar_hs, 2);
 				sprites_last = sprites_now;
+				if (ContextMenu_isOpen() || BOS_transActive() || frame_animated || !bos_fills)
+					BOS_partialCancel();
+				bos_held = HomeBos_pending() && BOS_transHold(screen, 150);
+				if (!bos_held)
+					BOS_transFrame(screen);
 				GFX_flip(screen);
 				last_frame_flip = GFX_flipCount();
 				static bool first_frame_stamped = false;
@@ -783,6 +854,8 @@ int main(int argc, char* argv[]) {
 			if (tmpOldScreen)
 				SDL_FreeSurface(tmpOldScreen);
 
+			if (BOS_transActive() && !BOS_transMoving() && !bos_held)
+				BOS_transCancel(); // this frame was never shown (a game starting): no move to make
 			dirty = false;
 		} else if (backgroundLayerPending() ||
 				   (GameList_scrollBusy() && !ContextMenu_isOpen())) {
@@ -854,6 +927,7 @@ int main(int argc, char* argv[]) {
 	// External launches replace this process, so the OS can reclaim its memory,
 	// descriptors, and worker threads. The parent reads /tmp/next only after exit.
 	if (startgame || exists("/tmp/next")) {
+		BOS_sfxQuit(450); // the launch chime ends before the game takes the speaker
 		// a resume: minarch puts the state's screenshot up over this frame,
 		// so leaving it there skips a black flash between the two
 		if (Launcher_isResumeLaunch()) {
@@ -868,6 +942,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	Menu_quit();
+	BOS_sfxQuit(200);
 	PWR_quit();
 	PAD_quit();
 

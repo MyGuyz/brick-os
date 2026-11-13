@@ -16,6 +16,19 @@
 
 #define BOS_RES RES_PATH "/bos"
 
+void BOS_benchLap(const char* name) {
+	static int on = -1;
+	static Uint64 last;
+	if (on < 0)
+		on = getenv("BOS_BENCH") != NULL;
+	if (!on)
+		return;
+	Uint64 now = SDL_GetPerformanceCounter();
+	if (name)
+		fprintf(stderr, "%s=%.1f ", name, (double)(now - last) * 1000.0 / SDL_GetPerformanceFrequency());
+	last = now;
+}
+
 int BOS_px(float v) {
 	return (int)(v * (FIXED_WIDTH / 1024.0f) + 0.5f);
 }
@@ -139,15 +152,68 @@ static TTF_Font* prepare(const char* s, int px, int weight, char* glyphs, int si
 	return fontFor(px, weight, false);
 }
 
+// ---- text caches ----
+// A page draws the same strings every frame, so both the width and the drawn picture of a string are kept: by
+// (size, weight, string) and (size, weight, colour, string). Shaping and drawing one with FreeType costs about a
+// millisecond on the Brick Pro: a page's first frame (30-50 ms) shows what every frame would cost without this.
+// The oldest entry is replaced; a string longer than an entry's room is drawn uncached.
+#define BOS_TC_TEXT 160
+#define BOS_WC_SIZE 512
+#define BOS_TC_SIZE 192
+static unsigned strHash(const char* s) {
+	unsigned h = 2166136261u;
+	for (const unsigned char* p = (const unsigned char*)s; *p; p++)
+		h = (h ^ *p) * 16777619u;
+	return h;
+}
+typedef struct {
+	unsigned hash;
+	short px, weight;
+	int w;
+	uint32_t lru;
+	char text[BOS_TC_TEXT];
+} WidthEntry;
+static WidthEntry wcache[BOS_WC_SIZE];
+typedef struct {
+	unsigned hash;
+	short px, weight;
+	uint32_t rgb, lru;
+	SDL_Surface* surf;
+	int ascent; // of the font it was drawn with
+	char text[BOS_TC_TEXT];
+} TextEntry;
+static TextEntry tcache[BOS_TC_SIZE];
+static uint32_t cache_lru;
+
 int BOS_textW(const char* s, int px, int weight) {
 	if (!s || !s[0])
 		return 0;
+	size_t len = strlen(s);
+	WidthEntry* slot = NULL;
+	unsigned hash = 0;
+	if (len < BOS_TC_TEXT) {
+		hash = strHash(s);
+		// a few probes from the hash: a full table walk per measure would cost what it saves
+		for (int i = 0; i < 4; i++) {
+			WidthEntry* e = &wcache[(hash + i) % BOS_WC_SIZE];
+			if (e->hash == hash && e->px == px && e->weight == weight && !strcmp(e->text, s)) {
+				e->lru = ++cache_lru;
+				return e->w;
+			}
+			if (!slot || e->lru < slot->lru)
+				slot = e;
+		}
+	}
 	char g[1024];
 	const char* d;
 	TTF_Font* f = prepare(s, px, weight, g, sizeof(g), &d);
 	int w = 0;
 	if (f)
 		TTF_SizeUTF8(f, d, &w, NULL);
+	if (slot) {
+		slot->hash = hash, slot->px = (short)px, slot->weight = (short)weight, slot->w = w, slot->lru = ++cache_lru;
+		memcpy(slot->text, s, len + 1);
+	}
 	return w;
 }
 
@@ -161,6 +227,25 @@ int BOS_text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, 
 		return 0;
 	TTF_Font* latin = fontFor(px, weight, false);
 	int baseline = y + (latin ? TTF_FontAscent(latin) : px); // Inter's line box sets the baseline for both scripts
+	rgb &= 0xFFFFFF;
+	Uint8 mod = alpha < 1.0f ? (Uint8)(alpha * 255 + 0.5f) : 255;
+	size_t len = strlen(s);
+	TextEntry* slot = NULL;
+	unsigned hash = 0;
+	if (len < BOS_TC_TEXT) {
+		hash = strHash(s);
+		for (int i = 0; i < 4; i++) {
+			TextEntry* e = &tcache[(hash + i) % BOS_TC_SIZE];
+			if (e->surf && e->hash == hash && e->px == px && e->weight == weight && e->rgb == rgb &&
+				!strcmp(e->text, s)) {
+				e->lru = ++cache_lru;
+				BOS_blit(e->surf, dst, x, baseline - e->ascent, mod / 255.0f);
+				return e->surf->w;
+			}
+			if (!slot || e->lru < slot->lru)
+				slot = e;
+		}
+	}
 	char g[1024];
 	const char* d;
 	TTF_Font* f = prepare(s, px, weight, g, sizeof(g), &d);
@@ -170,11 +255,16 @@ int BOS_text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, 
 	SDL_Surface* t = TTF_RenderUTF8_Blended(f, d, c);
 	if (!t)
 		return 0;
-	if (alpha < 1.0f)
-		SDL_SetSurfaceAlphaMod(t, (Uint8)(alpha * 255 + 0.5f));
-	SDL_BlitSurface(t, NULL, dst, &(SDL_Rect){x, baseline - TTF_FontAscent(f)});
+	BOS_blit(t, dst, x, baseline - TTF_FontAscent(f), mod / 255.0f);
 	int w = t->w;
-	SDL_FreeSurface(t);
+	if (slot) {
+		if (slot->surf)
+			SDL_FreeSurface(slot->surf);
+		slot->hash = hash, slot->px = (short)px, slot->weight = (short)weight, slot->rgb = rgb;
+		slot->surf = t, slot->ascent = TTF_FontAscent(f), slot->lru = ++cache_lru;
+		memcpy(slot->text, s, len + 1);
+	} else
+		SDL_FreeSurface(t);
 	return w;
 }
 
@@ -356,13 +446,76 @@ static SDL_Surface* iconSrc(const char* name) {
 	return s;
 }
 
+// An icon at one size in one colour, made once: scaling the 128 px source and tinting it on every draw was a
+// software stretch per icon per frame. Each pixel is the average of the source pixels it covers (smoother than the
+// nearest-pixel stretch it replaces).
+typedef struct {
+	SDL_Surface* src; // which icon
+	int size;
+	uint32_t rgb, lru;
+	SDL_Surface* surf;
+} IconDrawn;
+static IconDrawn drawn[96];
+static uint32_t drawn_lru;
+
+static SDL_Surface* iconScaled(SDL_Surface* src, int size, uint32_t rgb) {
+	SDL_Surface* out = SDL_CreateRGBSurfaceWithFormat(0, size, size, 32, SDL_PIXELFORMAT_ARGB8888);
+	if (!out)
+		return NULL;
+	int tr = (rgb >> 16) & 255, tg = (rgb >> 8) & 255, tb = rgb & 255;
+	for (int y = 0; y < size; y++) {
+		int y0 = y * src->h / size, y1 = (y + 1) * src->h / size;
+		if (y1 <= y0)
+			y1 = y0 + 1;
+		uint32_t* o = (uint32_t*)((uint8_t*)out->pixels + y * out->pitch);
+		for (int x = 0; x < size; x++) {
+			int x0 = x * src->w / size, x1 = (x + 1) * src->w / size;
+			if (x1 <= x0)
+				x1 = x0 + 1;
+			uint32_t a = 0, r = 0, g = 0, b = 0;
+			for (int sy = y0; sy < y1; sy++) {
+				const uint32_t* p = (const uint32_t*)((const uint8_t*)src->pixels + sy * src->pitch) + x0;
+				for (int sx = x0; sx < x1; sx++, p++) {
+					uint32_t pa = *p >> 24;
+					a += pa, r += ((*p >> 16) & 255) * pa, g += ((*p >> 8) & 255) * pa, b += (*p & 255) * pa;
+				}
+			}
+			uint32_t n = (uint32_t)((y1 - y0) * (x1 - x0));
+			if (a) // colour weighted by coverage, then the tint
+				r = r / a * tr / 255, g = g / a * tg / 255, b = b / a * tb / 255;
+			o[x] = (a / n) << 24 | r << 16 | g << 8 | b;
+		}
+	}
+	SDL_SetSurfaceBlendMode(out, SDL_BLENDMODE_BLEND);
+	return out;
+}
+
 void BOS_icon(SDL_Surface* dst, const char* name, uint32_t rgb, float alpha, int x, int y, int size) {
 	SDL_Surface* s = iconSrc(name);
-	if (!s)
+	if (!s || size <= 0)
 		return;
-	SDL_SetSurfaceColorMod(s, (rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
-	SDL_SetSurfaceAlphaMod(s, (Uint8)(alpha * 255 + 0.5f));
-	SDL_BlitScaled(s, NULL, dst, &(SDL_Rect){x, y, size, size});
+	rgb &= 0xFFFFFF;
+	IconDrawn* slot = &drawn[0];
+	SDL_Surface* got = NULL;
+	for (int i = 0; i < (int)(sizeof(drawn) / sizeof(drawn[0])); i++) {
+		IconDrawn* e = &drawn[i];
+		if (e->surf && e->src == s && e->size == size && e->rgb == rgb) {
+			e->lru = ++drawn_lru;
+			got = e->surf;
+			break;
+		}
+		if (e->lru < slot->lru)
+			slot = e;
+	}
+	if (!got) {
+		got = iconScaled(s, size, rgb);
+		if (!got)
+			return;
+		if (slot->surf)
+			SDL_FreeSurface(slot->surf);
+		*slot = (IconDrawn){s, size, rgb, ++drawn_lru, got};
+	}
+	BOS_blit(got, dst, x, y, alpha);
 }
 
 // ---- status bar (§5.1) ----
@@ -373,7 +526,7 @@ void BOS_setMusicPlaying(bool playing) {
 
 static int battery(SDL_Surface* s, int right, int cy, bool percent) { // draws right-aligned at `right`, returns its left edge
 	int charging = 0, pct = 0;
-	PLAT_getBatteryStatusFine(&charging, &pct);
+	PWR_getBattery(&charging, &pct); // the power thread's reading: asking the hardware here cost 6 ms a frame
 	pct = pct < 0 ? 0 : pct > 100 ? 100 : pct;
 	uint32_t col = charging ? BOS_C_OK : pct <= BOS_BATT_DANGER ? BOS_C_DANGER : pct <= BOS_BATT_WARN ? BOS_C_WARN : BOS_C_TEXT;
 	// the glyph: 46x24 outline (3 px, radius 7), a 4x8 nub 4 px out, a fill bar inset 3 px
@@ -418,7 +571,9 @@ void BOS_statusBar(SDL_Surface* s, const char* title) {
 	// right to left: WiFi, mute, BT, music — each only while it is true (§5.1)
 	const char* shown[4];
 	int n = 0;
-	if ((bits & STATUSBAR_WIFI) && PLAT_wifiConnected())
+	// PWR_isOnline is the power thread's reading. PLAT_wifiConnected runs wpa_cli in a shell: 19 ms, and this is
+	// drawn every frame — it was half of every frame of every page.
+	if ((bits & STATUSBAR_WIFI) && PWR_isOnline())
 		shown[n++] = "wifi";
 	if ((bits & STATUSBAR_MUTE) && (GetSpeakerMute() || GetVolume() == 0))
 		shown[n++] = "mute";
@@ -503,4 +658,13 @@ void BOS_quit(void) {
 		if (icons[i].src)
 			SDL_FreeSurface(icons[i].src);
 	nicons = 0;
+	for (int i = 0; i < (int)(sizeof(drawn) / sizeof(drawn[0])); i++)
+		if (drawn[i].surf)
+			SDL_FreeSurface(drawn[i].surf);
+	memset(drawn, 0, sizeof(drawn));
+	for (int i = 0; i < BOS_TC_SIZE; i++)
+		if (tcache[i].surf)
+			SDL_FreeSurface(tcache[i].surf);
+	memset(tcache, 0, sizeof(tcache));
+	memset(wcache, 0, sizeof(wcache));
 }

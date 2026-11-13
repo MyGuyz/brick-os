@@ -156,6 +156,7 @@ bool settings_menu_glide_active(void);
 
 // Render the current page
 void settings_menu_render(SDL_Surface* screen, IndicatorType show_setting);
+void settings_menu_before_render(SDL_Surface* screen); // Brick OS: before the screen is cleared for a new frame
 
 // Sync a CYCLE item's current_idx from its get_value callback
 void settings_item_sync(SettingItem* item);

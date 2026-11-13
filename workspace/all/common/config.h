@@ -160,6 +160,8 @@ typedef struct
 	bool showNetplayHint;
 	bool showMenuAnimations;
 	bool showMenuTransitions;
+	int menuSounds;	   // Brick OS เสียงเมนู: 0 ปิด, 1 เบา, 2 ปกติ
+	int menuSoundPack; // ชุดเสียง: 0 นุ่ม, 1 คลิก, 2 เกมเก่า
 	bool showRecents;
 	bool showTools;
 	bool showHome;		// the Home tab (Layouts > Home tab)
@@ -279,6 +281,8 @@ typedef struct
 #define CFG_DEFAULT_SHOWNETPLAYHINT true
 #define CFG_DEFAULT_SHOWMENUANIMATIONS true
 #define CFG_DEFAULT_SHOWMENUTRANSITIONS true
+#define CFG_DEFAULT_MENUSOUNDS 1
+#define CFG_DEFAULT_MENUSOUNDPACK 0
 #define CFG_DEFAULT_SHOWRECENTS false // unused since the tab set lost Recent; kept so the key round-trips
 #define CFG_DEFAULT_SHOWCOLLECTIONS true
 #define CFG_DEFAULT_SHOWEMULATORS true
@@ -410,6 +414,11 @@ void CFG_setMenuAnimations(bool show);
 // Show/hide menu transitions between screens in main menu.
 bool CFG_getMenuTransitions(void);
 void CFG_setMenuTransitions(bool show);
+// Brick OS menu sounds: loudness (0 off, 1 quiet, 2 normal) and which set of tones.
+int CFG_getMenuSounds(void);
+void CFG_setMenuSounds(int v);
+int CFG_getMenuSoundPack(void);
+void CFG_setMenuSoundPack(int v);
 // Unused since the tab set lost Recent; kept so the key round-trips.
 bool CFG_getShowRecents(void);
 void CFG_setShowRecents(bool show);

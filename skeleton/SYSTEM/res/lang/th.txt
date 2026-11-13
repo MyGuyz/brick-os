@@ -760,3 +760,10 @@ Cover art results	ผลการดาวน์โหลด
 Found %d of %d games	เจอ %d จาก %d เกม
 Finished	เสร็จแล้ว
 Last download	ดาวน์โหลดล่าสุด
+Menu sounds	เสียงเมนู
+The sounds of moving, choosing and going back	เสียงตอนเลื่อน ตกลง และย้อนกลับ
+Quiet	เบา
+Sound style	ชุดเสียง
+Your own .wav files in .userdata/shared/sounds replace these	วางไฟล์ .wav ของคุณใน .userdata/shared/sounds เพื่อใช้แทนได้
+Click	คลิก
+Retro	เกมเก่า

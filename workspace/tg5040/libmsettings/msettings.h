@@ -18,6 +18,11 @@ void InitSettings(void);
 void InitSettingsNoApply(void);
 void QuitSettings(void);
 int InitializedSettings(void);
+// Deferred saving: the setters only mark the file changed; FlushSettings writes it (with fsync). For keymon, whose
+// volume and brightness steps come every 100 ms while a key is held.
+void SetSettingsSaveDeferred(int on);
+int SettingsSavePending(void);
+void FlushSettings(void);
 
 int GetBrightness(void);
 int GetColortemp(void);

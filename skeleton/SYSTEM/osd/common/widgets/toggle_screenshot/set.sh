@@ -23,7 +23,7 @@ show_hint_toast() {
     "duration":3000,
     "size":1,
     "x":'$(( (fbw - 400) / 2 ))',
-    "y":500,
+    "y":608,
     "w":300,
     "h":80,
     "message":"Press L2+R2 to capture",

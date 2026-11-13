@@ -35,15 +35,27 @@ static void px_put(SDL_Surface* s, int x, int y, uint32_t pixel) {
 // destination by that coverage so the curve fades smoothly instead of stepping.
 static void aa_corner(SDL_Surface* dst, int px0, int py0, float ccx, float ccy,
 					  int r, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) {
+	// Inside r - 0.5 a pixel is fully covered, outside r + 0.5 not at all: decided on the squared distance, so the
+	// square root and the blend run only for the ring of pixels on the curve (a page draws ~30 of these a frame).
+	float in2 = ((float)r - 0.5f) * ((float)r - 0.5f), out2 = ((float)r + 0.5f) * ((float)r + 0.5f);
+	uint32_t solid = SDL_MapRGB(dst->format, cr, cg, cb);
+	const SDL_Rect cl = dst->clip_rect;
 	for (int py = py0; py < py0 + r; py++) {
-		if (py < 0 || py >= dst->h)
+		if (py < cl.y || py >= cl.y + cl.h)
 			continue;
 		for (int px = px0; px < px0 + r; px++) {
-			if (px < 0 || px >= dst->w)
+			if (px < cl.x || px >= cl.x + cl.w)
 				continue;
 			float dx = (px + 0.5f) - ccx;
 			float dy = (py + 0.5f) - ccy;
-			float cov = (float)r - sqrtf(dx * dx + dy * dy) + 0.5f;
+			float d2 = dx * dx + dy * dy;
+			if (d2 >= out2)
+				continue;
+			if (d2 <= in2 && ca == 255) {
+				px_put(dst, px, py, solid);
+				continue;
+			}
+			float cov = (float)r - sqrtf(d2) + 0.5f;
 			if (cov <= 0.0f)
 				continue;
 			if (cov > 1.0f)

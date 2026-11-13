@@ -10,14 +10,14 @@ VOL_MSG_JSON="\n\
     \"duration\":1000, \n\
     \"size\":0, \n\
     \"x\":362, \n\
-    \"y\":580, \n\
+    \"y\":608, \n\
     \"w\":300, \n\
     \"h\":80, \n\
     \"message\":\" $MSG\", \n\
     \"font\":\"\", \n\
     \"bg\":\"\", \n\
     \"icon\":\"\", \n\
-    \"fontsize\":24, \n\
+    \"fontsize\":26, \n\
     \"fontcolor\":\"FFFFFFFF\" \n\
 } \n"
 

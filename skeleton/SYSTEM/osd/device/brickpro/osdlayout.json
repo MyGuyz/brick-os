@@ -35,7 +35,7 @@
             "package":"com.trimui.osd.static.dram"
         },
         {
-            "package":"com.trimui.osd.slider.backlight"
+            "package":"com.brickos.osd.app.backlight"
         },
         {
             "package":"com.trimui.osd.toggle.ledenable"

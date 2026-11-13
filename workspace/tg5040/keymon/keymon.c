@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 
 #include <msettings.h>
 
@@ -110,6 +111,132 @@ static void on_term(int sig) {
 	quit = 1;
 }
 
+// Brick OS level HUD (DESIGN.md 5.9): the overlay daemon shows a toast whose background is a ready-made picture of
+// the level (osd/common/hud, made by make_osd.py), so it looks the same over the menus, a game or YouTube.
+#define HUD_DIR "/usr/trimui/osd/hud"
+#define HUD_MSG_PATH "/tmp/trimui_osd/osd_toast_msg"
+static void bos_hud(const char* kind, int val) {
+	char pic[96];
+	snprintf(pic, sizeof(pic), HUD_DIR "/%s_%02d.png", kind, val);
+	if (access(pic, F_OK) != 0)
+		return; // no HUD skin on this card: the apps draw their own indicator
+	FILE* f = fopen(HUD_MSG_PATH, "w");
+	if (!f)
+		return;
+	// one id for the three kinds: a new level replaces the picture that is up. The message cannot be empty.
+	fprintf(f,
+			"{\"type\":\"default\",\"id\":\"com.trimui.osd.msg.volumeglobal\",\"duration\":1200,\"size\":0,"
+			"\"x\":292,\"y\":76,\"w\":440,\"h\":76,\"message\":\" \",\"font\":\"\",\"bg\":\"%s\",\"icon\":\"\","
+			"\"fontsize\":24,\"fontcolor\":\"FFFFFFFF\"}\n",
+			pic);
+	fclose(f);
+}
+
+// The quick panel's widget states (DESIGN.md 5.9). The widgets' config.json on the Brick Pro has no "update" script:
+// keymon writes these files when the panel opens and every second while it is open; the daemon only reads them.
+static int readInt(const char* path, int def) {
+	FILE* f = fopen(path, "r");
+	if (!f)
+		return def;
+	int v = def;
+	if (fscanf(f, "%i", &v) != 1) // %i: the wlan0 flags are hex (0x1003)
+		v = def;
+	fclose(f);
+	return v;
+}
+static void putStatus(const char* dir, const char* file, const char* value) {
+	char path[128];
+	snprintf(path, sizeof(path), "/tmp/trimui_osd/%s", dir);
+	mkdir("/tmp/trimui_osd", 0755);
+	mkdir(path, 0755);
+	snprintf(path, sizeof(path), "/tmp/trimui_osd/%s/%s", dir, file);
+	char old[64] = "";
+	FILE* f = fopen(path, "r");
+	if (f) {
+		size_t n = fread(old, 1, sizeof(old) - 1, f);
+		old[n] = 0;
+		fclose(f);
+		if (!strcmp(old, value))
+			return; // unchanged: the daemon re-reads it anyway
+	}
+	f = fopen(path, "w");
+	if (f) {
+		fputs(value, f);
+		fclose(f);
+	}
+}
+static int pidAlive(const char* pidfile) {
+	int pid = readInt(pidfile, 0);
+	return pid > 0 && kill(pid, 0) == 0;
+}
+static int btUp(void) { // hcitool dev: hci0 is up (HCIGETDEVINFO, flag HCI_UP)
+	struct {
+		uint16_t dev_id;
+		char name[8];
+		uint8_t bdaddr[6];
+		uint32_t flags;
+		uint8_t rest[64];
+	} __attribute__((packed)) di;
+	int s = socket(31 /* AF_BLUETOOTH */, SOCK_RAW | SOCK_CLOEXEC, 1 /* BTPROTO_HCI */);
+	if (s < 0)
+		return 0;
+	memset(&di, 0, sizeof(di));
+	int up = ioctl(s, _IOR('H', 211, int), &di) == 0 && (di.flags & 1);
+	close(s);
+	return up;
+}
+static void osd_status_write(void) {
+	char v[32];
+	snprintf(v, sizeof(v), "%d", readInt("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", 0) / 1000);
+	putStatus("toggle_cpu", "curfreq", v);
+	long total = 0, avail = 0;
+	FILE* f = fopen("/proc/meminfo", "r");
+	if (f) {
+		char line[96];
+		while (fgets(line, sizeof(line), f)) {
+			sscanf(line, "MemTotal: %ld", &total);
+			sscanf(line, "MemAvailable: %ld", &avail);
+		}
+		fclose(f);
+	}
+	snprintf(v, sizeof(v), "%ldM", (total - avail) / 1024);
+	putStatus("toggle_dmem", "status", v);
+	int soc = 0, battery = 0;
+	for (int z = 0; z < 16; z++) { // the hottest cpu / gpu zone (the battery's if there is none)
+		char p[64], type[32] = "";
+		snprintf(p, sizeof(p), "/sys/class/thermal/thermal_zone%d/type", z);
+		FILE* t = fopen(p, "r");
+		if (!t)
+			break;
+		if (!fgets(type, sizeof(type), t))
+			type[0] = 0;
+		fclose(t);
+		snprintf(p, sizeof(p), "/sys/class/thermal/thermal_zone%d/temp", z);
+		int temp = readInt(p, 0);
+		if (!strncmp(type, "cpu", 3) || !strncmp(type, "gpu", 3)) {
+			if (temp > soc)
+				soc = temp;
+		} else if (strstr(type, "battery"))
+			battery = temp;
+	}
+	if (soc <= 0)
+		soc = battery;
+	snprintf(v, sizeof(v), "%d.%d", soc / 1000, soc % 1000 / 100);
+	putStatus("toggle_temperature", "temperature", v);
+	putStatus("toggle_bt", "status", btUp() ? "1\n" : "0\n");
+	int led = readInt("/sys/class/led_anim/max_scale", 0);
+	putStatus("toggle_led", "status", led != 0 ? "1\n" : "0\n");
+	putStatus("toggle_mute", "status", GetSpeakerMute() ? "1\n" : "0\n");
+	putStatus("toggle_rumble", "status", GetRumble() ? "1\n" : "0\n");
+	putStatus("toggle_screenrecord", "status", pidAlive("/tmp/screenrecorder.pid") ? "1\n" : "0\n");
+	putStatus("toggle_screenshot", "status", pidAlive("/tmp/screenshot.pid") ? "1\n" : "0\n");
+	putStatus("toggle_wifi", "status", (readInt("/sys/class/net/wlan0/flags", 0) & 1) ? "1\n" : "0\n");
+	snprintf(v, sizeof(v), "%d/10\n", GetBrightness());
+	putStatus("slider_backlight", "status", v);
+	snprintf(v, sizeof(v), "%d/20\n", GetVolume());
+	putStatus("slider_volume", "status", v);
+}
+
 static void toggle_osd(void) {
 	struct stat st;
 	if (stat(OSD_STATE_PATH, &st) == 0) {
@@ -117,6 +244,7 @@ static void toggle_osd(void) {
 		if (f)
 			fclose(f);
 	} else {
+		osd_status_write(); // what the panel shows the moment it opens
 		FILE* f = fopen(OSD_SHOW_PATH, "w");
 		if (f)
 			fclose(f);
@@ -245,6 +373,40 @@ static void buzz(int taps) {
 	}
 }
 
+// the settings file, written 800 ms after the last volume / brightness step, off the key loop
+static pthread_t save_pt;
+static pthread_mutex_t save_mx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t save_cv = PTHREAD_COND_INITIALIZER;
+static volatile uint32_t save_gen;
+static void save_later(void) {
+	pthread_mutex_lock(&save_mx);
+	save_gen++;
+	pthread_cond_signal(&save_cv);
+	pthread_mutex_unlock(&save_mx);
+}
+static void* saveThread(void* arg) {
+	(void)arg;
+	for (;;) {
+		pthread_mutex_lock(&save_mx);
+		while (!SettingsSavePending())
+			pthread_cond_wait(&save_cv, &save_mx);
+		uint32_t g;
+		do { // until 800 ms pass with no new step
+			g = save_gen;
+			struct timespec t;
+			clock_gettime(CLOCK_REALTIME, &t);
+			t.tv_nsec += 800 * 1000000L;
+			t.tv_sec += t.tv_nsec / 1000000000L;
+			t.tv_nsec %= 1000000000L;
+			while (g == save_gen && pthread_cond_timedwait(&save_cv, &save_mx, &t) == 0)
+				;
+		} while (g != save_gen);
+		pthread_mutex_unlock(&save_mx);
+		FlushSettings();
+	}
+	return NULL;
+}
+
 static pthread_t fn_pt;
 static void* watchFnSwitch(void* arg) {
 	int fn_on, fn_was_on;
@@ -254,6 +416,10 @@ static void* watchFnSwitch(void* arg) {
 
 	while (!quit) {
 		usleep(1000000);
+		if (SettingsSavePending()) // a change made by anything else here (jack, mute, the FN switch)
+			save_later();
+		if (access(OSD_STATE_PATH, F_OK) == 0) // the quick panel is open: its live values
+			osd_status_write();
 
 		fn_on = getInt(FN_SWITCH_GPIO_PATH);
 		if (fn_on >= 0 && fn_was_on != fn_on) {
@@ -400,6 +566,8 @@ int main(int argc, char* argv[]) {
 	sigaction(SIGTERM, &sa, NULL);
 
 	InitSettings();
+	SetSettingsSaveDeferred(1);
+	pthread_create(&save_pt, NULL, &saveThread, NULL);
 	pthread_create(&fn_pt, NULL, &watchFnSwitch, NULL);
 
 	const char* device = getenv("DEVICE");
@@ -634,18 +802,22 @@ int main(int argc, char* argv[]) {
 				val = GetBrightness();
 				if (val < BRIGHTNESS_MAX)
 					SetBrightness(++val);
+				bos_hud("bri", val);
 			} else if (start_pressed) {
 				val = GetColortemp();
 				if (val < COLORTEMP_MAX)
 					SetColortemp(++val);
+				bos_hud("ct", val);
 			} else {
 				if (GetSpeakerMute())
 					SetSpeakerMute(0);
 				val = GetVolume();
 				if (val < VOLUME_MAX)
 					SetVolume(++val);
+				bos_hud("vol", val);
 			}
 
+			save_later();
 			if (up_just_pressed)
 				up_just_pressed = 0;
 			else
@@ -657,18 +829,22 @@ int main(int argc, char* argv[]) {
 				val = GetBrightness();
 				if (val > BRIGHTNESS_MIN)
 					SetBrightness(--val);
+				bos_hud("bri", val);
 			} else if (start_pressed) {
 				val = GetColortemp();
 				if (val > COLORTEMP_MIN)
 					SetColortemp(--val);
+				bos_hud("ct", val);
 			} else {
 				if (GetSpeakerMute())
 					SetSpeakerMute(0);
 				val = GetVolume();
 				if (val > VOLUME_MIN)
 					SetVolume(--val);
+				bos_hud("vol", val);
 			}
 
+			save_later();
 			if (down_just_pressed)
 				down_just_pressed = 0;
 			else
@@ -684,4 +860,5 @@ int main(int argc, char* argv[]) {
 
 	pthread_cancel(fn_pt);
 	pthread_join(fn_pt, NULL);
+	FlushSettings();
 }

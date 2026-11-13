@@ -199,6 +199,7 @@ ifneq (,$(filter $(PLATFORM),tg5040 tg5050))
 	cp ./workspace/all/osdctl/build/$(PLATFORM)/osdctl.elf ./build/SYSTEM/$(PLATFORM)/bin/osdctl
 	# Resident renderer behind the OSD Music widget (widgets/app_music/launch.sh)
 	cp ./workspace/all/osdmusic/build/$(PLATFORM)/osdmusic.elf ./build/SYSTEM/$(PLATFORM)/bin/
+	cp ./workspace/all/osdbright/build/$(PLATFORM)/osdbright.elf ./build/SYSTEM/$(PLATFORM)/bin/
 	# LD_PRELOAD shim that slows trimui_osdd's idle SDL poll while hidden (see workspace/all/osdwait)
 	cp ./workspace/all/osdwait/build/$(PLATFORM)/libosdwait.so ./build/SYSTEM/$(PLATFORM)/lib/
 

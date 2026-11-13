@@ -43,7 +43,7 @@ brick)
     PATCHES="b8ac:c0000054:00080054 b8b0:e0070034:40080034 b8b8:00080054:c0faff54 b9b8:80008052:20008052"
     ;;
 brickpro)
-    MD5=086f6d70e387e9bc21b7417ec7cfab83
+    MD5=8c3de0f74e9c51758e81b24a8a62fc77
     # Brick daemon + the Home-closes-OSD patch (cmp w0,#15 at 0x40b8b4).
     # Same as brick, except button 15 (Home) keeps cancelling via 0x40b9ac
     # and the key block's constant was already 2 (Home) and becomes 1 (OK).

@@ -545,13 +545,21 @@ typedef struct PAD_Context {
 } PAD_Context;
 extern PAD_Context pad;
 
-#define PAD_REPEAT_DELAY 300
-#define PAD_REPEAT_INTERVAL 100
+// A held direction: first repeat after 250 ms, then every 80 ms (12 rows a second). 300 / 100 until 0.7.3, when a
+// page took 50 ms to draw; one now takes under 16.
+#define PAD_REPEAT_DELAY 250
+#define PAD_REPEAT_INTERVAL 80
 
 #define PAD_init PLAT_initInput
 #define PAD_quit PLAT_quitInput
 #define PAD_update PLAT_updateInput
-#define PAD_poll PLAT_pollInput
+// Brick OS: a UI app can ask to be called after every poll (menu sounds, bos_sfx.c); NULL everywhere else.
+extern void (*PAD_pollHook)(void);
+void PAD_pollHooked(void);
+// Brick OS: with PAD_repeatAccel set, a direction held past 12 repeats repeats every 45 ms instead of 80.
+extern int PAD_repeatAccel;
+int PAD_heldRepeats(int btns); // the repeats so far of the longest-held of these buttons (0: none is repeating)
+#define PAD_poll PAD_pollHooked
 #define PAD_wake PLAT_shouldWake
 
 void PAD_setAnalog(int neg, int pos, int value, int repeat_at); // internal
@@ -639,6 +647,9 @@ int PWR_preventAutosleep(void);
 
 
 int PWR_isOnline(void);
+// The battery as the power thread last read it (every few seconds). For anything drawn per frame: asking the
+// hardware (PLAT_getBatteryStatusFine) costs ~6 ms a call on the Brick Pro.
+void PWR_getBattery(int* is_charging, int* charge);
 
 // rules-based presets managed and applied by LEDS_applyRules()
 enum LightProfile {
@@ -872,6 +883,17 @@ void PLAT_textureRefresh(SDL_Surface* s);
 // for frames whose other rows are known unchanged. Up to 4. Consumed by that flip; n <= 0 = the whole screen (only
 // its changed rows: a hash per row).
 void PLAT_setUploadBands(const int* y, const int* h, int n);
+// The next PLAT_flip uploads nothing: the screen is known to be what its texture holds.
+void PLAT_skipUpload(void);
+// Brick OS page moves (bos_motion.c). pageGrab: keeps `area` of the screen as last uploaded (the page on the glass)
+// in a texture of its own; NULL only asks whether that can be done. pageShow, for the next flip only: inside `area`
+// the kept picture (black: plain black instead; from_light < 0: nothing) shifted by from_dx and lit by from_light,
+// and the screen's own `area` shifted by to_dx, lit by to_light, at to_alpha (0: not drawn); from_top: the kept
+// picture goes over the screen's instead of under. pageZoom, with a pageShow: `src` of the screen once more, at dst.
+bool PLAT_pageGrab(const SDL_Rect* area);
+void PLAT_pageShow(const SDL_Rect* area, bool black, bool from_top, int from_dx, float from_light, int to_dx,
+				   float to_light, float to_alpha);
+void PLAT_pageZoom(const SDL_Rect* src, const SDL_Rect* dst, float light);
 void PLAT_setShaders(int nr);
 void PLAT_resetShaders();
 void PLAT_clearShaders();

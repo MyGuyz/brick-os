@@ -27,6 +27,9 @@ void SettingsBos_captureSheet(SDL_Surface* s, const char* name, const char* note
 void SettingsBos_keyOpen(int key);   // BOSKEY_*: step 1 of its popup
 void SettingsBos_keyReset(int key);  // X on its row: tap and hold back to the defaults
 int SettingsBos_keyResume(void);     // at start: a pick the launcher answered; the key to show (its popup open), or -1
+bool SettingsBos_toggleOn(SettingItem* it); // the switch is on
+void SettingsBos_before(SDL_Surface* s, int depth); // before each frame: starts the page moves (DESIGN 5.7)
+bool SettingsBos_moving(void); // a sheet is still coming up: keep drawing
 bool SettingsBos_keyTick(bool* quit); // every frame: the light's timer, an action keymon left (Settings closes)
 
 #endif

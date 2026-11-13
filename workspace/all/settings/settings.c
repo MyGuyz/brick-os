@@ -1441,7 +1441,7 @@ static void init_about_info(void) {
 // Menu item arrays (static allocation)
 // ============================================
 
-#define MAX_APPEARANCE_ITEMS 29 // Brick OS: + Language
+#define MAX_APPEARANCE_ITEMS 31 // Brick OS: + Language
 #define MAX_LAYOUTS_ITEMS 28
 #define MAX_DISPLAY_ITEMS 8
 #define MAX_SYSTEM_ITEMS 24
@@ -2032,6 +2032,30 @@ static void reset_motion(void) {
 	set_motion(0);
 }
 
+// เสียงเมนู (§5.10): how loud, and which set of tones. Picking one plays it.
+static const char* msound_labels[] = {"Off", "Quiet", "Normal"};
+static const char* mpack_labels[] = {"Soft", "Click", "Retro"};
+static int get_msound(void) {
+	return CFG_getMenuSounds();
+}
+static void set_msound(int v) {
+	CFG_setMenuSounds(v);
+	BOS_sfx(BOS_SFX_OK);
+}
+static void reset_msound(void) {
+	CFG_setMenuSounds(CFG_DEFAULT_MENUSOUNDS);
+}
+static int get_mpack(void) {
+	return CFG_getMenuSoundPack();
+}
+static void set_mpack(int v) {
+	CFG_setMenuSoundPack(v);
+	BOS_sfx(BOS_SFX_OK);
+}
+static void reset_mpack(void) {
+	CFG_setMenuSoundPack(CFG_DEFAULT_MENUSOUNDPACK);
+}
+
 // ธีมสี (DESIGN.md 6.8 v3): six preset cards (the D-pad moves the ring, A uses the card), then the กำหนดเอง switch.
 // On, the custom colours below it are used and shown; off, the card's. The custom colours are kept either way.
 static const char* theme_preset_labels[] = {"Default", "Blue", "Pink", "Green", "Orange", "Purple"};
@@ -2401,6 +2425,12 @@ static void build_menu_tree(const DeviceInfo* dev) {
 	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Animations", "Full: every slide. Reduced: shorter. Off: no motion.",
 		motion_labels, 3, motion_values, get_motion, set_motion, reset_motion);
+	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Menu sounds", "The sounds of moving, choosing and going back",
+		msound_labels, 3, motion_values, get_msound, set_msound, reset_msound);
+	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
+		"Sound style", "Your own .wav files in .userdata/shared/sounds replace these",
+		mpack_labels, 3, motion_values, get_mpack, set_mpack, reset_mpack);
 	appearance_items[idx++] = (SettingItem)ITEM_CYCLE_INIT(
 		"Language", "Menu language",
 		lang_labels, 2, lang_values, get_lang, set_lang, reset_lang);
@@ -2879,6 +2909,7 @@ int main(int argc, char* argv[]) {
 	PWR_init();
 	VIB_init(); // strength preview + boot-logo error pulse need the motor thread
 	PAD_init();
+	BOS_sfxInit();
 	TIME_init();
 
 	setup_signal_handlers();
@@ -2926,6 +2957,7 @@ int main(int argc, char* argv[]) {
 
 	while (!quit && !app_quit) {
 		GFX_startFrame();
+		BOS_benchLap(NULL);
 		PAD_poll();
 
 		UI_handleQuitRequest(screen, &quit, &dirty, "Exit Settings?",
@@ -2941,6 +2973,11 @@ int main(int argc, char* argv[]) {
 				settings_menu_push(&main_page);
 		}
 
+		BOS_sfxFlush();
+		if (BOS_transMoving() && PAD_anyJustPressed())
+			BOS_transCancel(); // a press does not wait for a page to finish arriving
+		if (BOS_motionBusy() || SettingsBos_moving())
+			dirty = true;
 		if (settings_menu_glide_active() || BOS_marqueeActive()) // a focused long name scrolls
 			dirty = true;
 
@@ -2953,14 +2990,24 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
+		if (dirty)
+			BOS_benchLap("  input");
 		PWR_update(&dirty, &show_setting, NULL, NULL);
 
 		if (UI_statusBarChanged())
 			dirty = true;
 
-		if (dirty) {
-			GFX_clear(screen);
+		if (dirty && BOS_transMoving()) {
+			// a page on its way: its two pictures are moved, the page is drawn again once it has landed
+			dirty = !BOS_transFrameOnly(screen);
+			GFX_flip(screen);
+		} else if (dirty) {
+			BOS_benchLap("pwr");
+			settings_menu_before_render(screen);
+			BOS_benchLap("clear");
 			settings_menu_render(screen, show_setting);
+			BOS_transFrame(screen);
+			BOS_benchLap("render_tail");
 			GFX_flip(screen);
 			dirty = false;
 		} else {
@@ -2988,6 +3035,7 @@ int main(int argc, char* argv[]) {
 	SettingsBos_lightsDone(); // a blinking key or the LED preview: the user's own lights back
 	shortcuts_flush(); // exited straight from the shortcuts page
 	VIB_quit();
+	BOS_sfxQuit(200);
 	QuitSettings();
 	PWR_quit();
 	PAD_quit();

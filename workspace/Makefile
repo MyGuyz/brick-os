@@ -58,6 +58,7 @@ ifneq (,$(filter $(PLATFORM),tg5040 tg5050))
 	cd ./all/cheatdb/ && make
 	cd ./all/osdctl/ && make
 	cd ./all/osdmusic/ && make
+	cd ./all/osdbright/ && make
 	cd ./all/osdwait/ && make
 	cd ./all/n64-netplay-server/ && make
 endif
@@ -117,6 +118,7 @@ endif
 	cd ./all/cheatdb/ && make clean
 	cd ./all/osdctl/ && make clean
 	cd ./all/osdmusic/ && make clean
+	cd ./all/osdbright/ && make clean
 	cd ./all/osdwait/ && make clean
 	cd ./all/scraper/ && make clean
 	cd ./$(PLATFORM) && make clean

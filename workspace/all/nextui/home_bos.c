@@ -109,46 +109,14 @@ static uint32_t mapc(SDL_Surface* s, uint32_t c, float a) {
 
 // Text whose top of line is `y` (the Inter line box at px: its ascent sets the baseline for both scripts).
 static int textW(const char* s, int px, int weight) {
-	if (!s || !s[0])
-		return 0;
-	int w = 0;
-	if (TextThai_has(s)) {
-		char g[1024];
-		TTF_Font* f = fontFor(px, weight, true);
-		if (f && TextThai_toGlyphs(s, g, sizeof(g)) > 0)
-			TTF_SizeUTF8(f, g, &w, NULL);
-	} else {
-		TTF_Font* f = fontFor(px, weight, false);
-		if (f)
-			TTF_SizeUTF8(f, s, &w, NULL);
-	}
-	return w;
+	return BOS_textW(s, px, weight); // kept between frames by the kit
 }
 static int lineH(int px) {
 	TTF_Font* f = fontFor(px, 400, false);
 	return f ? TTF_FontHeight(f) : px;
 }
 static void text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t c, float a, int x, int y) {
-	if (!s || !s[0])
-		return;
-	TTF_Font* latin = fontFor(px, weight, false);
-	int baseline = y + (latin ? TTF_FontAscent(latin) : px);
-	TTF_Font* f = latin;
-	const char* draw = s;
-	char g[1024];
-	if (TextThai_has(s)) {
-		f = fontFor(px, weight, true);
-		if (!f || TextThai_toGlyphs(s, g, sizeof(g)) <= 0)
-			return;
-		draw = g;
-	}
-	if (!f)
-		return;
-	SDL_Surface* t = TTF_RenderUTF8_Blended(f, draw, rgb(c, a));
-	if (!t)
-		return;
-	SDL_BlitSurface(t, NULL, dst, &(SDL_Rect){x, baseline - TTF_FontAscent(f)});
-	SDL_FreeSurface(t);
+	BOS_text(dst, s, px, weight, c, a, x, y); // the kit keeps the drawn string: FreeType ran for every string every frame
 }
 // `s` cut with "…" to max_w
 static void fit(const char* s, int px, int weight, int max_w, char* out, size_t size) {
@@ -335,6 +303,19 @@ static void build(void) {
 	built = true;
 }
 
+// the picture a launch grows from (BOS_launchOut): the focused cover or tile of the page last drawn
+static SDL_Rect launch_rect;
+const SDL_Rect* HomeBos_launchRect(void) {
+	return launch_rect.w > 0 ? &launch_rect : NULL;
+}
+bool HomeBos_pending(void) {
+	return pending;
+}
+
+int HomeBos_page(void) {
+	return lib ? 2 : 1;
+}
+
 bool HomeBos_active(void) {
 	return Home_active() && CFG_getHomeStyle() == HOME_STYLE_GRID;
 }
@@ -378,9 +359,7 @@ static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int
 	if (st == HOMEART_LOADING)
 		pending = true;
 	if (st == HOMEART_READY && pic) {
-		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a * gdim));
-		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
-		SDL_SetSurfaceAlphaMod(pic, 255);
+		BOS_blit(pic, s, x, y, a * gdim);
 	} else
 		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a * gdim));
 }
@@ -429,9 +408,11 @@ static int carousel(SDL_Surface* s, int top) {
 			int w = slot == 0 ? cw : slot == 1 ? sw : ow, h = slot == 0 ? ch : slot == 1 ? sh : oh;
 			float a = slot == 0 ? 1.0f : slot == 1 ? 0.55f : 0.25f;
 			int r = BOS_px(slot == 0 ? 24 : slot == 1 ? 20 : 18);
-			int cx = s->w / 2 + (int)(d < 0 ? -off : off);
+			int cx = s->w / 2 + (int)(d < 0 ? -off : off) - (focused ? BOS_bumpPx() : 0);
 			cover(s, &cards[i], cx - w / 2, top + (ch - h) / 2, w, h, r, a, focused && slot == 0 && cstart == 0);
 		}
+	if (focused)
+		launch_rect = (SDL_Rect){(s->w - cw) / 2, top, cw, ch};
 	return ch;
 }
 
@@ -494,6 +475,8 @@ static void appRow(SDL_Surface* s, int top) {
 	for (int i = 0; i < n; i++) {
 		int cx = x0 + i * (cell + gap) + cell / 2;
 		bool f = row == 1 && afocus == i;
+		if (f && !moving)
+			cx += BOS_bumpPx(); // a held direction at the row's end: the tile knocks against it
 		int box = BOS_px(BOS_TILE + 16 + 10); // the cell plus most of the gap
 		if (i < npins) {
 			const App* a = &apps[pins[i]];
@@ -502,8 +485,11 @@ static void appRow(SDL_Surface* s, int top) {
 				int ar = BOS_px(40), ay = t.y + t.h / 2 - ar / 2;
 				BOS_icon(s, "chevl", BOS_C_TEXT, 1, t.x - ar + BOS_px(4), ay, ar);
 				BOS_icon(s, "chev", BOS_C_TEXT, 1, t.x + t.w - BOS_px(4), ay, ar);
-			} else
-				appTile(s, cx, top, a->icon, I18N_text(a->name), a->color, f, !f, box);
+			} else {
+				SDL_Rect t = appTile(s, cx, top, a->icon, I18N_text(a->name), a->color, f, !f, box);
+				if (f)
+					launch_rect = t;
+			}
 		} else
 			appTile(s, cx, top, "grid", I18N_text("All"), BOS_C_TEXT, f, !f, box);
 	}
@@ -562,6 +548,7 @@ void HomeBos_render(SDL_Surface* s) {
 	if (!built)
 		build();
 	pending = false;
+	launch_rect = (SDL_Rect){0, 0, 0, 0};
 	if (lib) {
 		libraryRender(s);
 		return;
@@ -575,13 +562,28 @@ void HomeBos_render(SDL_Surface* s) {
 		}
 		cpos = cfrom + (cfocus - cfrom) * easeOut(t);
 	}
+	BOS_benchLap(NULL);
+	// the row is on its way and nothing else moves: only its rows are drawn (the frame it lands on is a whole one)
+	static int band_h;
+	uint32_t key = BOS_keyMix(BOS_keyMix(BOS_keyMix(BOS_keyMix(11, row), afocus), npins), ncards > 0);
+	bool part = BOS_partialBegin(s, key, row == 0 && !moving, 0, band_h);
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_benchLap("fill");
 	BOS_statusBar(s, I18N_text("Home"));
+	BOS_benchLap("status");
 	int y = BOS_px(BOS_BAR_H);
 	y += sectionLabel(s, y, I18N_text("Continue"));
 	y += carousel(s, y);
+	BOS_benchLap("carousel");
 	y += caption(s, y);
+	BOS_benchLap("caption");
+	band_h = y;
+	if (part) {
+		BOS_partialEnd(s);
+		return;
+	}
 	appRow(s, y + BOS_px(14));
+	BOS_benchLap("approw");
 	if (row == 0) {
 		BosHint r[] = {{"A", I18N_text("Continue")}, {"X", I18N_text("Close")}, {"Y", I18N_text("Search")}};
 		BosHint l[] = {{"MENU", I18N_text("Options")}};
@@ -633,6 +635,19 @@ static void moveCarousel(int to) {
 	cstart = SDL_GetTicks();
 	if (!cstart)
 		cstart = 1;
+}
+
+// one step along เล่นต่อ: at an end a fresh press goes round, a held one knocks (§5.7)
+static void carouselStep(int dir, int btn) {
+	int to = cfocus + dir;
+	if (to < 0 || to >= ncards) {
+		if (ncards < 2 || !PAD_justPressed(btn)) {
+			BOS_bump(dir);
+			return;
+		}
+		to = to < 0 ? ncards - 1 : 0;
+	}
+	moveCarousel(to);
 }
 
 Entry* HomeBos_focusedGame(void) {
@@ -738,14 +753,22 @@ HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) 
 		return HOMEBOS_HANDLED; // no tabs on Home
 	if (PAD_justRepeated(BTN_LEFT)) {
 		if (row == 0)
-			moveCarousel(cfocus - 1);
+			carouselStep(-1, BTN_LEFT);
 		else if (afocus > 0)
 			afocus--;
+		else if (PAD_justPressed(BTN_LEFT)) // the app row wraps on a fresh press; a held key stops at the end
+			afocus = npins;
+		else
+			BOS_bump(-1);
 	} else if (PAD_justRepeated(BTN_RIGHT)) {
 		if (row == 0)
-			moveCarousel(cfocus + 1);
+			carouselStep(1, BTN_RIGHT);
 		else if (afocus < npins)
 			afocus++;
+		else if (PAD_justPressed(BTN_RIGHT))
+			afocus = 0;
+		else
+			BOS_bump(1);
 	} else if (PAD_justPressed(BTN_UP)) {
 		if (ncards > 0)
 			row = 0;
@@ -807,9 +830,7 @@ static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, int x, int y, i
 	if (st == HOMEART_LOADING)
 		pending = true;
 	if (st == HOMEART_READY && pic) {
-		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a));
-		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
-		SDL_SetSurfaceAlphaMod(pic, 255);
+		BOS_blit(pic, s, x, y, a);
 	} else {
 		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
 		int ic = h / 3;

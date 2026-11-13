@@ -27,12 +27,19 @@ static bool bg_step2; // showing the console's games
 static bool bg_listmode;
 static bool bg_built;
 static uint32_t bg_menu_down;
+// The game to stand on whenever its console's list is loaded (BosGames_restore). Kept until the first move: the
+// page is reset and its list loaded again (Home_reset) after the restore.
+static char bg_want_rom[MAX_PATH];
 
 // the wheel's slots (§6.2): box w, h, how much lower than the centre, alpha
 static const struct {
 	int w, h, drop;
 	float a;
 } WSLOT[3] = {{560, 380, 0, 1.0f}, {300, 220, 100, 0.5f}, {220, 150, 160, 0.22f}};
+
+int BosGames_page(void) {
+	return bg_step2 ? 11 : 10;
+}
 
 bool BosGames_active(void) {
 	return stack && stack->count == 1 && MenuTabs_current() == MENU_TAB_CONSOLES && !GameSwitcher_isList();
@@ -168,6 +175,36 @@ static void bgLoadGames(void) {
 	bg_gsel = bg_gtop = 0;
 	bg_gpos = bg_gfrom = 0;
 	bg_listmode = bg_ncons > 0 && listModeFor(bg_cons[bg_sel].path);
+	if (bg_want_rom[0] && bg_games && bg_games->entries) {
+		for (int i = 0; i < bg_games->entries->count; i++) {
+			Entry* e = bg_games->entries->items[i];
+			size_t l = strlen(e->path); // the game itself, or the folder it is in
+			if (!strncmp(e->path, bg_want_rom, l) && (bg_want_rom[l] == '\0' || bg_want_rom[l] == '/')) {
+				bg_gsel = i;
+				bg_gpos = bg_gfrom = (float)i;
+				break;
+			}
+		}
+	}
+}
+
+// Back from a game: เกม opens on that console's games, standing on the game. The launcher's own restore walks its
+// directory stack into the console, which is the old list page; nextui.c pops that and calls this.
+void BosGames_restore(const char* console_path, const char* rom_path) {
+	if (!bg_built)
+		bgBuild();
+	for (int i = 0; i < bg_ncons; i++) {
+		if (strcmp(bg_cons[i].path, console_path))
+			continue;
+		bg_sel = i;
+		bg_pos = bg_from = (float)i;
+		bg_start = 0;
+		snprintf(bg_want_rom, sizeof(bg_want_rom), "%s", rom_path ? rom_path : "");
+		bg_games_for = -1;
+		bgLoadGames();
+		bg_step2 = true;
+		return;
+	}
 }
 
 void BosGames_reset(void) {
@@ -251,6 +288,14 @@ static SDL_Surface* consoleSized(BgConsole* c, int slot) { // fitted (contain) i
 	SDL_SetSurfaceBlendMode(p, SDL_BLENDMODE_NONE);
 	SDL_BlitScaled(p, NULL, d, NULL);
 	SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_BLEND);
+	uint32_t m = (uint32_t)(256 * WSLOT[slot].a); // over the black page, alpha a = the colour scaled by a
+	if (m < 256)
+		for (int y = 0; y < h; y++) {
+			uint32_t* px = (uint32_t*)((uint8_t*)d->pixels + y * d->pitch);
+			for (int x = 0; x < w; x++)
+				px[x] = (px[x] & 0xFF000000u) | ((((px[x] & 0xFF00FF) * m) >> 8) & 0xFF00FF) |
+						((((px[x] & 0xFF00) * m) >> 8) & 0xFF00);
+		}
 	c->sized[slot] = d;
 	return d;
 }
@@ -268,9 +313,7 @@ static void wheelItem(SDL_Surface* s, BgConsole* c, int slot, int cx, int top) {
 	}
 	SDL_Surface* p = consoleSized(c, slot);
 	if (p) {
-		Uint8 m = (Uint8)(255 * a); // over the black page, alpha a = the colour scaled by a
-		SDL_SetSurfaceColorMod(p, m, m, m);
-		SDL_BlitSurface(p, NULL, s, &(SDL_Rect){cx - p->w / 2, top + (bh - p->h) / 2});
+		BOS_blit(p, s, cx - p->w / 2, top + (bh - p->h) / 2, 1); // its slot's dimming is in the copy
 		return;
 	}
 	// no picture: the console's tag as a wordmark on a surface card (radius 28)
@@ -291,9 +334,14 @@ static float wrapD(float d, int n) { // the shortest way round the wheel
 	return d;
 }
 
+static int bg_band_y[3], bg_band_h[3]; // the rows that move: of the wheel, of the covers, of the list
+static int bg_title_h;
+
 static void wheelRender(SDL_Surface* s) {
 	barTitle(s, I18N_text("Games"));
 	int top = BOS_px(BOS_BAR_H) + BOS_px(10);
+	bg_band_y[0] = 0;
+	bg_band_h[0] = top + BOS_px(WSLOT[0].h); // no slot hangs lower than the centre one
 	int n = bg_ncons;
 	// slot centres out from the middle: 328 / 498 px (the mockup's neighbour left 34, outer left -96)
 	float c1 = BOS_px(328), c2 = BOS_px(498);
@@ -309,7 +357,8 @@ static void wheelRender(SDL_Surface* s) {
 			int cx = s->w / 2 + (int)(d < 0 ? -off : off);
 			wheelItem(s, &bg_cons[i], slot, cx, top + BOS_px(drop));
 		}
-	if (n == 0)
+	BOS_benchLap("wheel");
+	if (n == 0 || BOS_partialOn())
 		return;
 	// the centred console's name under its picture: 56/700, then "<N> เกม" 30 text2
 	BgConsole* c = &bg_cons[bg_sel];
@@ -335,6 +384,7 @@ static void wheelRender(SDL_Surface* s) {
 			x += w + gap;
 		}
 	}
+	BOS_benchLap("name+dots");
 	if (pick_kind) {
 		BosHint p[] = {{"A", I18N_text(pick_kind == PICK_CONSOLE ? "Choose" : "Open")}, {"B", I18N_text("Cancel")}};
 		BOS_hintBar(s, p, 2, NULL, 0);
@@ -342,6 +392,7 @@ static void wheelRender(SDL_Surface* s) {
 	}
 	BosHint r[] = {{"A", I18N_text("Open")}, {"B", I18N_text("Back")}, {"Y", I18N_text("Search")}};
 	BOS_hintBar(s, r, 3, NULL, 0);
+	BOS_benchLap("hint");
 }
 
 // ---- step 2: the console's games ----
@@ -362,9 +413,7 @@ static void gamePic(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r,
 			pending = true;
 	}
 	if (pic) {
-		SDL_SetSurfaceAlphaMod(pic, (Uint8)(255 * a));
-		SDL_BlitSurface(pic, NULL, s, &(SDL_Rect){x, y});
-		SDL_SetSurfaceAlphaMod(pic, 255);
+		BOS_blit(pic, s, x, y, a);
 	} else {
 		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
 		int ic = h / 3;
@@ -390,6 +439,25 @@ static bool canResume(Entry* e) {
 	return rs.can_resume;
 }
 
+// A direction held long enough to race through the games: the letter going by, large (§5.7)
+static bool bg_letter_shown;
+static void heldLetter(SDL_Surface* s, Entry* e, int cx, int cy) {
+	bg_letter_shown = false;
+	if (PAD_heldRepeats(BTN_LEFT | BTN_RIGHT | BTN_UP | BTN_DOWN) <= 5 || !e->name[0])
+		return;
+	char ch[8] = {0};
+	unsigned char c0 = (unsigned char)e->name[0];
+	int n = c0 < 0x80 ? 1 : c0 < 0xE0 ? 2 : c0 < 0xF0 ? 3 : 4;
+	for (int i = 0; i < n && e->name[i]; i++)
+		ch[i] = e->name[i];
+	if (n == 1 && ch[0] >= 'a' && ch[0] <= 'z')
+		ch[0] -= 32;
+	int box = BOS_px(168), px = BOS_px(104);
+	BOS_rrect(s, cx - box / 2, cy - box / 2, box, box, BOS_px(36), BOS_theme()->focus);
+	BOS_textMid(s, ch, px, 700, BOS_theme()->onfocus, 1, cx - BOS_textW(ch, px, 700) / 2, cy);
+	bg_letter_shown = true;
+}
+
 static void coversRender(SDL_Surface* s, int top) { // §6.3: the full-size carousel and its caption
 	int ng = gamesCount();
 	int cw = BOS_px(500), ch = BOS_px(375), sw = BOS_px(300), sh = BOS_px(225);
@@ -405,12 +473,16 @@ static void coversRender(SDL_Surface* s, int top) { // §6.3: the full-size caro
 			int w = slot == 0 ? cw : slot == 1 ? sw : ow, h = slot == 0 ? ch : slot == 1 ? sh : oh;
 			float a = slot == 0 ? 1.0f : slot == 1 ? 0.5f : 0.25f;
 			int r = BOS_px(slot == 0 ? 24 : slot == 1 ? 20 : 18);
-			int cx = s->w / 2 + (int)(d < 0 ? -off : off);
+			int cx = s->w / 2 + (int)(d < 0 ? -off : off) - BOS_bumpPx();
 			gamePic(s, bg_games->entries->items[i], cx - w / 2, top + (ch - h) / 2, w, h, r, a, slot == 0 && bg_gstart == 0);
 		}
 	if (ng == 0)
 		return;
 	Entry* e = bg_games->entries->items[bg_gsel];
+	launch_rect = (SDL_Rect){(s->w - cw) / 2, top, cw, ch};
+	bg_band_y[1] = top - 2 * BOS_px(BOS_RING); // the ring, the covers, the caption: down to the hint bar
+	bg_band_h[1] = s->h - BOS_px(BOS_BAR_H) - bg_band_y[1];
+	heldLetter(s, e, s->w / 2, top + ch / 2);
 	int y = top + ch + BOS_px(14);
 	char name[256];
 	centredName(s, e->name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, y);
@@ -426,47 +498,79 @@ static void coversRender(SDL_Surface* s, int top) { // §6.3: the full-size caro
 		pill(s, x + mw + (meta[0] ? BOS_px(16) : 0), cy, rl, BOS_C_OK);
 }
 
+static void listRowText(SDL_Surface* s, Entry* e, int x, int y, int w, int h, bool on, bool marquee) {
+	int pad = BOS_px(24), pill_w = 0;
+	float a = on ? 1.0f : BOS_DIM;
+	uint32_t fg = on ? BOS_theme()->onfocus : BOS_C_TEXT;
+	if (canResume(e)) {
+		const char* rl = I18N_text("Continue");
+		pill_w = pillW(rl, true) + BOS_px(12);
+		pill(s, x + w - pad - pillW(rl, true), y + h / 2, rl, BOS_C_OK);
+	}
+	if (marquee) // the focused row's long name scrolls
+		BOS_textMarquee(s, e->name, BOS_FS_BODY, 600, fg, a, x + pad, y + h / 2, w - 2 * pad - pill_w);
+	else {
+		char name[256];
+		BOS_fit(e->name, BOS_FS_BODY, on ? 600 : 500, w - 2 * pad - pill_w, name, sizeof(name));
+		BOS_textMid(s, name, BOS_FS_BODY, on ? 600 : 500, fg, a, x + pad, y + h / 2);
+	}
+}
+
+static BosGlide bg_gl_top, bg_gl_sel; // the list's scroll and its highlight follow the selection (§5.7: 180 / 120 ms)
+static bool bg_list_live, bg_list_was; // the list was this page's last frame
+static Directory* bg_list_of;
+
 static void listRender(SDL_Surface* s, int top) { // §6.4: rows of 96 on the left, the focused game's cover on the right
 	int ng = gamesCount();
 	if (bg_gsel < bg_gtop)
 		bg_gtop = bg_gsel;
 	if (bg_gsel >= bg_gtop + LIST_ROWS)
 		bg_gtop = bg_gsel - LIST_ROWS + 1;
-	int lx = BOS_px(24), lw = BOS_px(560), rh = BOS_px(BOS_ROW_H), pad = BOS_px(24);
-	for (int r = 0; r < LIST_ROWS && bg_gtop + r < ng; r++) {
-		int i = bg_gtop + r, y = top + r * rh;
-		Entry* e = bg_games->entries->items[i];
-		bool f = i == bg_gsel;
-		int x = lx, w = lw, h = rh;
-		if (f) { // focus: white fill, x1.04
-			int gw = (int)(lw * BOS_ROW_SCALE) - lw, gh = (int)(rh * BOS_ROW_SCALE) - rh;
-			x -= gw / 2, w += gw, y -= gh / 2, h += gh;
-			BOS_rrect(s, x, y, w, h, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
-		}
-		float a = f ? 1.0f : BOS_DIM;
-		uint32_t fg = f ? BOS_theme()->onfocus : BOS_C_TEXT;
-		int pill_w = 0;
-		if (canResume(e)) {
-			const char* rl = I18N_text("Continue");
-			pill_w = pillW(rl, true) + BOS_px(12);
-			if (!f) // the pill is drawn opaque: only on rows it doesn't need to be dimmed with
-				pill(s, x + w - pad - pillW(rl, true), y + h / 2, rl, BOS_C_OK);
-			else
-				pill(s, x + w - pad - pillW(rl, true), y + h / 2, rl, BOS_C_OK);
-		}
-		char name[256];
-		if (f) // the focused row's long name scrolls
-			BOS_textMarquee(s, e->name, BOS_FS_BODY, 600, fg, a, x + pad, y + h / 2, w - 2 * pad - pill_w);
-		else {
-			BOS_fit(e->name, BOS_FS_BODY, 500, w - 2 * pad - pill_w, name, sizeof(name));
-			BOS_textMid(s, name, BOS_FS_BODY, 500, fg, a, x + pad, y + h / 2);
+	int lx = BOS_px(24), lw = BOS_px(560), rh = BOS_px(BOS_ROW_H);
+	int gw = (int)(lw * BOS_ROW_SCALE) - lw, gh = (int)(rh * BOS_ROW_SCALE) - rh; // the focus fill is x1.04
+	bool snap = !bg_list_was || bg_list_of != bg_games; // the list was not on screen just now: it starts in place
+	bg_list_live = true;
+	bg_list_of = bg_games;
+	float ftop = BOS_glideTo(&bg_gl_top, (float)bg_gtop, 180, snap);
+	float fsel = BOS_glideTo(&bg_gl_sel, (float)bg_gsel, 120, snap);
+	int bump = BOS_bumpPx();
+	bool still = !BOS_glideMoving(&bg_gl_top) && !BOS_glideMoving(&bg_gl_sel) && !bump;
+	SDL_Rect area = {0, top - gh, lx + lw + gw, LIST_ROWS * rh + 2 * gh};
+	bg_band_y[2] = area.y;
+	bg_band_h[2] = area.h;
+	int first = (int)ftop;
+	BOS_clip(s, &area);
+	for (int i = first < 0 ? 0 : first; i <= first + LIST_ROWS && i < ng; i++) {
+		if (still && i == bg_gsel)
+			continue; // drawn on the fill below
+		listRowText(s, bg_games->entries->items[i], lx, top + (int)((i - ftop) * rh), lw, rh, false, false);
+	}
+	if (ng > 0) {
+		int px = lx - gw / 2, py = top + (int)((fsel - ftop) * rh) - gh / 2 + bump, pw = lw + gw, ph = rh + gh;
+		BOS_rrect(s, px, py, pw, ph, BOS_px(BOS_RADIUS_ROW), BOS_theme()->focus);
+		if (still)
+			listRowText(s, bg_games->entries->items[bg_gsel], px, py, pw, ph, true, true);
+		else { // on its way: whatever rows it covers, in the focus colours, cut to its shape
+			SDL_Rect pr = {px, py, pw, ph}, cl;
+			if (SDL_IntersectRect(&pr, &area, &cl)) {
+				BOS_clip(s, &cl);
+				for (int i = first < 0 ? 0 : first; i <= first + LIST_ROWS && i < ng; i++) {
+					int y = top + (int)((i - ftop) * rh);
+					if (y + rh > py && y < py + ph)
+						listRowText(s, bg_games->entries->items[i], px, y - gh / 2, pw, ph, true, false);
+				}
+			}
 		}
 	}
+	BOS_clip(s, NULL);
+	BOS_benchLap("rows");
 	if (ng == 0)
 		return;
 	Entry* e = bg_games->entries->items[bg_gsel];
 	int rx = lx + lw + BOS_px(32), cw = BOS_px(384), ch = BOS_px(288);
 	gamePic(s, e, rx, top, cw, ch, BOS_px(24), 1, false);
+	BOS_benchLap("pic");
+	launch_rect = (SDL_Rect){rx, top, cw, ch};
 	char meta[128];
 	lastPlayed(e, meta, sizeof(meta));
 	int y = top + ch + BOS_px(12);
@@ -475,15 +579,21 @@ static void listRender(SDL_Surface* s, int top) { // §6.4: rows of 96 on the le
 	y += BOS_lineH(BOS_FS_SMALL) + BOS_px(12); // the line's space stays, so the pill never jumps
 	if (canResume(e))
 		pill(s, rx, y + BOS_px(22), I18N_text("Continue"), BOS_C_OK);
+	heldLetter(s, e, lx + lw / 2, top + LIST_ROWS * rh / 2);
 }
 
 static void gamesRender(SDL_Surface* s) {
-	barTitle(s, I18N_text("Games"));
-	BgConsole* c = &bg_cons[bg_sel];
-	char sub[96];
-	snprintf(sub, sizeof(sub), I18N_text("%d games · Sorted A-Z"), gamesCount());
+	bool part = BOS_partialOn(); // only the rows of the covers (or the list): the bars and the title stay as they are
 	int top = BOS_px(BOS_BAR_H);
-	top += BOS_largeTitle(s, top, c->name, sub);
+	if (!part) {
+		barTitle(s, I18N_text("Games"));
+		BgConsole* c = &bg_cons[bg_sel];
+		char sub[96];
+		snprintf(sub, sizeof(sub), I18N_text("%d games · Sorted A-Z"), gamesCount());
+		bg_title_h = BOS_largeTitle(s, top, c->name, sub);
+	}
+	top += bg_title_h;
+	BOS_benchLap("title");
 	if (gamesCount() == 0) {
 		const char* t = I18N_text("No games yet");
 		BOS_text(s, t, BOS_FS_BODY, 400, BOS_C_TEXT2, 1, (s->w - BOS_textW(t, BOS_FS_BODY, 400)) / 2, top + BOS_px(120));
@@ -491,6 +601,9 @@ static void gamesRender(SDL_Surface* s) {
 		listRender(s, top);
 	else
 		coversRender(s, top);
+	BOS_benchLap("body");
+	if (part)
+		return;
 	if (pick_kind) { // nothing to pick in an empty console: only B
 		BosHint p[] = {{"A", I18N_text("Choose")}, {"B", I18N_text("Back")}};
 		BOS_hintBar(s, gamesCount() > 0 ? p : p + 1, gamesCount() > 0 ? 2 : 1, NULL, 0);
@@ -499,6 +612,7 @@ static void gamesRender(SDL_Surface* s) {
 	BosHint r[] = {{"A", I18N_text("Play")}, {"B", I18N_text("Back")}, {"X", I18N_text("Favorite")}, {"Y", I18N_text("Search")}};
 	BosHint l[] = {{"MENU", I18N_text("Options")}};
 	BOS_hintBar(s, r, 4, l, gamesCount() > 0 ? 1 : 0);
+	BOS_benchLap("hint");
 }
 
 static void tweenStep(float* pos, float* from, uint32_t* start, int target) {
@@ -516,7 +630,29 @@ void BosGames_render(SDL_Surface* s) {
 	if (!bg_built)
 		bgBuild();
 	pending = false;
+	launch_rect = (SDL_Rect){0, 0, 0, 0};
+	bg_letter_shown = false;
+	bg_list_was = bg_list_live;
+	bg_list_live = false;
+	BOS_benchLap(NULL);
+	// While only the wheel, the covers or the list move, only their rows are drawn. The rows of the wheel start at
+	// the top of the screen (its bar is always drawn); those of the games leave the bars out, so they are only the
+	// frames of a move (a clock that changes on a still page gets a whole frame).
+	bool can = bg_ncons > 0;
+	static bool was_loading; // the last frame was waiting for a cover
+	bool moving = bg_gstart != 0 || BOS_glideMoving(&bg_gl_top) || BOS_glideMoving(&bg_gl_sel) || BOS_bumpActive() ||
+				  BOS_marqueeActive() || was_loading;
+	if (can && bg_step2) {
+		bgLoadGames();
+		can = gamesCount() > 0 && moving;
+	}
+	int kind = !bg_step2 ? 0 : bg_listmode ? 2 : 1;
+	// (the focused game shows only inside the games' rows; the minute is in the bar they leave out)
+	uint32_t key = BOS_keyMix(BOS_keyMix(BOS_keyMix(20 + kind, bg_sel), bg_step2 ? (uint32_t)(time(NULL) / 60) : 0), pick_kind);
+	key = BOS_keyMix(BOS_keyMix(key, bg_step2 ? gamesCount() : bg_ncons), bg_ncons > 0 ? bg_cons[bg_sel].count : 0);
+	BOS_partialBegin(s, key, can, bg_band_y[kind], bg_band_h[kind]);
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_benchLap("fill");
 	if (bg_ncons == 0) {
 		barTitle(s, I18N_text("Games"));
 		BosHint r[] = {{"B", I18N_text("Back")}};
@@ -541,10 +677,12 @@ void BosGames_render(SDL_Surface* s) {
 		}
 		wheelRender(s);
 	}
+	was_loading = pending;
+	BOS_partialEnd(s);
 }
 
 bool BosGames_animating(void) {
-	return pending || bg_start != 0 || bg_gstart != 0 || BOS_marqueeActive() || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
+	return pending || bg_letter_shown || bg_start != 0 || bg_gstart != 0 || BOS_marqueeActive() || HomeArt_checkAsyncLoaded() || GameInfo_checkAsyncLoaded();
 }
 
 Entry* BosGames_focusedGame(void) {
@@ -556,6 +694,7 @@ static void wheelMove(int dir) {
 		return;
 	bg_from = bg_pos;
 	bg_sel = (bg_sel + dir + bg_ncons) % bg_ncons;
+	bg_want_rom[0] = '\0';
 	bg_start = SDL_GetTicks() ? SDL_GetTicks() : 1;
 	// keep only the pictures near the selection (each console holds up to three fitted copies)
 	for (int i = 0; i < bg_ncons; i++)
@@ -569,10 +708,28 @@ static void gameMove(int to) {
 		return;
 	bg_gfrom = bg_gpos;
 	bg_gsel = to;
+	bg_want_rom[0] = '\0';
 	if (!bg_listmode)
 		bg_gstart = SDL_GetTicks() ? SDL_GetTicks() : 1;
 	else
 		bg_gpos = (float)to;
+}
+
+// one step along the games: at an end a fresh press goes round, a held one knocks (§5.7)
+static void gameStep(int dir, int btn) {
+	int ng = gamesCount(), to = bg_gsel + dir;
+	if (to < 0 || to >= ng) {
+		if (ng < 2 || !PAD_justPressed(btn)) {
+			BOS_bump(dir);
+			return;
+		}
+		to = to < 0 ? ng - 1 : 0;
+		gameMove(to);
+		if (!bg_listmode) // the covers come in from one place outside, not past every game on the way
+			bg_gfrom = bg_gpos = to == 0 ? -1.0f : (float)ng;
+		return;
+	}
+	gameMove(to);
 }
 
 // pick mode (DESIGN §6.9b): the wheel and the games as they are, A picks, B backs out; nothing else
@@ -609,9 +766,9 @@ static BosGamesInput pickGamesInput(bool tap_select) {
 		bg_gpos = (float)bg_gsel;
 		bg_gstart = 0;
 	} else if (PAD_justRepeated(prev))
-		gameMove(bg_gsel - 1);
+		gameStep(-1, prev);
 	else if (PAD_justRepeated(next))
-		gameMove(bg_gsel + 1);
+		gameStep(1, next);
 	else if (bg_listmode && PAD_justRepeated(BTN_LEFT))
 		gameMove(bg_gsel - LIST_ROWS > 0 ? bg_gsel - LIST_ROWS : 0);
 	else if (bg_listmode && PAD_justRepeated(BTN_RIGHT))
@@ -626,9 +783,13 @@ static BosGamesInput pickGamesInput(bool tap_select) {
 }
 
 BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu, bool tap_select) {
+	static bool bg_was_busy = true;
+	bool bg_busy = !bg_built || PAD_anyPressed() || PAD_anyJustReleased() || tap_menu || tap_select;
 	if (!bg_built)
 		bgBuild();
-	*dirty = true;
+	if (bg_busy || bg_was_busy)
+		*dirty = true;
+	bg_was_busy = bg_busy;
 	if (pick_kind == PICK_CONSOLE || pick_kind == PICK_GAME)
 		return pickGamesInput(tap_select);
 	if (PAD_justPressed(BTN_MENU))
@@ -677,9 +838,9 @@ BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu
 	}
 	int prev = bg_listmode ? BTN_UP : BTN_LEFT, next = bg_listmode ? BTN_DOWN : BTN_RIGHT;
 	if (PAD_justRepeated(prev))
-		gameMove(bg_gsel - 1);
+		gameStep(-1, prev);
 	else if (PAD_justRepeated(next))
-		gameMove(bg_gsel + 1);
+		gameStep(1, next);
 	else if (bg_listmode && PAD_justRepeated(BTN_LEFT))
 		gameMove(bg_gsel - LIST_ROWS > 0 ? bg_gsel - LIST_ROWS : 0);
 	else if (bg_listmode && PAD_justRepeated(BTN_RIGHT))
