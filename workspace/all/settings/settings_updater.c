@@ -29,6 +29,7 @@
 #include "wget_fetch.h"
 #include "updater_url.h"
 #include "i18n.h"
+#include "bos_ui.h"
 #include <ctype.h>
 #include <signal.h>
 #include <strings.h>
@@ -320,30 +321,43 @@ static void render_update_page(SDL_Surface* screen, const char* title,
 							   const char* status, int progress_pct,
 							   const char* speed_str, const char* eta_str,
 							   int show_cancel) {
-	GFX_clear(screen);
-	UI_renderMenuBar(screen, title);
-
-	// Build detail string from speed and ETA
-	char detail[128] = "";
-	if ((speed_str && speed_str[0]) || (eta_str && eta_str[0])) {
-		if (speed_str && speed_str[0] && eta_str && eta_str[0])
-			snprintf(detail, sizeof(detail), "%s - %s remaining", speed_str, eta_str);
-		else if (speed_str && speed_str[0])
-			snprintf(detail, sizeof(detail), "%s", speed_str);
-		else if (eta_str && eta_str[0])
-			snprintf(detail, sizeof(detail), "%s remaining", eta_str);
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Update"));
+	int px = BOS_px(BOS_PAGE_PAD), w = screen->w - 2 * px; // under the large title
+	int y = BOS_px(BOS_BAR_H) + BOS_px(16);
+	y += BOS_largeTitle(screen, y, I18N_text(title), NULL);
+	y += BOS_px(24);
+	if (status && status[0])
+		y += BOS_textWrap(screen, I18N_text(status), BOS_FS_BODY, 600, BOS_C_TEXT, 1, px, y, w, 3) + BOS_px(28);
+	if (progress_pct >= 0) { // the bar and its percent, as the HUD's level bar
+		int pct = progress_pct > 100 ? 100 : progress_pct, bh = BOS_px(14);
+		char num[16];
+		snprintf(num, sizeof(num), "%d%%", pct);
+		int nw = BOS_textW("100%", BOS_FS_SMALL, 600), bw = w - nw - BOS_px(24);
+		int cy = y + BOS_lineH(BOS_FS_SMALL) / 2;
+		BOS_rrect(screen, px, cy - bh / 2, bw, bh, bh / 2, BOS_theme()->surface2);
+		int fw = bw * pct / 100;
+		if (fw > 0)
+			BOS_rrect(screen, px, cy - bh / 2, fw < bh ? bh : fw, bh, bh / 2, BOS_theme()->primary);
+		BOS_textMid(screen, num, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, px + w - BOS_textW(num, BOS_FS_SMALL, 600), cy);
+		y += BOS_lineH(BOS_FS_SMALL) + BOS_px(16);
 	}
-
-	UI_renderDownloadProgress(screen, &(UIDownloadProgress){
-										  .status = status,
-										  .detail = detail,
-										  .progress = progress_pct,
-										  .show_bar = (progress_pct >= 0),
-									  });
-
-	if (show_cancel)
-		UI_renderButtonHintBar(screen, (char*[]){"B", "CANCEL", NULL});
-
+	char detail[128] = "", left[64] = ""; // speed and time left
+	if (eta_str && eta_str[0])
+		snprintf(left, sizeof(left), I18N_text("%s left"), eta_str);
+	if (speed_str && speed_str[0] && left[0])
+		snprintf(detail, sizeof(detail), "%s · %s", speed_str, left);
+	else if (speed_str && speed_str[0])
+		snprintf(detail, sizeof(detail), "%s", speed_str);
+	else
+		snprintf(detail, sizeof(detail), "%s", left);
+	if (detail[0])
+		BOS_text(screen, detail, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px, y);
+	if (show_cancel) {
+		BosHint r[] = {{"B", I18N_text("Cancel")}};
+		BOS_hintBar(screen, r, 1, NULL, 0);
+	} else
+		BOS_hintBar(screen, NULL, 0, NULL, 0);
 	GFX_flip(screen);
 }
 
@@ -481,6 +495,7 @@ static int fetch_release_details(SDL_Surface* screen, ReleaseInfo* release) {
 
 // Show update info (version + release notes) with A to confirm, B to cancel.
 static int show_update_info(SDL_Surface* screen, ReleaseInfo* release) {
+	bool dirty = true;
 	while (1) {
 		GFX_startFrame();
 		PAD_poll();
@@ -489,39 +504,30 @@ static int show_update_info(SDL_Surface* screen, ReleaseInfo* release) {
 			return 0;
 		if (PAD_justPressed(BTN_A))
 			return 1;
-
-		GFX_clear(screen);
-		UI_renderMenuBar(screen, "Update Available");
-		UI_renderButtonHintBar(screen, (char*[]){"B", "CANCEL", "A", "INSTALL", NULL});
-
-		int bar_h = BAR_HEIGHT;
-		int y = bar_h + SCALE1(PADDING * 2);
-
-		SDL_Surface* tag_surf = GFX_renderText(font.large, release->tag_name, COLOR_WHITE);
-		if (tag_surf) {
-			SDL_BlitSurface(tag_surf, NULL, screen,
-							&(SDL_Rect){(screen->w - tag_surf->w) / 2, y});
-			y += tag_surf->h + SCALE1(PADDING);
-			SDL_FreeSurface(tag_surf);
+		if (!dirty) { // a still page: nothing to draw until a key
+			GFX_sync();
+			continue;
 		}
+		dirty = false;
 
-		{
-			int max_w = screen->w - SCALE1(PADDING * 4);
-			char notes_copy[2048];
-			strncpy(notes_copy,
-					release->release_notes[0]
-						? release->release_notes
-						: "Release notes are unavailable right now, but you "
-						  "can still update to the latest version. Press A to install.",
-					sizeof(notes_copy) - 1);
-			notes_copy[sizeof(notes_copy) - 1] = '\0';
-
-			int max_lines = 8;
-			GFX_wrapText(font.small, notes_copy, max_w, max_lines);
-			GFX_blitWrappedText(font.small, notes_copy, max_w, max_lines,
-								COLOR_GRAY, screen, y);
-		}
-
+		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+		BOS_statusBar(screen, I18N_text("Update"));
+		int px = BOS_px(BOS_PAGE_PAD), w = screen->w - 2 * px; // under the large title
+		int y = BOS_px(BOS_BAR_H) + BOS_px(16);
+		char sub[160];
+		if (current_tag_cache[0])
+			snprintf(sub, sizeof(sub), "%s → %s", current_tag_cache, release->tag_name);
+		else
+			snprintf(sub, sizeof(sub), "%s", release->tag_name);
+		y += BOS_largeTitle(screen, y, I18N_text("Update Available"), sub);
+		y += BOS_px(24);
+		const char* notes = release->release_notes[0]
+								? release->release_notes
+								: I18N_text("Release notes are unavailable right now, but you can still update to the "
+											"latest version. Press A to install.");
+		BOS_textWrap(screen, notes, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px, y, w, 9);
+		BosHint r[] = {{"A", I18N_text("Install")}, {"B", I18N_text("Cancel")}};
+		BOS_hintBar(screen, r, 2, NULL, 0);
 		GFX_flip(screen);
 	}
 }
@@ -587,7 +593,7 @@ static void do_install(SDL_Surface* screen, ReleaseInfo* release) {
 		unsigned long long free_mb = (unsigned long long)vfs.f_bavail * vfs.f_frsize / (1024 * 1024);
 		if (free_mb < UPDATE_MIN_FREE_MB) {
 			char msg[128];
-			snprintf(msg, sizeof(msg), "Free up %llu MB on the SD card",
+			snprintf(msg, sizeof(msg), I18N_text("Free up %llu MB on the SD card"),
 					 UPDATE_MIN_FREE_MB - free_mb);
 			show_message_page(screen, "Not Enough Space", msg);
 			return;
@@ -739,7 +745,8 @@ static SettingItem* find_updater_item(SettingsPage* page) {
 // ============================================
 
 void updater_about_on_show(SettingsPage* page) {
-	(void)page;
+	if (page && page->item_count > 1)
+		page->selected = 1; // the updater row, not "This version"
 
 	char version[128];
 	char sha[64];

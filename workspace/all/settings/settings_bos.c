@@ -396,9 +396,11 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		keyRowDraw(s, I18N_text(it->name), v, hv[0] != '\0', 1, x, y, w, h, hot);
 		return;
 	}
+	int grown = 0; // the focused row is 4 % wider: one or two lines is decided at the plain width
 	if (hot) {
 		int gw = (int)(w * BOS_ROW_SCALE) - w, gh = (int)(h * BOS_ROW_SCALE) - h;
 		x -= gw / 2, w += gw, y -= gh / 2, h += gh;
+		grown = gw;
 		if (it->lifted) // จัดเรียง: picked up, as Home's (DESIGN §6.1)
 			y -= BOS_px(12);
 		if (!row_nofill)
@@ -517,17 +519,17 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 					widest = lw;
 			}
 	int arw_max = SettingsBos_isPickable(it) ? 2 * (ar + ag) : 0;
-	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, 600) + BOS_px(16) + widest + arw_max > room;
+	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, 600) + BOS_px(16) + widest + arw_max > room - grown;
 	if (two && k == V_TEXT && cw + arw > room && hot)
 		cw = room - arw; // the whole value, scrolling in that room
 	else if (two && k == V_TEXT && cw + arw > room)
 		BOS_fit(I18N_text(itemValue(it)), BOS_FS_SMALL, 400, room - arw, val, sizeof(val)), cw = BOS_textW(val, BOS_FS_SMALL, 400);
-	if (two && k == V_SLIDER && cw + arw > room)
-		cw = room - arw;
+	if (two && k == V_SLIDER) // under its name: the row's width, the same with or without the arrows
+		cw = room - arw_max;
 
 	if (chev)
 		BOS_icon(s, "chev", hot ? C_ON_SUB : BOS_C_TEXTOFF, a, right - BOS_px(28), cy - BOS_px(14), BOS_px(28));
-	int ly = two ? y + h * 32 / 100 : cy, vy = two ? y + h * 73 / 100 : cy;
+	int ly = two ? y + h * 29 / 100 : cy, vy = two ? y + h * 77 / 100 : cy; // room for a Thai name's lower vowels
 	char label[160];
 	int label_room = two || k == V_NONE ? room : k == V_TOGGLE ? room - cw - BOS_px(16) : room - cw - arw - BOS_px(16);
 	if (it->name_check) { // ✓ right after the name (the connected network), always in view
@@ -552,7 +554,8 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 	if (arrows) {
 		BOS_icon(s, "chevl", sub, 1, vx, vy - ar / 2, ar);
 		vx += ar + ag;
-	}
+	} else if (two && k == V_SLIDER && arw_max)
+		vx += ar + ag; // where the arrow is when focused: the bar does not move
 	switch (k) {
 	case V_TOGGLE: {
 		static SettingItem* tg_it; // the focused switch: its knob slides, 150 ms
@@ -698,7 +701,7 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 	char head[160];
 	BOS_fit(I18N_text(pageTitle(page, cat)), BOS_FS_TITLE, 700, rw - BOS_px(8), head, sizeof(head));
 	BOS_text(s, head, BOS_FS_TITLE, 700, BOS_C_TEXT, 1, rx + BOS_px(8), top);
-	int list_y = top + BOS_px(74), rh = BOS_px(BOS_ROW_H);
+	int list_y = top + BOS_px(80), rh = BOS_px(BOS_ROW_H);
 	int foot_h = BOS_px(8) + 2 * BOS_lineH(26);
 	const char* foot = NULL;
 	*hot_item = NULL;

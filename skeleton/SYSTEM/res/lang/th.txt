@@ -767,3 +767,95 @@ Sound style	ชุดเสียง
 Your own .wav files in .userdata/shared/sounds replace these	วางไฟล์ .wav ของคุณใน .userdata/shared/sounds เพื่อใช้แทนได้
 Click	คลิก
 Retro	เกมเก่า
+Configure LED lighting effects	ตั้งค่าเอฟเฟกต์ สี และความเร็วของไฟ LED แต่ละจุด
+A game's play time and achievements, in the menus and the Game Switcher.	เวลาเล่นและความสำเร็จของเกม ในเมนูและหน้าสลับเกม
+Adjust date and time using the clock editor	ตั้งวันที่และเวลา
+Automatically start SSH/SFTP when device boots.	เปิด SSH/SFTP เองทุกครั้งที่เปิดเครื่อง
+Brightness when FN is on	ความสว่างเมื่อเปิดสวิตช์ FN
+Busybox version	เวอร์ชัน Busybox
+Change the device boot logo.	เปลี่ยนโลโก้ตอนเปิดเครื่อง
+Clears the cached emulator/roms list so it rescans on next launch.	ล้างรายชื่อเกมที่จำไว้ แล้วสแกนใหม่ครั้งหน้า
+Collections layout	รูปแบบคอลเลกชัน
+Color temperature (0 to 40)	อุณหภูมิสีของจอ (0 ถึง 40)
+Color temperature when FN is on	อุณหภูมิสีเมื่อเปิดสวิตช์ FN
+Consoles layout	รูปแบบหน้าเกม
+Contrast enhancement (-4 to 5)	ความคมชัดของจอ (-4 ถึง 5)
+Contrast when FN is on	คอนทราสต์เมื่อเปิดสวิตช์ FN
+Current audio sink and sample rate	อุปกรณ์เสียงและอัตราสุ่มตอนนี้
+Display brightness (0 to 10)	ความสว่างของจอ (0 ถึง 10)
+Duration	ระยะเวลา
+Enable or disable haptic feedback on certain actions in the OS	สั่นเบาๆ เมื่อกดบางอย่างในระบบ
+Enable simplified menu for children or casual users.	เมนูแบบง่าย สำหรับเด็กหรือคนที่เล่นเป็นครั้งคราว
+Explains Simple Mode and PIN recovery.	อธิบายโหมดง่ายและการกู้ PIN
+Exposure enhancement (-4 to 5)	ความสว่างของภาพ (-4 ถึง 5)
+Exposure when FN is on	แสงเมื่อเปิดสวิตช์ FN
+F1 launches	F1 เปิด
+F2 launches	F2 เปิด
+FN switch disables LED	สวิตช์ FN ปิดไฟ LED
+Game lists layout	รูปแบบรายชื่อเกม
+How a console's or collection's games draw.	รูปแบบการแสดงเกมของแต่ละเครื่องหรือคอลเลกชัน
+How hard the motor rumbles in games and for haptic feedback	แรงสั่นในเกมและตอนกดปุ่ม
+How it works	ทำงานอย่างไร
+How long notifications stay on screen	การแจ้งเตือนค้างบนจอนานเท่าไร
+How the Collections tab draws.	รูปแบบหน้าคอลเลกชัน
+How the Consoles tab draws.	รูปแบบหน้าเกม
+How the Tools tab draws.	รูปแบบหน้าเครื่องมือ
+Keep the screen on and block sleep while connected to a computer over USB.	ไม่ปิดจอและไม่พักเครื่องขณะต่อคอมด้วย USB
+Output	เอาต์พุต
+Output device and sample-rate policy	อุปกรณ์เสียงและอัตราสุ่ม
+Period of inactivity before screen turns off (0-600s)	ไม่ได้ใช้งานนานเท่าไรจึงปิดจอ (0-600 วินาที)
+Prevent deep sleep mode. Useful for ADB debugging.	ไม่ให้เครื่องหลับลึก ใช้ตอนดีบักด้วย ADB
+Remove macOS junk files (.DS_Store, ._*, .Trashes, etc.)	ลบไฟล์ขยะจาก macOS (.DS_Store, ._*, .Trashes ฯลฯ)
+Resets all options in this menu to their default values.	คืนทุกตัวเลือกในหน้านี้เป็นค่าเริ่มต้น
+Restores the console's factory OSD files and reverts NX boot patches, if any. The NX OSD is unaffected.	คืนไฟล์เมนูด่วนของโรงงานและยกเลิกแพตช์ตอนบูต (ถ้ามี)
+Saturation enhancement (-5 to 5)	ความอิ่มสี (-5 ถึง 5)
+Saturation when FN is on	ความอิ่มสีเมื่อเปิดสวิตช์ FN
+Save app and game logs to the SD card (.userdata/logs). Off keeps them in RAM only.	เก็บ log ของแอปและเกมลงการ์ด (.userdata/logs) ถ้าปิดจะเก็บไว้ในแรมเท่านั้น
+Select the fan speed percentage (Quiet/Normal/Performance or 0-100%)	ความเร็วพัดลม (เงียบ/ปกติ/แรง หรือ 0-100%)
+Show clock in the 24hrs time format	แสดงเวลาแบบ 24 ชั่วโมง
+Show notification when loading game state	แจ้งเตือนเมื่อโหลดสถานะเกม
+Show notification when saving game state	แจ้งเตือนเมื่อบันทึกสถานะเกม
+Show notification when taking a screenshot	แจ้งเตือนเมื่อจับภาพหน้าจอ
+Show overlay for volume, brightness, and color temp adjustments	แสดงแถบระดับเมื่อปรับเสียง ความสว่าง หรืออุณหภูมิสี
+Show the Collections tab.	แสดงแท็บคอลเลกชัน
+Show the Consoles tab.	แสดงแท็บเกม
+Show the Home tab. It still shows when no other tab does.	แสดงแท็บหน้าแรก (ยังแสดงอยู่ถ้าไม่มีแท็บอื่น)
+Show the Tools tab.	แสดงแท็บเครื่องมือ
+Speaker volume (0-20)	ระดับเสียงลำโพง (0-20)
+Switch will also disable LEDs	สวิตช์จะปิดไฟ LED ด้วย
+Sync time via NTP (requires internet)	ตั้งเวลาอัตโนมัติจากอินเทอร์เน็ต
+Test buttons, D-pad, and joystick inputs	ทดสอบปุ่ม ปุ่มทิศทาง และจอยสติก
+The initial view to show on boot	หน้าแรกที่แสดงตอนเปิดเครื่อง
+The save format to use.	รูปแบบไฟล์เซฟที่ใช้
+The save state format to use.	รูปแบบไฟล์บันทึกสถานะที่ใช้
+Third-party licenses are in .system/licenses	สัญญาอนุญาตของซอฟต์แวร์อื่นอยู่ใน .system/licenses
+Time before device goes to sleep after screen is off (5-600s)	ปิดจอแล้วนานเท่าไรจึงพักเครื่อง (5-600 วินาที)
+Tool the F1 key opens from the main menu.	เครื่องมือที่ปุ่ม F1 เปิดจากเมนูหลัก
+Tool the F2 key opens from the main menu.	เครื่องมือที่ปุ่ม F2 เปิดจากเมนูหลัก
+Tools layout	รูปแบบหน้าเครื่องมือ
+Use the extracted file name instead of the archive name.	ใช้ชื่อไฟล์ที่แตกออกมาแทนชื่อไฟล์บีบอัด
+Vol / Display Adjustments	การปรับเสียงและจอ
+Volume when FN is on	ระดับเสียงเมื่อเปิดสวิตช์ FN
+What the A/B/X/Y hints show when Xbox layout is on. Applies as soon as you leave Settings	ป้ายปุ่ม A/B/X/Y ที่แสดงเมื่อใช้ผัง Xbox มีผลเมื่อออกจากหน้าตั้งค่า
+Which recently played games appear in the Game Switcher.	เกมที่เล่นล่าสุดแบบไหนจะแสดงในหน้าสลับเกม
+Xbox puts A at the bottom and B on the right. The quick menu (OSD) follows after a restart	ผัง Xbox: A อยู่ล่าง B อยู่ขวา เมนูด่วนจะเปลี่ยนตามหลังรีสตาร์ต
+Bypasses the stock shutdown procedure to avoid the "limbo bug".	ปิดเครื่องด้วยวิธีของเรา เลี่ยงอาการค้างตอนปิดเครื่องของระบบเดิม
+Checking download...	กำลังตรวจไฟล์ที่ดาวน์โหลด…
+Failed to start download	เริ่มดาวน์โหลดไม่ได้
+Failed to start installation	เริ่มติดตั้งไม่ได้
+Could not determine download URL	หาที่อยู่ไฟล์อัปเดตไม่เจอ
+Free up %llu MB on the SD card	ลบไฟล์ในการ์ดออกอีก %llu MB
+Release notes are unavailable right now, but you can still update to the latest version. Press A to install.	ตอนนี้ดูรายละเอียดของเวอร์ชันใหม่ไม่ได้ แต่ยังอัปเดตได้ กด A เพื่อติดตั้ง
+Failed to start update check	เริ่มตรวจอัปเดตไม่ได้
+%s left	เหลืออีก %s
+5s	5 วินาที
+10s	10 วินาที
+15s	15 วินาที
+30s	30 วินาที
+45s	45 วินาที
+60s	60 วินาที
+90s	90 วินาที
+2m	2 นาที
+4m	4 นาที
+6m	6 นาที
+10m	10 นาที

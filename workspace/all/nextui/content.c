@@ -530,7 +530,7 @@ int isConsoleDir(char* path) {
 
 // Bump this whenever the index-building logic changes, so existing caches are
 // rebuilt once after an upgrade without users clearing them.
-#define CACHE_SCHEMA_TAG "romindex-v7"
+#define CACHE_SCHEMA_TAG "romindex-v8" // v8: miyoogamelist.xml is not counted
 static uint64_t fnv1a64(const char* str) {
 	uint64_t h = 0xCBF29CE484222325ULL;
 	for (; *str; str++)
@@ -1015,6 +1015,8 @@ static void indexRomDir(Array* rom_index, const char* dir_path) {
 	while ((rom_dp = readdir(rom_dh)) != NULL) {
 		if (hide(rom_dp->d_name))
 			continue;
+		if (!strncasecmp(rom_dp->d_name, "miyoogamelist", 13))
+			continue; // another OS's game list left in the folder: not a game (Games skips it too)
 
 		snprintf(rom_path, sizeof(rom_path), "%s/%s", dir_path, rom_dp->d_name);
 

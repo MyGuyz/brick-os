@@ -630,7 +630,9 @@ int main(int argc, char* argv[]) {
 								 : bar_h + NX_DP(48);
 				// Home shows it only while its page is scrolled, under a page title (its List: always, as every List)
 				bool home = drawScreen == SCREEN_GAMELIST && Home_active() && !Home_isList();
-				SDL_Surface* fade = !over_art && (!home || (Home_scrolled() && CFG_getPageTitle()))
+				// Brick OS pages draw their own bar: no fade over it (a partial frame would stack it into black)
+				bool bos_own = drawScreen == SCREEN_GAMELIST && !startgame && (HomeBos_active() || BosGames_active());
+				SDL_Surface* fade = !over_art && !bos_own && (!home || (Home_scrolled() && CFG_getPageTitle()))
 										? UI_easedFadeSurface(screen->w, fade_h, 0.9f, 3.5f, true)
 										: NULL;
 				// cached: blit right away. Home draws the part below the strip itself, over its page; a Grid screen

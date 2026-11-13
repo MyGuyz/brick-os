@@ -52,10 +52,18 @@ static const char* effect_names[LED_EFFECT_MAX] = {
 static int effect_values[LED_EFFECT_MAX];
 
 // ============================================
-// Speed labels: 50 entries "0"..."4900" (step 100)
+// Speed: 10 steps, 1 (slow) .. 10 (fast); the values are ms per cycle
 // ============================================
 
-#define SPEED_LABEL_COUNT 50
+#define SPEED_LABEL_COUNT 10
+static const int speed_ms[SPEED_LABEL_COUNT] = {5000, 4000, 3200, 2500, 2000, 1500, 1100, 800, 500, 300};
+static int speedNearest(int ms) {
+	int best = speed_ms[0];
+	for (int i = 1; i < SPEED_LABEL_COUNT; i++)
+		if (abs(speed_ms[i] - ms) < abs(best - ms))
+			best = speed_ms[i];
+	return best;
+}
 static char speed_label_buf[SPEED_LABEL_COUNT][8];
 static const char* speed_labels[SPEED_LABEL_COUNT];
 static int speed_values[SPEED_LABEL_COUNT];
@@ -95,10 +103,10 @@ static void led_init_labels(void) {
 	for (int i = 0; i < LED_EFFECT_MAX; i++)
 		effect_values[i] = i + 1;
 
-	/* Speed: ms per cycle, 5000 down to 100, so the slider's right end is the fastest (DESIGN §6.10) */
+	/* Speed: the slider's right end is the fastest (DESIGN §6.10); its number is the step, not the ms */
 	for (int i = 0; i < SPEED_LABEL_COUNT; i++) {
-		speed_values[i] = (SPEED_LABEL_COUNT - i) * 100;
-		snprintf(speed_label_buf[i], sizeof(speed_label_buf[i]), "%d", speed_values[i]);
+		speed_values[i] = speed_ms[i];
+		snprintf(speed_label_buf[i], sizeof(speed_label_buf[i]), "%d", i + 1);
 		speed_labels[i] = speed_label_buf[i];
 	}
 
@@ -248,7 +256,7 @@ static void led_sync_coupled_inbrightness(int source_zone) {
 		led_apply_and_save();                       \
 	}                                               \
 	static int led_get_speed_##Z(void) {            \
-		return lightsDefault[Z].speed;              \
+		return speedNearest(lightsDefault[Z].speed); \
 	}                                               \
 	static void led_set_speed_##Z(int val) {        \
 		lightsDefault[Z].speed = val;               \
