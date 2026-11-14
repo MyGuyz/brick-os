@@ -10,6 +10,7 @@
 // Run the local files player module
 // Handles: File browser, music playback, playlist, shuffle/repeat
 ModuleExitReason PlayerModule_run(SDL_Surface* screen);
+ModuleExitReason PlayerModule_runAt(SDL_Surface* screen, const char* dir);
 
 // Run the player directly with a pre-built playlist (used by PlaylistModule)
 // Enters playing state immediately, returns when user presses B or all tracks end.

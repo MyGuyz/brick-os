@@ -36,6 +36,7 @@ extern int psa_crypto_init(void);
 #include "background.h"
 #include "../common/display_helper.h"
 #include "ui_draw.h"
+#include "module_online.h"
 #include "module_playlist.h"
 
 void InitSettings(void);
@@ -216,6 +217,12 @@ int main(int argc, char* argv[]) {
 			break;
 		case MENU_PLAYLISTS:
 			reason = PlaylistModule_run(screen);
+			break;
+		case MENU_SERVER:
+			reason = ServerModule_run(screen);
+			break;
+		case MENU_FREE:
+			reason = FreeModule_run(screen);
 			break;
 		case MENU_RADIO:
 			reason = RadioModule_run(screen);

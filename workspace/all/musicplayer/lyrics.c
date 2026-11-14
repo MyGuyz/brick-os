@@ -288,6 +288,18 @@ static void run_fetch(FetchArgs* args) {
 		if (count > 0)
 			goto done;
 	}
+	{ // a .lrc with the song's name beside it (DESIGN.md 7.2)
+		char lrc_path[768];
+		snprintf(lrc_path, sizeof(lrc_path), "%s", args->filepath);
+		char* dot = strrchr(lrc_path, '.');
+		char* slash = strrchr(lrc_path, '/');
+		if (dot && slash && dot > slash && (size_t)(dot - lrc_path) + 5 < sizeof(lrc_path)) {
+			strcpy(dot, ".lrc");
+			count = load_cached_lyrics(lrc_path, tmp_lines, LYRICS_MAX_LINES);
+			if (count > 0)
+				goto done;
+		}
+	}
 
 	if (args->artist[0] || args->title[0]) {
 		ensure_cache_dir();

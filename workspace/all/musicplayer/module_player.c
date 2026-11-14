@@ -104,6 +104,22 @@ static void clear_owner_presentation(void) {
 	Lyrics_clear();
 }
 
+// cover.jpg / folder.jpg … in the song's folder, or NULL
+static const char* folder_cover(const char* file) {
+	static char path[640];
+	const char* slash = file ? strrchr(file, '/') : NULL;
+	if (!slash || strncmp(file, "/mnt/", 5) != 0)
+		return NULL;
+	static const char* names[] = {"cover.jpg", "folder.jpg", "cover.png", "folder.png", "Cover.jpg", "Folder.jpg",
+								  "front.jpg", "AlbumArt.jpg", NULL};
+	for (int i = 0; names[i]; i++) {
+		snprintf(path, sizeof(path), "%.*s/%s", (int)(slash - file), file, names[i]);
+		if (access(path, R_OK) == 0)
+			return path;
+	}
+	return NULL;
+}
+
 static bool sync_owner_presentation(const MusicSnapshotWire* snapshot) {
 	char identity[sizeof(presentation_identity)];
 	bool changed;
@@ -122,6 +138,10 @@ static bool sync_owner_presentation(const MusicSnapshotWire* snapshot) {
 	if (snapshot->artwork_path[0] && strcmp(loaded_artwork_path, snapshot->artwork_path) != 0) {
 		album_art_load_path(snapshot->artwork_path);
 		snprintf(loaded_artwork_path, sizeof(loaded_artwork_path), "%s", snapshot->artwork_path);
+	} else if (!snapshot->artwork_path[0] && !loaded_artwork_path[0] && folder_cover(snapshot->current_file)) {
+		const char* fc = folder_cover(snapshot->current_file);
+		album_art_load_path(fc);
+		snprintf(loaded_artwork_path, sizeof(loaded_artwork_path), "%s", fc);
 	} else if (!album_art_get() && (snapshot->artist[0] || snapshot->title[0]))
 		album_art_fetch(snapshot->artist, snapshot->title);
 	SDL_Surface* artwork = album_art_get();
@@ -588,9 +608,17 @@ static bool handle_playing_input(SDL_Surface* screen, PlayerInternalState* state
 	return false;
 }
 
+static char start_dir[512];
+ModuleExitReason PlayerModule_runAt(SDL_Surface* screen, const char* dir) {
+	snprintf(start_dir, sizeof(start_dir), "%s", dir ? dir : "");
+	ModuleExitReason r = PlayerModule_run(screen);
+	start_dir[0] = 0;
+	return r;
+}
+
 ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 	init_player();
-	load_directory(browser.current_path[0] ? browser.current_path : MUSIC_PATH);
+	load_directory(start_dir[0] ? start_dir : browser.current_path[0] ? browser.current_path : MUSIC_PATH);
 
 	PlayerInternalState state = PLAYER_INTERNAL_BROWSER;
 	bool dirty = true;

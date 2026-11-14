@@ -12,6 +12,8 @@
 #define MENU_SETTINGS 4
 #define MENU_FILES 5
 #define MENU_PLAYLISTS 6
+#define MENU_SERVER 7
+#define MENU_FREE 8
 #define MENU_QUIT -1
 
 // First-item mode for the menu

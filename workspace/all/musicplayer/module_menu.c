@@ -21,6 +21,7 @@
 #include "music_bos.h"
 #include "i18n.h"
 #include "browser.h"
+#include "online.h"
 
 static char menu_toast_message[128] = "";
 static uint32_t menu_toast_time = 0;
@@ -96,8 +97,14 @@ static void buildTiles(MusicHomeView* v) {
 	*t = (MusicHomeTile){"folder", 0x0A84FF, I18N_text("Music files"), "", NULL, MENU_FILES};
 	snprintf(t->sub, sizeof(t->sub), I18N_text("%d songs"), files);
 	t = &v->tiles[v->ntiles++];
+	*t = (MusicHomeTile){"server", 0x30B0C7, I18N_text("Music server"), "", NULL, MENU_SERVER};
+	snprintf(t->sub, sizeof(t->sub), "%s", I18N_text(Server_configured() ? "Your library" : "Set up"));
+	t = &v->tiles[v->ntiles++];
 	*t = (MusicHomeTile){"list", 0xFF375F, I18N_text("Playlists"), "", NULL, MENU_PLAYLISTS};
 	snprintf(t->sub, sizeof(t->sub), I18N_text("%d lists"), countPlaylists());
+	t = &v->tiles[v->ntiles++];
+	*t = (MusicHomeTile){"gift", 0x30D158, I18N_text("Free music"), "", NULL, MENU_FREE};
+	snprintf(t->sub, sizeof(t->sub), "%s", I18N_text("Legal to keep"));
 	if (BOS_hasFeature(BOS_FEATURE_RADIO)) {
 		RadioStation* st = NULL;
 		int ns = Radio_getStations(&st);

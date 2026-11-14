@@ -1075,3 +1075,47 @@ Couldn't load channel list	โหลดรายชื่อช่องไม�
 Press MENU to refresh, or check Wi-Fi	กด MENU เพื่อรีเฟรช หรือตรวจ WiFi
 Watch on	ดูต่อ
 Start over	เริ่มใหม่
+Music server	เซิร์ฟเวอร์เพลง
+Your library	คลังเพลงของคุณ
+Set up	ตั้งค่า
+Free music	เพลงฟรี
+Legal to keep	ถูกลิขสิทธิ์
+Server address	ที่อยู่เซิร์ฟเวอร์
+User name	ชื่อผู้ใช้
+Test the connection	ทดสอบการเชื่อมต่อ
+Server address (e.g. 192.168.1.20:4533)	ที่อยู่เซิร์ฟเวอร์ (เช่น 192.168.1.20:4533)
+Connected · %d songs	เชื่อมต่อได้ · %d เพลง
+Can't reach the server	ติดต่อเซิร์ฟเวอร์ไม่ได้
+Not a music server	ไม่ใช่เซิร์ฟเวอร์เพลง
+Wrong user name or password	ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง
+Play your whole library from your computer or NAS over WiFi	ฟังเพลงทั้งคลังจากคอมหรือ NAS ของคุณผ่าน WiFi
+Works with Navidrome, Subsonic, Airsonic and Gonic (install one on your computer first). The password stays on this device.	ใช้ได้กับ Navidrome, Subsonic, Airsonic และ Gonic (ลงโปรแกรมบนคอมก่อน) · รหัสผ่านเก็บไว้ในเครื่องนี้เท่านั้น
+Edit	แก้ไข
+Test	ทดสอบ
+Download first: X downloads it all	ยังไม่ได้ดาวน์โหลด กด X เพื่อดาวน์โหลดทั้งหมด
+Downloaded %d / %d	ดาวน์โหลดแล้ว %d / %d
+Download all	ดาวน์โหลดทั้งหมด
+Downloading the album	กำลังดาวน์โหลดทั้งอัลบั้ม
+Another download is running	มีการดาวน์โหลดอื่นอยู่
+%d albums	%d อัลบั้ม
+Server settings	ตั้งค่าเซิร์ฟเวอร์
+%s · %d albums · newest first	%s · %d อัลบั้ม · เรียงตามที่เพิ่มล่าสุด
+Artists	ศิลปิน
+Albums	อัลบั้ม
+No albums	ยังไม่มีอัลบั้ม
+No artists	ยังไม่มีศิลปิน
+No playlists	ยังไม่มีเพลย์ลิสต์
+Songs you downloaded are in Music files › ดาวน์โหลด and play without the internet. A opens them.	เพลงที่ดาวน์โหลดอยู่ในไฟล์เพลง › ดาวน์โหลด ฟังได้แม้ไม่มีเน็ต กด A เพื่อเปิด
+Tabs	หมวด
+Lo-fi	โลไฟ
+Jazz	แจ๊ส
+Classical	คลาสสิก
+Rock	ร็อก
+Electronic	อิเล็กทรอนิกส์
+Search free music	ค้นหาเพลงฟรี
+Results for "%s"	ผลการค้นหา "%s"
+Free to play and keep · mostly independent artists	ฟังและเก็บได้ถูกกฎหมาย · ส่วนใหญ่เป็นศิลปินอิสระ
+Genre	แนว
+No songs to play in this one	รายการนี้ไม่มีเพลงให้เล่น
+Can't reach archive.org	ติดต่อ archive.org ไม่ได้
+Public domain	สาธารณะ
