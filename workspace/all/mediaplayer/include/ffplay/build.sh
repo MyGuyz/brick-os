@@ -38,7 +38,10 @@ FC_FCPRIVATE_H_SHA256=2d0b07968f4d7d09318d0f284dde0388f0c97f50f67bddd490a6ae5272
 
 # fetch URL DEST SHA256: download, then refuse anything that doesn't match
 fetch() {
-    wget -q --tries=5 --timeout=30 --waitretry=5 "$1" -O "$2"
+    # $4: a mirror tried when the first host fails (savannah's mirror redirect drops out at times)
+    if ! wget -q --tries=5 --timeout=30 --waitretry=5 "$1" -O "$2" && [ -n "$4" ]; then
+        wget -q --tries=5 --timeout=30 --waitretry=5 "$4" -O "$2"
+    fi
     if ! echo "$3  $2" | sha256sum -c --quiet -; then
         echo "sha256 mismatch for $1" >&2
         rm -f "$2"
@@ -147,7 +150,8 @@ if [ ! -f "$INSTALL/lib/libass.a" ]; then
     # Download freetype and fontconfig headers
     if [ ! -d "$INSTALL/include/freetype2" ]; then
         echo "=== Downloading freetype headers ==="
-        fetch "https://download.savannah.gnu.org/releases/freetype/freetype-2.11.0.tar.xz" freetype.tar.xz $FREETYPE_SHA256
+        fetch "https://download.savannah.gnu.org/releases/freetype/freetype-2.11.0.tar.xz" freetype.tar.xz $FREETYPE_SHA256 \
+            "https://downloads.sourceforge.net/project/freetype/freetype2/2.11.0/freetype-2.11.0.tar.xz"
         tar xf freetype.tar.xz
         rm freetype.tar.xz
         cp -r freetype-2.11.0/include/* $INSTALL/include/
