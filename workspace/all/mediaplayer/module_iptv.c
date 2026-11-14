@@ -5,6 +5,7 @@
 #include "api.h"
 #include "module_common.h"
 #include "module_iptv.h"
+#include "ui_draw.h"
 #include "iptv.h"
 #include "iptv_curated.h"
 #include "iptv_text.h"
@@ -294,6 +295,8 @@ ModuleExitReason IPTVModule_run(SDL_Surface* screen) {
 				dirty = 1;
 
 			ModuleCommon_PWR_update(&dirty, &show_setting);
+			if (UI_bos && IPTVAdd_bosMoving()) // the columns still glide
+				dirty = 1;
 			if (dirty) {
 				render_iptv_curated_countries(screen, show_setting,
 											  curated_toast_message, curated_toast_time);
@@ -408,6 +411,8 @@ ModuleExitReason IPTVModule_run(SDL_Surface* screen) {
 			}
 
 			ModuleCommon_PWR_update(&dirty, &show_setting);
+			if (UI_bos && IPTVAdd_bosMoving()) // the columns still glide
+				dirty = 1;
 			if (dirty) {
 				render_iptv_curated_channels(screen, show_setting, curated_selected_country_code,
 											 curated_channel_selected, &curated_channel_scroll,

@@ -7,5 +7,6 @@
 // Run the local video file browser and player module
 // Handles: File browser for VIDEO_ROOT, launching ffplay for selected video
 ModuleExitReason PlayerModule_run(SDL_Surface* screen);
+ModuleExitReason PlayerModule_playPath(SDL_Surface* screen, const char* path);
 
 #endif

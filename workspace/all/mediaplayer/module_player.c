@@ -8,6 +8,7 @@
 #include "api.h"
 #include "module_common.h"
 #include "module_player.h"
+#include "ui_draw.h"
 #include "video_browser.h"
 #include "display_helper.h"
 #include "ffplay_engine.h"
@@ -29,6 +30,7 @@ static void load_video_directory(VideoBrowserContext* browser, const char* path)
 #define RESUME_END_WINDOW_SEC 60
 
 // Context-menu item ids
+#define PLAYER_CTX_RESUME 7 // the resume sheet (Brick OS)
 #define PLAYER_CTX_PLAY_START 1 // play the selected video from 0:00 (A resumes)
 
 // Launch ffplay for a file entry at start_sec, then record where playback
@@ -89,12 +91,25 @@ static SDL_Surface* play_video_file(SDL_Surface* screen, VideoFileEntry* entry, 
 		if (pos < RESUME_MIN_SEC || (dur > 0 && pos >= dur - RESUME_END_WINDOW_SEC))
 			Positions_remove(entry->path);
 		else
-			Positions_set(entry->path, pos);
+			Positions_setFull(entry->path, pos, dur);
 	}
 
 	// TG5050: display recovery creates a new screen surface
 	SDL_Surface* ns = DisplayHelper_getReinitScreen();
 	return ns ? ns : screen;
+}
+
+// Play one video on from its saved place (a ดูต่อ card on the home)
+ModuleExitReason PlayerModule_playPath(SDL_Surface* screen, const char* path) {
+	Positions_init();
+	VideoFileEntry e;
+	memset(&e, 0, sizeof(e));
+	snprintf(e.path, sizeof(e.path), "%s", path);
+	const char* slash = strrchr(path, '/');
+	snprintf(e.name, sizeof(e.name), "%s", slash ? slash + 1 : path);
+	play_video_file(screen, &e, Positions_get(path));
+	GFX_clearLayers(LAYER_SCROLLTEXT);
+	return MODULE_EXIT_TO_MENU;
 }
 
 ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
@@ -136,6 +151,11 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 		if (global.should_quit) {
 			VideoBrowser_freeEntries(&browser);
 			return MODULE_EXIT_QUIT;
+		}
+		if (global.context_id == PLAYER_CTX_RESUME && sel_entry) { // the sheet's ดูต่อ (Brick OS)
+			screen = play_video_file(screen, sel_entry, Positions_get(sel_entry->path));
+			GFX_clearLayers(LAYER_SCROLLTEXT);
+			dirty = 1;
 		}
 		if (global.context_id == PLAYER_CTX_PLAY_START && sel_entry) {
 			screen = play_video_file(screen, sel_entry, 0);
@@ -185,7 +205,17 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 					dirty = 1;
 				} else {
 					// A: resume from the saved position when one exists,
-					// otherwise play from the start
+					// otherwise play from the start. Brick OS (board v2-VideoResume): a saved place asks first
+					if (UI_bos && Positions_get(entry->path) > 0) {
+						ContextMenuItem ask[2];
+						int na = 0;
+						ContextMenu_addItem(ask, &na, "Watch on", PLAYER_CTX_RESUME);
+						ContextMenu_addItem(ask, &na, "Start over", PLAYER_CTX_PLAY_START);
+						ContextMenu_open(ask, na);
+						ContextMenu_render(screen);
+						PLAT_GPU_Flip();
+						break;
+					}
 					screen = play_video_file(screen, entry, Positions_get(entry->path));
 					// Force full redraw and clear the stale marquee layer
 					GFX_clearLayers(LAYER_SCROLLTEXT);

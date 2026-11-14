@@ -16,4 +16,9 @@ void Positions_set(const char* path, int sec);
 // Remove an entry (no-op if absent) and save.
 void Positions_remove(const char* path);
 
+// With the video's length (dur 0: keep what is known). Newest first: count and the i-th (its path; NULL past the end).
+void Positions_setFull(const char* path, int sec, int dur);
+int Positions_count(void);
+const char* Positions_at(int i, int* sec, int* dur);
+
 #endif

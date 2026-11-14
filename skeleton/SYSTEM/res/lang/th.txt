@@ -1054,3 +1054,24 @@ Device default	ค่าเริ่มต้นของเครื่อง
 Delete cached album art images	ลบภาพปกที่เก็บไว้
 Delete cached lyrics files	ลบเนื้อเพลงที่เก็บไว้
 Add to playlist	เพิ่มลงเพลย์ลิสต์
+Continue watching	ดูต่อ
+Videos on the card	วิดีโอในเครื่อง
+%d files · %d folders	%d ไฟล์ · %d โฟลเดอร์
+%d channels · needs WiFi	%d ช่อง · ต้องต่อ WiFi
+Watched to %d:%02d	ดูถึง %d:%02d
+Watched to %d:%02d · %s	ดูถึง %d:%02d · %s
+Watch	ดู
+No videos yet	ยังไม่มีวิดีโอ
+Put videos in the Videos folder of the SD card, or send them with WiFi Transfer	ใส่ไฟล์วิดีโอไว้ในโฟลเดอร์ Videos ของการ์ด SD หรือส่งผ่าน WiFi ด้วยแอป ส่งไฟล์ผ่าน WiFi
+Add channels	เพิ่มช่อง
+%d channels · from iptv-org · some may not play	%d ช่อง · จาก iptv-org · บางช่องอาจดูไม่ได้
+Pick a country to see its channels. They come from iptv-org; some may be offline or only in their country.	เลือกประเทศเพื่อดูช่อง รายชื่อมาจาก iptv-org บางช่องอาจปิดอยู่หรือดูได้เฉพาะในประเทศนั้น
+Browse Channels	เพิ่มช่อง
+Remove Channel	ลบช่อง
+Remove Channel?	ลบช่องนี้?
+No channels saved	ยังไม่มีช่อง
+Press A to browse channels	กด A เพื่อเพิ่มช่อง
+Couldn't load channel list	โหลดรายชื่อช่องไม่ได้
+Press MENU to refresh, or check Wi-Fi	กด MENU เพื่อรีเฟรช หรือตรวจ WiFi
+Watch on	ดูต่อ
+Start over	เริ่มใหม่

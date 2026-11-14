@@ -17,6 +17,7 @@
 
 typedef struct {
 	int sec;
+	int dur; // the video's length, 0 unknown (old entries)
 	char path[512];
 } PositionEntry;
 
@@ -32,7 +33,10 @@ static void save_to_disk(void) {
 		return;
 
 	for (int i = 0; i < entry_count; i++)
-		fprintf(f, "%d|%s\n", entries[i].sec, entries[i].path);
+		if (entries[i].dur > 0)
+			fprintf(f, "%d|%d|%s\n", entries[i].sec, entries[i].dur, entries[i].path);
+		else
+			fprintf(f, "%d|%s\n", entries[i].sec, entries[i].path);
 	fclose(f);
 }
 
@@ -61,13 +65,21 @@ void Positions_init(void) {
 			continue;
 		*sep = '\0';
 
-		int sec = atoi(line);
+		int sec = atoi(line), dur = 0;
 		const char* path = sep + 1;
+		if (path[0] != '/') { // "sec|dur|path"
+			char* sep2 = strchr(path, '|');
+			if (!sep2)
+				continue;
+			dur = atoi(path);
+			path = sep2 + 1;
+		}
 		// Absolute paths only; positive positions only
 		if (sec <= 0 || path[0] != '/')
 			continue;
 
 		entries[entry_count].sec = sec;
+		entries[entry_count].dur = dur;
 		snprintf(entries[entry_count].path, sizeof(entries[0].path), "%s", path);
 		entry_count++;
 	}
@@ -81,11 +93,13 @@ int Positions_get(const char* path) {
 	return (i >= 0) ? entries[i].sec : 0;
 }
 
-void Positions_set(const char* path, int sec) {
+void Positions_setFull(const char* path, int sec, int dur) {
 	if (!path || !path[0] || sec <= 0)
 		return;
 
 	int i = find_entry(path);
+	if (dur <= 0 && i >= 0)
+		dur = entries[i].dur;
 	if (i >= 0) {
 		// Remove old slot; re-inserted at the front below
 		memmove(&entries[i], &entries[i + 1], (entry_count - i - 1) * sizeof(PositionEntry));
@@ -96,10 +110,29 @@ void Positions_set(const char* path, int sec) {
 
 	memmove(&entries[1], &entries[0], entry_count * sizeof(PositionEntry));
 	entries[0].sec = sec;
+	entries[0].dur = dur > 0 ? dur : 0;
 	snprintf(entries[0].path, sizeof(entries[0].path), "%s", path);
 	entry_count++;
 
 	save_to_disk();
+}
+
+void Positions_set(const char* path, int sec) {
+	Positions_setFull(path, sec, 0);
+}
+
+int Positions_count(void) {
+	return entry_count;
+}
+
+const char* Positions_at(int i, int* sec, int* dur) {
+	if (i < 0 || i >= entry_count)
+		return NULL;
+	if (sec)
+		*sec = entries[i].sec;
+	if (dur)
+		*dur = entries[i].dur;
+	return entries[i].path;
 }
 
 void Positions_remove(const char* path) {

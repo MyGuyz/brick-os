@@ -14,6 +14,8 @@
 #include "ffplay_engine.h"
 #include "module_common.h"
 #include "module_menu.h"
+#include "ui_splash.h"
+#include "ui_draw.h"
 #include "module_player.h"
 #include "module_iptv.h"
 #include "display_helper.h"
@@ -43,10 +45,13 @@ int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
 
+	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.3)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_PERFORMANCE);
 	// Show splash screen immediately while subsystems initialize
-	{
+	if (UI_bos)
+		UI_showSplashScreen(screen, "Video");
+	else {
 		GFX_clear(screen);
 		SDL_Surface* title = GFX_renderText(font.title, "Media Player", COLOR_WHITE);
 		if (title) {
@@ -118,6 +123,9 @@ int main(int argc, char* argv[]) {
 			break;
 		case MENU_IPTV:
 			reason = IPTVModule_run(screen);
+			break;
+		case MENU_PLAY_PATH: // a ดูต่อ card on the home
+			reason = PlayerModule_playPath(screen, MenuModule_pickedPath());
 			break;
 		}
 

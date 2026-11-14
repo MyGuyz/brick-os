@@ -27,4 +27,5 @@ void render_iptv_curated_channels(SDL_Surface* screen, IndicatorType show_settin
 								  const int* sorted_indices, int sorted_count,
 								  const char* toast_message, uint32_t toast_time);
 
+bool IPTVAdd_bosMoving(void);
 #endif

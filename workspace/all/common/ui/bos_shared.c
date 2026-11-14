@@ -181,7 +181,7 @@ typedef struct {
 } ActIcon;
 static const ActIcon acts[] = {
 	{"Add Folder", "folder", 0xFF375F}, {"Add to Playlist", "plus", 0xFF375F}, {"Play Next", "play", 0x30D158},
-	{"Play All", "play", 0x30D158}, {"Play from Start", "update", 0x30D158}, {"Resume", "play", 0x30D158},
+	{"Play All", "play", 0x30D158}, {"Play from Start", "update", 0x30D158}, {"Watch on", "play", 0x30D158}, {"Start over", "update", 0x64D2FF}, {"Resume", "play", 0x30D158},
 	{"Rename", "pencil", 0xB4B4BA}, {"Delete", "trash", BOS_C_DANGER}, {"Remove", "trash", BOS_C_DANGER},
 	{"Unsubscribe", "trash", BOS_C_DANGER}, {"Clear", "trash", BOS_C_DANGER}, {"Stop", "power", BOS_C_DANGER},
 	{"Quit", "power", BOS_C_DANGER}, {"Refresh", "sync", 0x64D2FF}, {"Manage", "settings", 0x8E8E93},
@@ -198,7 +198,7 @@ static const ActIcon* actFor(const char* label) {
 }
 
 int BOS_uiSheetCols(int n) {
-	return n > 2 ? 2 : 1;
+	return n >= 2 ? 2 : 1;
 }
 
 void BOS_uiSheet(SDL_Surface* s, const char* const* labels, int n, int sel) {

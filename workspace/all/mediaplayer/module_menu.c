@@ -1,100 +1,150 @@
+// The Video home (DESIGN.md 7.3, board v2-Video): ดูต่อ (videos with a saved place), then the two places.
+// A opens / plays on · B leaves · MENU the page's menu (quit).
+#include <dirent.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <unistd.h>
+#include "defines.h"
 #include "api.h"
 #include "module_common.h"
 #include "ui_toast.h"
 #include "module_menu.h"
-#include "ui_main.h"
-#include "ui_listview.h"
 #include "bos_feature.h"
+#include "positions.h"
+#include "iptv.h"
+#include "video_browser.h"
+#include "vp_defines.h"
+#include "vid_bos.h"
+#include "i18n.h"
 
-// Toast message state
 static char menu_toast_message[128] = "";
 static uint32_t menu_toast_time = 0;
+static char picked_path[512];
 
-// Menu items: Local, IPTV
-#define MENU_ITEM_COUNT 2
+const char* MenuModule_pickedPath(void) {
+	return picked_path;
+}
 
-// Map visual index -> logical menu item
-static int get_menu_item_id(int visual_index) {
-	switch (visual_index) {
-	case 0:
-		return MENU_LOCAL;
-	case 1:
-		return MENU_IPTV;
-	default:
-		return MENU_LOCAL;
+static int countVideos(const char* path, int depth, int* dirs) {
+	DIR* d = opendir(path);
+	if (!d)
+		return 0;
+	int n = 0;
+	struct dirent* e;
+	char sub[768];
+	while ((e = readdir(d))) {
+		if (e->d_name[0] == '.')
+			continue;
+		if (e->d_type == DT_DIR) {
+			if (depth == 0 && dirs)
+				(*dirs)++;
+			if (depth < 4) {
+				snprintf(sub, sizeof(sub), "%s/%s", path, e->d_name);
+				n += countVideos(sub, depth + 1, NULL);
+			}
+		} else if (VideoBrowser_isVideoFile(e->d_name))
+			n++;
+	}
+	closedir(d);
+	return n;
+}
+
+static void buildView(VidHomeView* v) {
+	static int files = -1, dirs = 0;
+	if (files < 0)
+		files = countVideos(VIDEO_ROOT, 0, &dirs);
+	snprintf(v->files_sub, sizeof(v->files_sub), I18N_text("%d files · %d folders"), files, dirs);
+	v->tv = BOS_hasFeature(BOS_FEATURE_IPTV);
+	snprintf(v->tv_sub, sizeof(v->tv_sub), I18N_text("%d channels · needs WiFi"), IPTV_getUserChannelCount());
+	Positions_init();
+	v->ncards = 0;
+	for (int i = 0; i < Positions_count() && v->ncards < VID_HOME_CARDS; i++) {
+		int sec = 0, dur = 0;
+		const char* p = Positions_at(i, &sec, &dur);
+		if (!p || access(p, R_OK) != 0)
+			continue;
+		VidCard* c = &v->cards[v->ncards++];
+		c->path = p;
+		const char* slash = strrchr(p, '/');
+		static char names[VID_HOME_CARDS][256];
+		VideoBrowser_getDisplayName(slash ? slash + 1 : p, names[v->ncards - 1], sizeof(names[0]));
+		c->name = names[v->ncards - 1];
+		if (dur > 0) {
+			int left = (dur - sec + 59) / 60;
+			snprintf(c->left, sizeof(c->left), I18N_text("%d min left"), left > 0 ? left : 1);
+			c->progress = (float)sec / dur;
+		} else {
+			snprintf(c->left, sizeof(c->left), I18N_text("Watched to %d:%02d"), sec / 60, sec % 60);
+			c->progress = -1;
+		}
 	}
 }
 
 int MenuModule_run(SDL_Surface* screen) {
 	bool dirty = true;
 	IndicatorType show_setting = INDICATOR_NONE;
-
-	// The view owns selection: reset on module entry so re-entering the menu
-	// starts at row 0. render_menu supplies the
-	// real items pointer as list_id on the first frame.
-	ListView* v = MediaMainMenu_view();
-	UI_listViewReset(v, BOS_hasFeature(BOS_FEATURE_IPTV) ? MENU_ITEM_COUNT : 1, NULL); // Brick OS: IPTV row only when installed
+	static int sel = 0;
+	VidHomeView v;
+	buildView(&v);
+	if (sel >= v.ncards + (v.tv ? 2 : 1))
+		sel = 0;
 
 	while (1) {
 		GFX_startFrame();
 		PAD_poll();
-
-		// Context menu for this page (MENU tap)
 		ContextMenuItem ctx_items[1];
 		int ctx_count = 0;
 		ContextMenu_addItem(ctx_items, &ctx_count, "Quit App", CTX_ID_QUIT);
-
-		// Handle global input first (quit chord, MENU context menu, power)
 		GlobalInputResult global = ModuleCommon_handleGlobalInput(screen, &show_setting, ctx_items, ctx_count);
-		if (global.should_quit) {
+		if (global.should_quit)
 			return MENU_QUIT;
-		}
 		if (global.input_consumed) {
 			if (global.dirty)
 				dirty = 1;
 			GFX_sync();
 			continue;
 		}
-
-		// Menu input: the ListView owns navigation, the module switches on
-		// the returned action. MENU is handled globally above - ignored here.
-		ListViewAction act = UI_listViewHandleInput(v);
-		switch (act.type) {
-		case LISTVIEW_ACTIVATED:
+		int ntiles = v.tv ? 2 : 1, old = sel;
+		if (PAD_justRepeated(BTN_LEFT) && sel > 0 && sel != v.ncards)
+			sel--;
+		else if (PAD_justRepeated(BTN_RIGHT) && sel + 1 < v.ncards + ntiles && sel + 1 != v.ncards)
+			sel++;
+		else if (PAD_justRepeated(BTN_DOWN) && sel < v.ncards)
+			sel = v.ncards;
+		else if (PAD_justRepeated(BTN_UP) && sel >= v.ncards && v.ncards > 0)
+			sel = 0;
+		else if (PAD_justPressed(BTN_A)) {
 			GFX_clearLayers(LAYER_SCROLLTEXT);
-			return get_menu_item_id(act.index);
-		case LISTVIEW_BACK:
+			if (sel < v.ncards) {
+				snprintf(picked_path, sizeof(picked_path), "%s", v.cards[sel].path);
+				return MENU_PLAY_PATH;
+			}
+			return sel == v.ncards ? MENU_LOCAL : MENU_IPTV;
+		} else if (PAD_justPressed(BTN_B)) {
 			GFX_clearLayers(LAYER_SCROLLTEXT);
 			return MENU_QUIT;
-		default:
-			break;
 		}
-		if (UI_listViewBusy(v))
+		if (sel != old || VidBos_homeMoving())
 			dirty = 1;
-
-		// Handle power management
 		ModuleCommon_PWR_update(&dirty, &show_setting);
-
 		if (dirty) {
-			render_menu(screen, show_setting, menu_toast_message,
-						menu_toast_time);
-
+			v.sel = sel;
+			static BosHint hr[2], hl[1];
+			hr[0] = (BosHint){"A", I18N_text(sel < v.ncards ? "Continue" : "Open")};
+			hr[1] = (BosHint){"B", I18N_text("Exit")};
+			hl[0] = (BosHint){"MENU", I18N_text("Options")};
+			v.hints = hr, v.nhints = 2, v.left = hl, v.nleft = 1;
+			VidBos_home(screen, &v);
+			UI_renderToast(screen, menu_toast_message, menu_toast_time);
 			GFX_flip(screen);
 			dirty = 0;
-
-			// Keep refreshing while toast is visible
 			UI_tickToast(menu_toast_message, menu_toast_time, &dirty);
-		} else {
-			UI_listViewTickIdle(v);
+		} else
 			GFX_sync();
-		}
 	}
 }
 
-// Set toast message (called by modules that return to menu with a message)
 void MenuModule_setToast(const char* message) {
 	snprintf(menu_toast_message, sizeof(menu_toast_message), "%s", message);
 	menu_toast_time = SDL_GetTicks();
