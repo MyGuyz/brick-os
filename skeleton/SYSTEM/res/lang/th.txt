@@ -293,8 +293,8 @@ Get ready...	เตรียมตัว...
 Let's go!	ไปกันเลย!
 Screenshot saved	บันทึกภาพหน้าจอแล้ว
 Failed to capture screenshot	จับภาพหน้าจอไม่สำเร็จ
-Saved for game.	บันทึกสำหรับเกมนี้แล้ว
-Saved for console.	บันทึกสำหรับเครื่องนี้แล้ว
+Saved for game.	บันทึกการตั้งค่าสำหรับเกมนี้แล้ว
+Saved for console.	บันทึกการตั้งค่าสำหรับเครื่องนี้แล้ว
 Save for game	บันทึกสำหรับเกมนี้
 Save for console	บันทึกสำหรับเครื่องนี้
 Using game config.	ใช้ค่าของเกมนี้
@@ -924,3 +924,39 @@ Enable in-memory rewind buffer.\nMust set a shortcut to access rewind during gam
 Memory reserved for rewind snapshots.\nIncrease for longer rewind times.	หน่วยความจำสำหรับย้อนเวลา ยิ่งมากยิ่งย้อนได้นาน
 Interval between rewind snapshots.\nShorter intervals improve smoothness during rewind,\nbut increase CPU and memory usage.	ระยะห่างของจุดย้อนเวลา ยิ่งถี่ยิ่งลื่นแต่ใช้ CPU และหน่วยความจำมากขึ้น
 LZ4 acceleration used for rewind snapshots.\nLower values compress more but use more CPU.	ค่าต่ำบีบอัดได้มากกว่าแต่ใช้ CPU มากกว่า
+Waiting…	รอกดปุ่ม…
+Press the button to use as “%s”	กดปุ่มที่จะใช้เป็น “%s”
+Hold MENU with it for a pair, e.g. MENU + B	กด MENU ค้างไว้พร้อมกันเพื่อใช้ปุ่มคู่ เช่น MENU + B
+Read all	อ่านทั้งหมด
+Not yet %d	ที่ยังไม่ได้ %d
+Got %d / %d	ได้แล้ว %d / %d
+%d / %d points	%d / %d แต้ม
+point	แต้ม
+points	แต้ม
+%.0f%% of players	ผู้เล่น %.0f%% ได้
+No notice	ไม่แจ้งเตือน
+Unlocked %s	ได้เมื่อ %s
+Unlocked	ได้แล้ว
+Progress %s	ทำไปแล้ว %s
+Not yet	ยังไม่ได้
+Missable	พลาดได้
+Progression	ตามเนื้อเรื่อง
+Win Condition	จบเกม
+Show all	แสดงทั้งหมด
+Not yet only	เฉพาะที่ยังไม่ได้
+Unmute notice	เปิดแจ้งเตือน
+Page	เลื่อนหน้า
+Restored console defaults.	คืนค่าเริ่มต้นของเครื่องนี้แล้ว
+This category has no options.	หมวดนี้ไม่มีตัวเลือก
+This core has no options that\ncan be changed while running.	ไม่มีตัวเลือกที่เปลี่ยนได้\nคอร์นี้ไม่มีตัวเลือกที่เปลี่ยนได้ระหว่างเล่น
+No extra settings found	ไม่มีการตั้งค่าเพิ่มเติม
+No shaders available\n/Shaders folder or shader files not found	ไม่มีเชดเดอร์\nไม่พบโฟลเดอร์ Shaders หรือไฟล์เชดเดอร์
+RetroAchievements doesn't recognize\nthis game file. Use a supported\ndump listed on retroachievements.org.	ไม่รู้จักไฟล์เกมนี้\nRetroAchievements ไม่รองรับไฟล์เวอร์ชันนี้ ลองใช้ไฟล์ที่อยู่ในรายชื่อบน retroachievements.org
+No game loaded for achievements	ไม่มีข้อมูลความสำเร็จ\nเกมนี้ยังไม่ได้เชื่อมกับ RetroAchievements (ล็อกอินในตั้งค่าก่อน)
+Failed to load achievements	โหลดความสำเร็จไม่สำเร็จ\nลองใหม่อีกครั้ง หรือตรวจการเชื่อมต่อ WiFi
+Achievement list not available	ไม่มีรายการความสำเร็จ\nเกมเวอร์ชันนี้อาจไม่รองรับ
+No achievements found	ไม่พบความสำเร็จ
+No cheat file loaded.\nGet cheats from Xtras > Cheat Database.\n\n	ไม่พบไฟล์สูตรโกง\nโหลดสูตรได้ที่ Xtras › Cheat Database · ไฟล์ที่ค้นหา:\n
+Mute notice	ปิดแจ้งเตือน
+Press A to set and X to clear.\nSupports single button and MENU+button.	กด A เพื่อตั้งปุ่ม · X ล้างปุ่ม · ใช้ปุ่มเดียวหรือ MENU + ปุ่มก็ได้
+Press A to set and X to clear.\nOverrides Settings > Emulator Shortcuts.	กด A เพื่อตั้งปุ่ม · X ล้างปุ่ม · ใช้แทนปุ่มลัดในตั้งค่า › อีมูเลเตอร์

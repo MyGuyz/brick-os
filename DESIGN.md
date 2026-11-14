@@ -721,6 +721,10 @@ User request: "like the theme colour page, with colour choice and a colour code"
 - Hint bar: **B** ปิด · **X** รหัสใหม่.
 
 ## 7. Round 2
+**Rule (owner, 2026-11-14): no screen of the old NextUI/minarch UI may remain anywhere,** however rarely it is seen:
+every page, prompt, error and message box gets a v2 board and is redrawn. Round 2 is not finished until a sweep finds none.
+Still old: Music, Video, YouTube, the keyboard. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
+
 YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
 
 ### 7.1 เมนูในเกม (MENU in a game; boards `design/round2/v2-GameMenu*`, approved 2026-11-14)
@@ -742,6 +746,24 @@ YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md`
   numbers a slider with its number, other values ‹ value › on focus, a binding its buttons, a page a chevron; the focused
   row's description under the group in one paragraph. Option names, values and descriptions are translated
   (`res/lang/th.txt`).
-- Not redrawn yet: the achievements pages, a cheat's details, the binding prompt and the message boxes of minarch.
+- **ความสำเร็จ** (boards `v2-GameMenuAch`, `-AchLocked`, approved 2026-11-14): over the same backdrop. Top left "ได้แล้ว 12 / 48",
+  a gold (`warn`) bar, "85 / 400 แต้ม" in `text2`. Left (600 wide): a group of 96 rows, the badge 64 (radius 16; a lock /
+  trophy squircle while it downloads), the title 34 and its description 24 `text2` under it, on the right (a bell-off when
+  muted) the points 30/600 and a green tick when got. Right: the focused one in full in a `surface` card: badge 128, title
+  34/700 and description 26 centred, "25 แต้ม · ผู้เล่น 18% ได้", "ได้เมื่อ …" in `ok` or "ทำไปแล้ว 31/50" with a bar, or
+  "ยังไม่ได้"; its type and "ไม่แจ้งเตือน" as tags along the bottom. There is no separate detail page any more.
+  Keys: ↑↓ · L1 R1 (and ← →) a page · Y เฉพาะที่ยังไม่ได้ / แสดงทั้งหมด · X ปิด/เปิดแจ้งเตือน · B กลับ.
+- **สูตรโกง** (board `v2-GameMenuCheat`): a switch per cheat, A flips it; its full description is the text under the rows.
+  When that is longer than two lines, Y อ่านทั้งหมด (on the left of the hint bar) opens it as a text card.
+- **Binding a button** (board `v2-GameMenuBind`): the row says "รอกดปุ่ม…"; the page under a 62 % veil; a `surface` card 600
+  wide: a 112 focus-colour circle (a 10 px ring of it at 12 %) with the pad icon, "กดปุ่มที่จะใช้เป็น “ปุ่ม B”" 40/700,
+  how to make a MENU pair 28 `text2`, three dots. No hints: any button answers.
+- **Messages** (board `v2-GameMenuMessage`): the screen as it was under a 50 % veil, a `surface` card 660 wide, radius 28,
+  at 47 % height: a circle 88 (`warn` with the warning sign for a failure, `primary` with the info sign otherwise), the
+  title 40/700 and the text 30 `text2`, centred; A or B closes it (the hint bar says which). A text to read (an
+  option's or a cheat's full description) has no circle and its text starts from the left. Each message's translation
+  is "title\nbody".
+- **Done** (board `v2-GameMenuToast`): บันทึกสำหรับเครื่องนี้ / เกมนี้ / คืนค่าเริ่มต้น do not stop for a button: a pill 76
+  high (`surface2`, a green tick circle 48, the text 32/600) above the hint bar, centred on the right column, for 1.8 s.
 
 Still with no mockup at all: PortMaster, Xtras, ภาพปก (ex-Artwork Manager), ตั้งค่าแยกเครื่อง (ex-Emulator Settings), the YouTube player, boot and sleep screens.

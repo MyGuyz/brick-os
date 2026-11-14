@@ -12,38 +12,61 @@
 #include "ma_cheats.h"
 #include "ma_shaders.h"
 #include "ma_present.h"
+#include "bos_ui.h"
+#include "i18n.h"
+#include "ma_menu_bos.h"
 
-static int Menu_messageWithFont(char* message, char** pairs, TTF_Font* f) {
+// Brick OS (DESIGN.md 7.1, board v2-GameMenuMessage): a card over the screen as it was, dimmed; A or B closes it
+static int Menu_dialog(const char* icon, uint32_t icon_bg, const char* title, const char* body, char** pairs) {
 	Present_stop();
 	GFX_setMode(MODE_MAIN);
+	SDL_Surface* under = SDL_ConvertSurface(screen, screen->format, 0);
+	BosHint h[2];
+	int nh = 0;
+	for (int i = 0; pairs && pairs[i] && pairs[i + 1] && nh < 2; i += 2) {
+		const char* l = pairs[i + 1];
+		h[nh++] = (BosHint){pairs[i], I18N_text(!strcmp(l, "BACK") ? "Back" : !strcmp(l, "OKAY") ? "OK" : l)};
+	}
 	bool dirty = true;
 	while (1) {
 		GFX_startFrame();
 		PAD_poll();
-
 		if (PAD_justPressed(BTN_A) || PAD_justPressed(BTN_B))
 			break;
-
 		PWR_update(&dirty, NULL, Menu_beforeSleep, Menu_afterSleep);
-
-		if (dirty) {
-			GFX_clear(screen);
-			GFX_blitMessage(f, message, screen, &(SDL_Rect){SCALE1(PADDING), SCALE1(PADDING), screen->w - SCALE1(2 * PADDING), screen->h - SCALE1(PILL_SIZE + PADDING)});
-			UI_renderButtonHintBar(screen, pairs);
+		if (dirty || BOS_marqueeActive()) {
+			MenuBos_renderDialog(screen, under, icon, icon_bg, title, body, h, nh);
 			GFX_flip(screen);
 			dirty = false;
-		} else {
+		} else
 			GFX_delay();
-		}
-
 		hdmimon();
 	}
+	if (under)
+		SDL_FreeSurface(under);
 	GFX_setMode(MODE_MENU);
-	return MENU_CALLBACK_NOP; // TODO: this should probably be an arg
+	return MENU_CALLBACK_NOP;
 }
 
+// The message's translation is "title\nbody" (th.txt); a failure gets the warning sign, the rest the info sign
 int Menu_message(char* message, char** pairs) {
-	return Menu_messageWithFont(message, pairs, font.medium);
+	char buf[2048];
+	snprintf(buf, sizeof(buf), "%s", I18N_text(message));
+	char* body = strchr(buf, '\n');
+	if (body)
+		*body++ = '\0';
+	bool warn = strstr(message, "ail") || strstr(message, "memory") || strstr(message, "recognize") ||
+				strstr(message, "not available");
+	return Menu_dialog(warn ? "warn" : "info", warn ? BOS_C_WARN : BOS_theme()->primary, buf, body, pairs);
+}
+
+static int Menu_messageWithFont(char* message, char** pairs, TTF_Font* f) {
+	(void)f;
+	return Menu_message(message, pairs);
+}
+
+int Menu_textDialog(const char* title, const char* text) {
+	return Menu_dialog(NULL, 0, title, text, (char*[]){"B", "BACK", NULL});
 }
 
 
@@ -160,7 +183,7 @@ static int OptionEmulator_optionDetail(MenuList* list, int i) {
 	} else {
 		Option* option = OptionList_getOption(&config.core, item->key);
 		if (option->full)
-			return Menu_messageWithFont(option->full, (char*[]){"B", "BACK", NULL}, font.medium);
+			return Menu_textDialog(I18N_text(option->name), I18N_text(option->full));
 		else
 			return MENU_CALLBACK_NOP;
 	}
@@ -510,7 +533,7 @@ int OptionSaveChanges_onConfirm(MenuList* list, int i) {
 		break;
 	}
 	}
-	Menu_message(message, (char*[]){"A", "OKAY", NULL});
+	MenuBos_toast(I18N_text(message)); // "done": a toast, no button (board v2-GameMenuToast)
 	OptionSaveChanges_updateDesc();
 	return MENU_CALLBACK_EXIT;
 }
@@ -547,19 +570,10 @@ int OptionCheats_optionChanged(MenuList* list, int i) {
 	return MENU_CALLBACK_NOP;
 }
 
-int OptionCheats_optionDetail(MenuList* list, int i) {
-	MenuItem* item = &list->items[i];
-	struct Cheat* cheat = &cheatcodes.cheats[i];
-	if (cheat->info)
-		return Menu_message((char*)cheat->info, (char*[]){"B", "BACK", NULL});
-	else
-		return MENU_CALLBACK_NOP;
-}
 
 static MenuList OptionCheats_menu = {
 	.type = MENU_FIXED,
-	.title = "Cheats",
-	.on_confirm = OptionCheats_optionDetail, // TODO: this needs pagination to be truly useful
+	.title = "Cheats", // A flips a cheat; its details are under the rows, Y reads them all (DESIGN.md 7.1)
 	.on_change = OptionCheats_optionChanged,
 	.items = NULL,
 };
@@ -583,8 +597,9 @@ int OptionCheats_openMenu(MenuList* list, int i) {
 
 			if (cheat->info) {
 				item->desc = strdup(cheat->info);
-				if (item->desc)
-					GFX_wrapText(font.tiny, item->desc, DEVICE_WIDTH - SCALE1(2 * PADDING), 2);
+				for (char* c = item->desc; c && *c; c++) // the parser wrapped it for the old screen: one paragraph
+					if (*c == 0x0A)
+						*c = 0x20;
 			}
 
 			item->value = cheat->enabled;
@@ -612,7 +627,7 @@ int OptionCheats_openMenu(MenuList* list, int i) {
 		char cheats_path[CHEAT_MAX_LIST_LENGTH] = {0};
 
 		// prepend title with bounds checking
-		const char* title = "No cheat file loaded.\nGet cheats from Xtras > Cheat Database.\n\n";
+		const char* title = I18N_text("No cheat file loaded.\nGet cheats from Xtras > Cheat Database.\n\n");
 		size_t title_len = strlen(title);
 
 		strcpy(cheats_path, title); // Use strcpy for first string

@@ -51,6 +51,11 @@ int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t r
 int BOS_textMarquee(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int cy,
 					int max_w);
 bool BOS_marqueeActive(void);
+// The same wrap with each line centred in max_w (x is the box's left), and a count of the lines it would take (up to
+// max_lines). In both, "\n" starts a new line.
+int BOS_textWrapCentre(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y,
+					   int max_w, int max_lines);
+int BOS_textLines(const char* s, int px, int weight, int max_w, int max_lines);
 
 // ---- shapes ----
 uint32_t BOS_map(SDL_Surface* s, uint32_t rgb);

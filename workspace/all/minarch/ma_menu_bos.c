@@ -280,7 +280,7 @@ static void optToggle(SDL_Surface* s, int x, int cy, bool on, bool hot) {
 	BOS_rrect(s, on ? x + w - k - BOS_px(4) : x + BOS_px(4), cy - k / 2, k, k, k / 2, 0xFFFFFF);
 }
 
-void MenuBos_renderOptions(SDL_Surface* s, const MenuBosOptView* v) {
+static void optPage(SDL_Surface* s, const MenuBosOptView* v) {
 	const BosTheme* th = BOS_theme();
 	if (bg)
 		SDL_BlitSurface(bg, NULL, s, NULL);
@@ -444,6 +444,369 @@ void MenuBos_renderOptions(SDL_Surface* s, const MenuBosOptView* v) {
 	BOS_hintBar(s, v->hints, v->nhints, v->left_hints, v->nleft_hints);
 }
 
+// ---- the rest of the menu's screens (DESIGN.md 7.1; boards v2-GameMenuAch*, -Cheat, -Bind, -Message, -Toast) ----
+
+// a black veil over r, alpha 0-255 (one pixel stretched: the blitter blends it)
+static void veil(SDL_Surface* s, SDL_Rect r, int alpha) {
+	static SDL_Surface* px;
+	if (!px) {
+		px = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_ARGB8888);
+		if (!px)
+			return;
+		SDL_SetSurfaceBlendMode(px, SDL_BLENDMODE_BLEND);
+	}
+	*(uint32_t*)px->pixels = (uint32_t)alpha << 24;
+	SDL_BlitScaled(px, NULL, s, &r);
+}
+
+static uint32_t mix(uint32_t a, uint32_t b, int t) { // a -> b, t/256
+	uint32_t o = 0;
+	for (int sh = 0; sh < 24; sh += 8) {
+		int ca = (a >> sh) & 255, cb = (b >> sh) & 255;
+		o |= (uint32_t)((ca * (256 - t) + cb * t) >> 8) << sh;
+	}
+	return o;
+}
+
+// ---- "done": a pill over the page for 1.8 s ----
+static char toast_text[160];
+static uint32_t toast_at;
+static bool toast_drawn;
+void MenuBos_toast(const char* text) {
+	snprintf(toast_text, sizeof(toast_text), "%s", text ? text : "");
+	toast_at = SDL_GetTicks();
+	toast_drawn = false;
+}
+static bool toastLive(void) {
+	return toast_text[0] && SDL_GetTicks() - toast_at < 1800;
+}
+static void toastDraw(SDL_Surface* s, int cx, int bottom) {
+	if (!toastLive()) {
+		toast_text[0] = '\0';
+		return;
+	}
+	int h = BOS_px(76), dot = BOS_px(48), ic = BOS_px(30), gap = BOS_px(16);
+	int tw = BOS_textW(toast_text, 32, 600), w = BOS_px(18) + dot + gap + tw + BOS_px(32);
+	if (w > s->w - BOS_px(48))
+		w = s->w - BOS_px(48);
+	int x = cx - w / 2;
+	if (x + w > s->w - BOS_px(24))
+		x = s->w - BOS_px(24) - w;
+	int y = bottom - h;
+	BOS_rrect(s, x, y, w, h, h / 2, BOS_C_SURFACE2);
+	int dx = x + BOS_px(18), cy = y + h / 2;
+	BOS_rrect(s, dx, cy - dot / 2, dot, dot, dot / 2, BOS_C_OK);
+	BOS_icon(s, "check", 0xFFFFFF, 1, dx + (dot - ic) / 2, cy - ic / 2, ic);
+	char t[160];
+	BOS_fit(toast_text, 32, 600, x + w - BOS_px(32) - (dx + dot + gap), t, sizeof(t));
+	BOS_textMid(s, t, 32, 600, BOS_C_TEXT, 1, dx + dot + gap, cy);
+	toast_drawn = true;
+}
+
+// ---- the binding prompt: a sheet over the Controls page ----
+static void promptDraw(SDL_Surface* s, const char* name) {
+	const BosTheme* th = BOS_theme();
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	veil(s, (SDL_Rect){0, top, s->w, bottom - top}, 158);
+	int w = BOS_px(600), pad = BOS_px(40), inner = w - 2 * pad, circ = BOS_px(112), ring = BOS_px(10);
+	char title[200];
+	snprintf(title, sizeof(title), I18N_text("Press the button to use as \xE2\x80\x9C%s\xE2\x80\x9D"), name ? name : "");
+	const char* sub = I18N_text("Hold MENU with it for a pair, e.g. MENU + B");
+	int th1 = BOS_textLines(title, 40, 700, inner, 2) * BOS_lineH(40);
+	int th2 = BOS_textLines(sub, 28, 400, inner, 2) * BOS_lineH(28);
+	int dots = BOS_px(14);
+	int h = pad + circ + BOS_px(26) + th1 + BOS_px(12) + th2 + BOS_px(26) + dots + BOS_px(36);
+	int x = (s->w - w) / 2, y = top + (bottom - top - h) / 2;
+	BOS_rrect(s, x, y, w, h, BOS_px(28), BOS_C_SURFACE);
+	int cx = s->w / 2, cy = y + pad + circ / 2;
+	BOS_rrect(s, cx - circ / 2 - ring, cy - circ / 2 - ring, circ + 2 * ring, circ + 2 * ring, circ / 2 + ring,
+			  mix(BOS_C_SURFACE, th->focus, 31));
+	BOS_rrect(s, cx - circ / 2, cy - circ / 2, circ, circ, circ / 2, th->focus);
+	int ic = BOS_px(64);
+	BOS_icon(s, "pad", th->onfocus, 1, cx - ic / 2, cy - ic / 2, ic);
+	int ty = y + pad + circ + BOS_px(26);
+	BOS_textWrapCentre(s, title, 40, 700, BOS_C_TEXT, 1, x + pad, ty, inner, 2);
+	ty += th1 + BOS_px(12);
+	BOS_textWrapCentre(s, sub, 28, 400, BOS_C_TEXT2, 1, x + pad, ty, inner, 2);
+	ty += th2 + BOS_px(26);
+	uint32_t dc[3] = {BOS_C_TEXT, BOS_C_TEXTOFF, BOS_C_SURFACE2};
+	for (int i = 0; i < 3; i++)
+		BOS_rrect(s, cx - dots / 2 + (i - 1) * (dots + BOS_px(10)), ty, dots, dots, dots / 2, dc[i]);
+}
+
+void MenuBos_renderOptions(SDL_Surface* s, const MenuBosOptView* v) {
+	optPage(s, v);
+	if (v->prompt)
+		promptDraw(s, v->prompt);
+	int lx = BOS_px(24), lw = BOS_px(380), rx = lx + lw + BOS_px(28), rw = s->w - BOS_px(32) - rx;
+	toastDraw(s, rx + rw / 2, s->h - BOS_px(BOS_BAR_H) - BOS_px(24));
+}
+
 bool MenuBos_optMoving(void) {
-	return BOS_glideMoving(&o_pill) || BOS_glideMoving(&o_scroll) || BOS_glideMoving(&l_pill) || BOS_marqueeActive();
+	return BOS_glideMoving(&o_pill) || BOS_glideMoving(&o_scroll) || BOS_glideMoving(&l_pill) || BOS_marqueeActive() ||
+		   toastLive() || toast_drawn;
+}
+
+bool MenuBos_optDescLong(const char* desc) {
+	int lx = BOS_px(24), lw = BOS_px(380), rx = lx + lw + BOS_px(28);
+	int rw = BOS_px(1024) - BOS_px(32) - rx;
+	return desc && desc[0] && BOS_textLines(desc, 26, 400, rw - BOS_px(28), 3) > 2;
+}
+
+// ---- a message: a card over the screen as it was, dimmed ----
+void MenuBos_renderDialog(SDL_Surface* s, SDL_Surface* under, const char* icon, uint32_t icon_bg, const char* title,
+						  const char* body, const BosHint* hints, int nhints) {
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	if (under)
+		SDL_BlitSurface(under, NULL, s, NULL);
+	else if (bg)
+		SDL_BlitSurface(bg, NULL, s, NULL);
+	else
+		SDL_FillRect(s, NULL, BOS_map(s, BOS_C_BG));
+	if (under) {
+		veil(s, (SDL_Rect){0, top, s->w, bottom - top}, 128);
+		SDL_Rect band = {0, bottom, s->w, s->h - bottom}; // the old hints go: the backdrop there again
+		if (bg)
+			SDL_BlitSurface(bg, &band, s, &band);
+		else
+			SDL_FillRect(s, &band, BOS_map(s, BOS_C_BG));
+	} else
+		BOS_statusBar(s, "");
+	int w = BOS_px(660), pad = BOS_px(40), inner = w - 2 * pad, circ = BOS_px(88);
+	int room = bottom - top - BOS_px(32);
+	int h1 = title && title[0] ? BOS_textLines(title, 40, 700, inner, 3) * BOS_lineH(40) : 0;
+	int head = pad + (icon ? circ + BOS_px(22) : 0) + h1;
+	int max_body = (room - head - pad - BOS_px(12)) / BOS_lineH(30);
+	if (max_body < 1)
+		max_body = 1;
+	int h2 = body && body[0] ? BOS_textLines(body, 30, 400, inner, max_body) * BOS_lineH(30) : 0;
+	int h = head + (h2 ? BOS_px(12) + h2 : 0) + pad;
+	int x = (s->w - w) / 2, y = top + (bottom - top) * 47 / 100 - h / 2;
+	if (y < top + BOS_px(16))
+		y = top + BOS_px(16);
+	BOS_rrect(s, x, y, w, h, BOS_px(28), BOS_C_SURFACE);
+	int ty = y + pad;
+	if (icon) {
+		int cx = s->w / 2, ic = BOS_px(50);
+		BOS_rrect(s, cx - circ / 2, ty, circ, circ, circ / 2, icon_bg);
+		BOS_icon(s, icon, BOS_textOn(icon_bg, 0), 1, cx - ic / 2, ty + (circ - ic) / 2, ic);
+		ty += circ + BOS_px(22);
+	}
+	if (h1) {
+		BOS_textWrapCentre(s, title, 40, 700, BOS_C_TEXT, 1, x + pad, ty, inner, 3);
+		ty += h1 + BOS_px(12);
+	}
+	if (h2) {
+		if (icon) // a message: centred like its title; a text to read (no icon): from the left
+			BOS_textWrapCentre(s, body, 30, 400, BOS_C_TEXT2, 1, x + pad, ty, inner, max_body);
+		else
+			BOS_textWrap(s, body, 30, 400, BOS_C_TEXT2, 1, x + pad, ty, inner, max_body);
+	}
+	BOS_hintBar(s, hints, nhints, NULL, 0);
+}
+
+// ---- achievements: the list left, the focused one in full on the right ----
+typedef struct {
+	SDL_Surface* src;
+	int size;
+	SDL_Surface* pic;
+} BadgePic;
+static BadgePic badge_pics[24];
+static int badge_next;
+static SDL_Surface* badgePic(SDL_Surface* src, int size) {
+	if (!src)
+		return NULL;
+	for (int i = 0; i < 24; i++)
+		if (badge_pics[i].src == src && badge_pics[i].size == size)
+			return badge_pics[i].pic;
+	BadgePic* b = &badge_pics[badge_next++ % 24];
+	if (b->pic)
+		SDL_FreeSurface(b->pic);
+	b->src = src, b->size = size, b->pic = fitted(src, size, size, size / 4);
+	return b->pic;
+}
+void MenuBos_achDone(void) {
+	for (int i = 0; i < 24; i++) {
+		if (badge_pics[i].pic)
+			SDL_FreeSurface(badge_pics[i].pic);
+		badge_pics[i] = (BadgePic){0};
+	}
+}
+
+static void badgeDraw(SDL_Surface* s, const MenuBosAch* a, int x, int y, int size) {
+	SDL_Surface* p = badgePic(a->badge, size);
+	if (p) {
+		BOS_blit(p, s, x, y, 1);
+		return;
+	}
+	BOS_rrect(s, x, y, size, size, size / 4, a->unlocked ? 0xFFD60A : 0x3A3A3C);
+	int ic = size * 9 / 16;
+	BOS_icon(s, a->unlocked ? "trophy" : "lock", a->unlocked ? 0x0B0B0D : 0x8E8E93, 1, x + (size - ic) / 2,
+			 y + (size - ic) / 2, ic);
+}
+
+static BosGlide a_pill, a_scroll;
+void MenuBos_renderAch(SDL_Surface* s, const MenuBosAchView* v) {
+	const BosTheme* th = BOS_theme();
+	if (bg)
+		SDL_BlitSurface(bg, NULL, s, NULL);
+	else
+		SDL_FillRect(s, NULL, BOS_map(s, BOS_C_BG));
+	BOS_statusBar(s, I18N_text("Achievements"));
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+
+	// the summary: got / all, a gold bar, points
+	int lx = BOS_px(24), lw = BOS_px(600), sy = top + BOS_px(26);
+	char got[64], pts[64];
+	if (v->locked_only)
+		snprintf(got, sizeof(got), I18N_text("Not yet %d"), v->total - v->got);
+	else
+		snprintf(got, sizeof(got), I18N_text("Got %d / %d"), v->got, v->total);
+	snprintf(pts, sizeof(pts), I18N_text("%d / %d points"), v->pts_got, v->pts_total);
+	int gw = BOS_textMid(s, got, BOS_FS_SMALL, 600, BOS_C_TEXT, 1, lx + BOS_px(8), sy);
+	int pw = BOS_textW(pts, BOS_FS_SMALL, 400);
+	BOS_textMid(s, pts, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, lx + lw - BOS_px(4) - pw, sy);
+	int bx = lx + BOS_px(8) + gw + BOS_px(20), bw = lx + lw - BOS_px(4) - pw - BOS_px(20) - bx, bh = BOS_px(12);
+	if (bw > bh) {
+		BOS_rrect(s, bx, sy - bh / 2, bw, bh, bh / 2, BOS_C_SURFACE2);
+		int fw = v->total > 0 ? bw * v->got / v->total : 0;
+		if (fw > 0)
+			BOS_rrect(s, bx, sy - bh / 2, fw < bh ? bh : fw, bh, bh / 2, BOS_C_WARN);
+	}
+
+	// the list
+	int list_y = top + BOS_px(60), rh = BOS_px(BOS_ROW_H);
+	int rows = (bottom - BOS_px(12) - list_y) / rh;
+	if (rows > v->n)
+		rows = v->n;
+	int sc = v->scroll ? *v->scroll : 0;
+	if (v->sel < sc)
+		sc = v->sel;
+	if (v->sel >= sc + rows)
+		sc = v->sel - rows + 1;
+	if (sc < 0)
+		sc = 0;
+	if (v->scroll)
+		*v->scroll = sc;
+	float fsc = BOS_glideTo(&a_scroll, (float)(sc * rh), 180, false);
+	float fsel = BOS_glideTo(&a_pill, (float)(v->sel * rh), 120, false);
+	if (rows > 0) {
+		SDL_Rect box = {lx, list_y, lw, rows * rh};
+		BOS_rrect(s, lx, list_y, lw, rows * rh, BOS_px(24), BOS_C_SURFACE);
+		int gx = (int)(lw * BOS_ROW_SCALE) - lw, gy = (int)(rh * BOS_ROW_SCALE) - rh;
+		SDL_Rect wide = {lx - gx, list_y - gy, lw + 2 * gx, rows * rh + 2 * gy};
+		SDL_SetClipRect(s, &wide);
+		BOS_rrect(s, lx - gx / 2, list_y + (int)fsel - (int)fsc - gy / 2, lw + gx, rh + gy, BOS_px(BOS_RADIUS_ROW),
+				  th->focus);
+		SDL_SetClipRect(s, &box);
+		for (int i = (int)fsc / rh; i < v->n; i++) {
+			int y = list_y + i * rh - (int)fsc;
+			if (y >= list_y + rows * rh)
+				break;
+			const MenuBosAch* a = &v->rows[i];
+			bool hot = i == v->sel;
+			if (hot)
+				SDL_SetClipRect(s, &wide);
+			int cy = y + rh / 2, bsz = BOS_px(64);
+			uint32_t fg = hot ? th->onfocus : BOS_C_TEXT, sub = hot ? th->onfocus : BOS_C_TEXT2;
+			badgeDraw(s, a, lx + BOS_px(20), cy - bsz / 2, bsz);
+			// right: (muted) points (tick)
+			int x = lx + lw - BOS_px(24), ck = BOS_px(30);
+			if (a->unlocked)
+				BOS_icon(s, "check", hot ? th->onfocus : BOS_C_OK, 1, x - ck, cy - ck / 2, ck);
+			x -= ck + BOS_px(12);
+			char num[16];
+			snprintf(num, sizeof(num), "%d", a->points);
+			int nw = BOS_textW(num, BOS_FS_SMALL, 600);
+			BOS_textMid(s, num, BOS_FS_SMALL, 600, sub, 1, x - nw, cy);
+			x -= nw + BOS_px(12);
+			if (a->muted) {
+				int mi = BOS_px(26);
+				BOS_icon(s, "belloff", sub, 1, x - mi, cy - mi / 2, mi);
+				x -= mi + BOS_px(12);
+			}
+			int nx = lx + BOS_px(104), room = x - nx - BOS_px(8);
+			char t[200];
+			if (hot)
+				BOS_textMarquee(s, a->title, 34, 600, fg, 1, nx, cy - BOS_px(16), room);
+			else {
+				BOS_fit(a->title, 34, 500, room, t, sizeof(t));
+				BOS_textMid(s, t, 34, 500, fg, 1, nx, cy - BOS_px(16));
+			}
+			BOS_fit(a->desc ? a->desc : "", 24, 400, room, t, sizeof(t));
+			BOS_textMid(s, t, 24, 400, sub, 1, nx, cy + BOS_px(20));
+			if (hot)
+				SDL_SetClipRect(s, &box);
+			else if (i + 1 != v->sel && i + 1 < v->n && y + rh < list_y + rows * rh)
+				SDL_FillRect(s, &(SDL_Rect){nx, y + rh - 1, lx + lw - nx, 1}, BOS_map(s, C_SEP));
+		}
+		SDL_SetClipRect(s, NULL);
+	}
+
+	// right: the focused one in full
+	int px = lx + lw + BOS_px(24), py = top + BOS_px(8), pw2 = s->w - BOS_px(32) - px, ph = bottom - BOS_px(12) - py;
+	BOS_rrect(s, px, py, pw2, ph, BOS_px(24), BOS_C_SURFACE);
+	if (v->n > 0 && v->sel >= 0 && v->sel < v->n) {
+		const MenuBosAch* a = &v->rows[v->sel];
+		int pad = BOS_px(28), inner = pw2 - 2 * pad, big = BOS_px(128), y = py + pad, cx = px + pw2 / 2;
+		badgeDraw(s, a, cx - big / 2, y, big);
+		y += big + BOS_px(18);
+		y += BOS_textWrapCentre(s, a->title, 34, 700, BOS_C_TEXT, 1, px + pad, y, inner, 2);
+		y += BOS_px(6);
+		y += BOS_textWrapCentre(s, a->desc, 26, 400, BOS_C_TEXT2, 1, px + pad, y, inner, 3);
+		y += BOS_px(16);
+		// "25 แต้ม   ผู้เล่น 18% ได้"
+		char num[16], rare[64];
+		snprintf(num, sizeof(num), "%d", a->points);
+		const char* unit = I18N_text(a->points == 1 ? "point" : "points");
+		rare[0] = '\0';
+		if (a->rarity > 0)
+			snprintf(rare, sizeof(rare), I18N_text("%.0f%% of players"), a->rarity);
+		int w1 = BOS_textW(num, BOS_FS_SMALL, 700), w2 = BOS_textW(unit, 26, 400), gap = BOS_px(8), sp = BOS_px(28);
+		int w3 = rare[0] ? BOS_textW(rare, 26, 400) : 0;
+		int all = w1 + gap + w2 + (w3 ? sp + w3 : 0), x = cx - all / 2, cyl = y + BOS_lineH(BOS_FS_SMALL) / 2;
+		BOS_textMid(s, num, BOS_FS_SMALL, 700, BOS_C_TEXT, 1, x, cyl);
+		BOS_textMid(s, unit, 26, 400, BOS_C_TEXT2, 1, x + w1 + gap, cyl);
+		if (w3)
+			BOS_textMid(s, rare, 26, 400, BOS_C_TEXT2, 1, x + w1 + gap + w2 + sp, cyl);
+		y += BOS_lineH(BOS_FS_SMALL) + BOS_px(8);
+		if (a->state && a->state[0])
+			y += BOS_textWrapCentre(s, a->state, 26, 400, a->unlocked ? BOS_C_OK : BOS_C_TEXT2, 1, px + pad, y, inner, 2);
+		if (a->progress >= 0) {
+			int bh2 = BOS_px(12), fw = (int)(inner * (a->progress > 1 ? 1 : a->progress));
+			y += BOS_px(14);
+			BOS_rrect(s, px + pad, y, inner, bh2, bh2 / 2, BOS_C_SURFACE2);
+			if (fw > 0)
+				BOS_rrect(s, px + pad, y, fw < bh2 ? bh2 : fw, bh2, bh2 / 2, BOS_C_TEXT);
+		}
+		// the tags along the bottom: its type, and "no notice" when muted
+		const char* tags[2];
+		int nt = 0;
+		if (a->tag)
+			tags[nt++] = a->tag;
+		if (a->muted)
+			tags[nt++] = I18N_text("No notice");
+		int th2 = BOS_px(36), tw[2], tot = 0, ti = BOS_px(22);
+		for (int i = 0; i < nt; i++) {
+			tw[i] = BOS_textW(tags[i], 22, 600) + BOS_px(28) + (a->muted && i == nt - 1 ? ti + BOS_px(6) : 0);
+			tot += tw[i] + (i ? BOS_px(10) : 0);
+		}
+		int tx = cx - tot / 2, ty = py + ph - pad - th2;
+		for (int i = 0; i < nt; i++) {
+			bool mute = a->muted && i == nt - 1;
+			BOS_rrect(s, tx, ty, tw[i], th2, th2 / 2, BOS_C_SURFACE2);
+			int x2 = tx + BOS_px(14);
+			if (mute) {
+				BOS_icon(s, "belloff", BOS_C_TEXT2, 1, x2, ty + (th2 - ti) / 2, ti);
+				x2 += ti + BOS_px(6);
+			}
+			BOS_textMid(s, tags[i], 22, 600, mute ? BOS_C_TEXT2 : BOS_C_TEXT, 1, x2, ty + th2 / 2);
+			tx += tw[i] + BOS_px(10);
+		}
+	}
+	BOS_hintBar(s, v->hints, v->nhints, v->left_hints, v->nleft);
+}
+
+bool MenuBos_achMoving(void) {
+	return BOS_glideMoving(&a_pill) || BOS_glideMoving(&a_scroll) || BOS_marqueeActive();
 }

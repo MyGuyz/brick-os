@@ -349,201 +349,6 @@ static void ach_sort_achievements(AchSortEntry* entries, int count) {
 	}
 }
 
-static int OptionAchievements_showDetail(MenuList* list, int i) {
-	if (!ach_menu_achievements || i < 0 || i >= ach_menu_count) {
-		return MENU_CALLBACK_NOP;
-	}
-
-	const rc_client_achievement_t* ach = ach_menu_achievements[i];
-	if (!ach || !ach->title) {
-		return MENU_CALLBACK_NOP;
-	}
-
-	GFX_setMode(MODE_MAIN);
-	bool dirty = true;
-	int show_detail = 1;
-
-	// Content renders onto this transparent canvas first so its total height
-	// is known, then the canvas is blitted vertically centered on screen.
-	SDL_Surface* detail_canvas = SDL_CreateRGBSurfaceWithFormat(
-		0, screen->w, screen->h, 32, SDL_PIXELFORMAT_ARGB8888);
-	if (!detail_canvas) {
-		GFX_setMode(MODE_MENU);
-		return i;
-	}
-
-	while (show_detail) {
-		GFX_startFrame();
-		PAD_poll();
-
-		// Check for input
-		if (PAD_justPressed(BTN_B)) {
-			show_detail = 0;
-		} else if (PAD_justPressed(BTN_X)) {
-			// Toggle mute for this achievement
-			RA_toggleAchievementMute(ach->id);
-			dirty = true;
-		} else if (PAD_justPressed(BTN_LEFT) || PAD_justRepeated(BTN_LEFT)) {
-			// Navigate to previous achievement (with wrap-around)
-			i = (i - 1 + ach_menu_count) % ach_menu_count;
-			ach = ach_menu_achievements[i];
-			dirty = true;
-		} else if (PAD_justPressed(BTN_RIGHT) || PAD_justRepeated(BTN_RIGHT)) {
-			// Navigate to next achievement (with wrap-around)
-			i = (i + 1) % ach_menu_count;
-			ach = ach_menu_achievements[i];
-			dirty = true;
-		}
-
-		PWR_update(&dirty, NULL, Menu_beforeSleep, Menu_afterSleep);
-
-		if (dirty) {
-			bool is_muted = RA_isAchievementMuted(ach->id);
-
-			GFX_clear(screen);
-			SDL_FillRect(detail_canvas, NULL,
-						 SDL_MapRGBA(detail_canvas->format, 0, 0, 0, 0));
-
-			// Layout: badge icon centered at top, then title, then details.
-			// Everything is drawn onto the canvas starting at y=0; once the
-			// total height is known the canvas is centered vertically.
-			int badge_size = SCALE1(64); // 64px badge
-			int content_y = 0;
-			int center_x = detail_canvas->w / 2;
-
-			// Badge icon centered at top
-			SDL_Surface* badge = RA_Badges_get(RA_getGameId(), ach->badge_name, !ach->unlocked);
-			if (badge) {
-				SDL_Rect badge_src = {0, 0, badge->w, badge->h};
-				SDL_Rect badge_dst = {
-					center_x - badge_size / 2,
-					content_y,
-					badge_size, badge_size};
-				SDL_BlitScaled(badge, &badge_src, detail_canvas, &badge_dst);
-				content_y += badge_size + SCALE1(6);
-			}
-
-			// Title centered - wrap to max 2 lines with ellipsis if needed.
-			// Wider side margins (3x PADDING each side) keep long wrapped
-			// descriptions from hugging the screen edges.
-			int max_text_width = screen->w - SCALE1(PADDING * 6);
-			content_y = GFX_blitWrappedText(font.medium, ach->title, max_text_width, 2, COLOR_WHITE, detail_canvas, content_y);
-			content_y += SCALE1(2); // Spacing after title
-
-			// Description - unlimited lines
-			content_y = GFX_blitWrappedText(font.small, ach->description, max_text_width, 0, COLOR_WHITE, detail_canvas, content_y);
-			content_y += SCALE1(4); // Spacing after description
-
-			// Points (singular/plural) - use tiny font like other metadata
-			char points_str[32];
-			if (ach->points == 1) {
-				snprintf(points_str, sizeof(points_str), "1 point");
-			} else {
-				snprintf(points_str, sizeof(points_str), "%u points", ach->points);
-			}
-			SDL_Surface* points_text = GFX_renderText(font.tiny, points_str, COLOR_LIGHT_TEXT);
-			if (points_text) {
-				SDL_BlitSurface(points_text, NULL, detail_canvas, &(SDL_Rect){center_x - points_text->w / 2, content_y});
-				content_y += points_text->h + SCALE1(2);
-				SDL_FreeSurface(points_text);
-			}
-
-			// Unlock time or progress (smaller font, gray)
-			if (ach->unlocked && ach->unlock_time > 0) {
-				struct tm* tm_info = localtime(&ach->unlock_time);
-				char time_buf[64];
-				strftime(time_buf, sizeof(time_buf), "Unlocked %B %d %Y, %I:%M%p", tm_info);
-				SDL_Surface* time_text = GFX_renderText(font.tiny, time_buf, COLOR_LIGHT_TEXT);
-				if (time_text) {
-					SDL_BlitSurface(time_text, NULL, detail_canvas, &(SDL_Rect){center_x - time_text->w / 2, content_y});
-					content_y += time_text->h + SCALE1(2);
-					SDL_FreeSurface(time_text);
-				}
-			} else if (ach->measured_progress[0]) {
-				char progress_buf[64];
-				snprintf(progress_buf, sizeof(progress_buf), "Progress: %s", ach->measured_progress);
-				SDL_Surface* progress_text = GFX_renderText(font.tiny, progress_buf, COLOR_LIGHT_TEXT);
-				if (progress_text) {
-					SDL_BlitSurface(progress_text, NULL, detail_canvas, &(SDL_Rect){center_x - progress_text->w / 2, content_y});
-					content_y += progress_text->h + SCALE1(2);
-					SDL_FreeSurface(progress_text);
-				}
-			}
-
-			// Unlock rate/rarity (smaller font, gray)
-			if (ach->rarity > 0) {
-				char rarity_buf[32];
-				snprintf(rarity_buf, sizeof(rarity_buf), "%.2f%% unlock rate", ach->rarity);
-				SDL_Surface* rarity_text = GFX_renderText(font.tiny, rarity_buf, COLOR_LIGHT_TEXT);
-				if (rarity_text) {
-					SDL_BlitSurface(rarity_text, NULL, detail_canvas, &(SDL_Rect){center_x - rarity_text->w / 2, content_y});
-					content_y += rarity_text->h + SCALE1(2);
-					SDL_FreeSurface(rarity_text);
-				}
-			}
-
-			// Type tag
-			const char* type_str = NULL;
-			switch (ach->type) {
-			case RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE:
-				type_str = "[Missable]";
-				break;
-			case RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION:
-				type_str = "[Progression]";
-				break;
-			case RC_CLIENT_ACHIEVEMENT_TYPE_WIN:
-				type_str = "[Win Condition]";
-				break;
-			default:
-				break;
-			}
-			if (type_str) {
-				SDL_Surface* type_text = GFX_renderText(font.tiny, type_str, COLOR_LIGHT_TEXT);
-				if (type_text) {
-					SDL_BlitSurface(type_text, NULL, detail_canvas, &(SDL_Rect){center_x - type_text->w / 2, content_y});
-					content_y += type_text->h + SCALE1(2);
-					SDL_FreeSurface(type_text);
-				}
-			}
-
-			// Muted status below other info with gap before title
-			if (is_muted) {
-				SDL_Surface* mute_text = GFX_renderText(font.tiny, "MUTED: Will not show in notifications", COLOR_LIGHT_TEXT);
-				if (mute_text) {
-					SDL_BlitSurface(mute_text, NULL, detail_canvas, &(SDL_Rect){center_x - mute_text->w / 2, content_y + SCALE1(4)});
-					content_y += SCALE1(4) + mute_text->h;
-					SDL_FreeSurface(mute_text);
-				}
-			}
-
-			// Blit the finished block vertically centered between the top of
-			// the screen and the button hint bar
-			{
-				int avail_h = screen->h - SCALE1(PADDING + BUTTON_SIZE + BUTTON_MARGIN);
-				int dest_y = (avail_h - content_y) / 2;
-				if (dest_y < SCALE1(PADDING))
-					dest_y = SCALE1(PADDING);
-				SDL_BlitSurface(detail_canvas,
-								&(SDL_Rect){0, 0, detail_canvas->w, content_y},
-								screen, &(SDL_Rect){0, dest_y});
-			}
-
-			// Button hints - update based on current mute state
-			char* hints[] = {"B", "BACK", "X", is_muted ? "UNMUTE" : "MUTE", NULL};
-			UI_renderButtonHintBar(screen, hints);
-			GFX_flip(screen);
-			dirty = false;
-		}
-
-		hdmimon();
-	}
-
-	SDL_FreeSurface(detail_canvas);
-	GFX_setMode(MODE_MENU);
-	// Return the current index so caller can update selection
-	return i;
-}
-
 static int OptionAchievements_openMenu(MenuList* list, int i) {
 	if (!RA_isGameLoaded()) {
 		if (RA_isGameUnknown())
@@ -629,6 +434,29 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 		all_achievements[j] = sort_entries[j].ach;
 	free(sort_entries);
 
+	// the view's rows (Brick OS) and the summary: what is got of all, in count and points
+	MenuBosAch* ach_rows = calloc(total_achievements, sizeof(MenuBosAch));
+	char (*ach_state)[64] = calloc(total_achievements, 64);
+	int ach_got = 0, ach_total = 0, ach_pts_got = 0, ach_pts_total = 0;
+	for (int j = 0; j < idx; j++) {
+		const rc_client_achievement_t* a = all_achievements[j];
+		if (a->id == RA_UNKNOWN_EMULATOR_ACHIEVEMENT_ID)
+			continue;
+		ach_total++, ach_pts_total += a->points;
+		if (a->unlocked)
+			ach_got++, ach_pts_got += a->points;
+	}
+	if (!ach_rows || !ach_state) {
+		free(ach_rows);
+		free(ach_state);
+		free(all_achievements);
+		free(filtered);
+		RA_destroyAchievementList(ach_menu_list);
+		ach_menu_list = NULL;
+		Menu_message("Failed to load achievements", (char*[]){"B", "BACK", NULL});
+		return MENU_CALLBACK_NOP;
+	}
+
 	// Custom menu loop with X (mute) and Y (filter) support
 	bool dirty = true;
 	bool filter_dirty = true; // Rebuild filtered list when this is set
@@ -674,6 +502,9 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 				ach_menu_list = NULL;
 				ach_menu_achievements = NULL;
 				ach_menu_count = 0;
+				free(ach_rows);
+				free(ach_state);
+				MenuBos_achDone();
 				Menu_message("No achievements found", (char*[]){"B", "BACK", NULL});
 				return MENU_CALLBACK_NOP;
 			}
@@ -713,7 +544,7 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 				start++;
 			}
 			dirty = true;
-		} else if (PAD_justRepeated(BTN_LEFT)) {
+		} else if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_L1)) {
 			// Page up (move up by max_visible items)
 			selected -= max_visible;
 			if (selected < 0) {
@@ -723,7 +554,7 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 				start = selected;
 			}
 			dirty = true;
-		} else if (PAD_justRepeated(BTN_RIGHT)) {
+		} else if (PAD_justRepeated(BTN_RIGHT) || PAD_justRepeated(BTN_R1)) {
 			// Page down (move down by max_visible items)
 			selected += max_visible;
 			if (selected >= filtered_count) {
@@ -735,16 +566,6 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 			dirty = true;
 		} else if (PAD_justPressed(BTN_B)) {
 			show_menu = 0;
-		} else if (PAD_justPressed(BTN_A)) {
-			// Show detail view (returns updated index after navigation)
-			selected = OptionAchievements_showDetail(NULL, selected);
-			// Adjust scroll position if needed
-			if (selected < start) {
-				start = selected;
-			} else if (selected >= start + max_visible) {
-				start = selected - max_visible + 1;
-			}
-			dirty = true;
 		} else if (PAD_justPressed(BTN_X)) {
 			// Toggle mute for selected achievement
 			if (filtered_count > 0) {
@@ -760,149 +581,55 @@ static int OptionAchievements_openMenu(MenuList* list, int i) {
 			filter_dirty = true;
 		}
 
+		if (MenuBos_achMoving())
+			dirty = true;
 		if (dirty) {
-			end = MIN(start + max_visible, filtered_count);
-
-			GFX_clear(screen);
-			GFX_blitHardwareGroup(screen, 0);
-
-			// Layout constants matching MENU_FIXED style
-			int mw = screen->w - SCALE1(PADDING * 2);
-			int ox = SCALE1(PADDING);
-			int row_height = SCALE1(BUTTON_SIZE);
-			int selected_row = selected - start;
-			int opt_pad = SCALE1(8); // Local option padding
-
-			// Status text at top, aligned with hardware pill (not part of centered content)
-			char status_text[64];
-			snprintf(status_text, sizeof(status_text), "%u/%u unlocked", unlocked, total);
-			SDL_Surface* status_surface = GFX_renderText(font.tiny, status_text, COLOR_WHITE);
-			if (status_surface) {
-				SDL_BlitSurface(status_surface, NULL, screen, &(SDL_Rect){
-																  (screen->w - status_surface->w) / 2,
-																  SCALE1(PADDING) + (SCALE1(PILL_SIZE) - status_surface->h) / 2 // Vertically centered with pill
-															  });
-				SDL_FreeSurface(status_surface);
+			// Brick OS (DESIGN.md 7.1, boards v2-GameMenuAch*)
+			for (int j = 0; j < filtered_count; j++) {
+				const rc_client_achievement_t* a = filtered[j];
+				MenuBosAch* r = &ach_rows[j];
+				*r = (MenuBosAch){.title = a->title, .desc = a->description, .points = (int)a->points,
+								  .unlocked = a->unlocked != 0, .muted = RA_isAchievementMuted(a->id),
+								  .badge = RA_Badges_get(RA_getGameId(), a->badge_name, !a->unlocked),
+								  .state = ach_state[j], .progress = -1, .rarity = a->rarity};
+				if (a->unlocked && a->unlock_time > 0) {
+					struct tm tm;
+					localtime_r(&a->unlock_time, &tm);
+					static const char* mon[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+					char when[48];
+					snprintf(when, sizeof(when), "%d %s %02d:%02d", tm.tm_mday, I18N_text(mon[tm.tm_mon]), tm.tm_hour, tm.tm_min);
+					snprintf(ach_state[j], 64, I18N_text("Unlocked %s"), when);
+				} else if (a->unlocked)
+					snprintf(ach_state[j], 64, "%s", I18N_text("Unlocked"));
+				else if (a->measured_progress[0]) {
+					snprintf(ach_state[j], 64, I18N_text("Progress %s"), a->measured_progress);
+					r->progress = a->measured_percent / 100.0f;
+				} else
+					snprintf(ach_state[j], 64, "%s", I18N_text("Not yet"));
+				r->tag = a->type == RC_CLIENT_ACHIEVEMENT_TYPE_MISSABLE		 ? I18N_text("Missable")
+						 : a->type == RC_CLIENT_ACHIEVEMENT_TYPE_PROGRESSION ? I18N_text("Progression")
+						 : a->type == RC_CLIENT_ACHIEVEMENT_TYPE_WIN		 ? I18N_text("Win Condition")
+																			 : NULL;
 			}
-
-			// Calculate vertical centering for list only
-			int top_margin = SCALE1(PADDING + PILL_SIZE);	 // Below hardware pill / status text
-			int bottom_margin = SCALE1(PADDING + PILL_SIZE); // Above button hints
-			int available_height = screen->h - top_margin - bottom_margin;
-
-			// Content: just the visible rows
-			int visible_rows = MIN(end - start, filtered_count);
-			int list_height = visible_rows * row_height;
-
-			// Center list vertically in available space
-			int oy = top_margin + (available_height - list_height) / 2;
-
-			// Draw achievement list rows
-			for (int j = start, row = 0; j < end && j < filtered_count; j++, row++) {
-				const rc_client_achievement_t* ach = filtered[j];
-				bool is_muted = RA_isAchievementMuted(ach->id);
-				bool is_selected = (row == selected_row);
-				SDL_Color text_color = COLOR_WHITE;
-
-				if (is_selected) {
-					// Gray pill background for full row width (like MENU_FIXED selected)
-					GFX_blitPillLight(ASSET_BUTTON, screen, &(SDL_Rect){ox, oy + SCALE1(row * BUTTON_SIZE), mw, row_height});
-				}
-
-				// Draw ">" on the right side (always white)
-				SDL_Surface* arrow = GFX_renderText(font.small, ">", COLOR_WHITE);
-				if (arrow) {
-					SDL_BlitSurface(arrow, NULL, screen, &(SDL_Rect){ox + mw - arrow->w - opt_pad, oy + SCALE1((row * BUTTON_SIZE) + 3)});
-					SDL_FreeSurface(arrow);
-				}
-
-				if (is_selected) {
-					// White pill for the text area with icon (like MENU_FIXED selected text pill)
-					// Calculate width needed for: badge + spacing + title + mute indicator + padding
-					int badge_display_size = SCALE1(BUTTON_SIZE - 4); // Badge sized to fit in row
-					int title_width = 0;
-					GFX_measureText(font.small, ach->title, &title_width, NULL);
-					int mute_width = 0;
-					if (is_muted) {
-						GFX_measureText(font.tiny, "[M]", &mute_width, NULL);
-						mute_width += SCALE1(4); // spacing
-					}
-					int pill_width = opt_pad + badge_display_size + SCALE1(6) + title_width + mute_width + opt_pad;
-
-					GFX_blitPillDark(ASSET_BUTTON, screen, &(SDL_Rect){ox, oy + SCALE1(row * BUTTON_SIZE), pill_width, row_height});
-					text_color = uintToColour(THEME_COLOR5_255);
-
-					// Badge icon inside the white pill
-					SDL_Surface* badge = RA_Badges_get(RA_getGameId(), ach->badge_name, !ach->unlocked);
-					if (badge) {
-						SDL_Rect badge_src = {0, 0, badge->w, badge->h};
-						SDL_Rect badge_dst = {
-							ox + opt_pad,
-							oy + SCALE1(row * BUTTON_SIZE) + (row_height - badge_display_size) / 2,
-							badge_display_size, badge_display_size};
-						SDL_BlitScaled(badge, &badge_src, screen, &badge_dst);
-					}
-
-					// Title text
-					SDL_Surface* title_text = GFX_renderText(font.small, ach->title, text_color);
-					if (title_text) {
-						SDL_BlitSurface(title_text, NULL, screen, &(SDL_Rect){ox + opt_pad + badge_display_size + SCALE1(6), oy + SCALE1((row * BUTTON_SIZE) + 1)});
-						SDL_FreeSurface(title_text);
-					}
-
-					// Mute indicator inside the pill
-					if (is_muted) {
-						SDL_Surface* mute_text = GFX_renderText(font.tiny, "[M]", text_color);
-						if (mute_text) {
-							SDL_BlitSurface(mute_text, NULL, screen, &(SDL_Rect){ox + opt_pad + badge_display_size + SCALE1(6) + title_width + SCALE1(4), oy + SCALE1((row * BUTTON_SIZE) + 3)});
-							SDL_FreeSurface(mute_text);
-						}
-					}
-				} else {
-					// Unselected row - just badge + title + mute indicator, no pills
-					int badge_display_size = SCALE1(BUTTON_SIZE - 4);
-
-					// Badge icon
-					SDL_Surface* badge = RA_Badges_get(RA_getGameId(), ach->badge_name, !ach->unlocked);
-					if (badge) {
-						SDL_Rect badge_src = {0, 0, badge->w, badge->h};
-						SDL_Rect badge_dst = {
-							ox + opt_pad,
-							oy + SCALE1(row * BUTTON_SIZE) + (row_height - badge_display_size) / 2,
-							badge_display_size, badge_display_size};
-						SDL_BlitScaled(badge, &badge_src, screen, &badge_dst);
-					}
-
-					// Title text (theme color for unselected)
-					SDL_Surface* title_text = GFX_renderText(font.small, ach->title, COLOR_WHITE);
-					if (title_text) {
-						SDL_BlitSurface(title_text, NULL, screen, &(SDL_Rect){ox + opt_pad + badge_display_size + SCALE1(6), oy + SCALE1((row * BUTTON_SIZE) + 1)});
-						SDL_FreeSurface(title_text);
-					}
-
-					// Mute indicator
-					if (is_muted) {
-						SDL_Surface* mute_text = GFX_renderText(font.tiny, "[M]", COLOR_WHITE);
-						if (mute_text) {
-							int title_width = 0;
-							GFX_measureText(font.small, ach->title, &title_width, NULL);
-							SDL_BlitSurface(mute_text, NULL, screen, &(SDL_Rect){ox + opt_pad + badge_display_size + SCALE1(6) + title_width + SCALE1(4), oy + SCALE1((row * BUTTON_SIZE) + 3)});
-							SDL_FreeSurface(mute_text);
-						}
-					}
-				}
-			}
-
-			// Button hints at bottom with dynamic Y button text
-			char* hints[] = {"Y", ach_filter_locked_only ? "SHOW ALL" : "SHOW LOCKED", "X", "MUTE", NULL};
-			UI_renderButtonHintBar(screen, hints);
-
+			BosHint hr[3] = {{"Y", I18N_text(ach_filter_locked_only ? "Show all" : "Not yet only")},
+							 {"X", I18N_text(filtered_count > 0 && RA_isAchievementMuted(filtered[selected]->id) ? "Unmute notice" : "Mute notice")},
+							 {"B", I18N_text("Back")}};
+			BosHint hl[1] = {{"L1 R1", I18N_text("Page")}};
+			MenuBosAchView v = {.rows = ach_rows, .n = filtered_count, .sel = selected, .scroll = &start,
+								.got = ach_got, .total = ach_total, .pts_got = ach_pts_got, .pts_total = ach_pts_total,
+								.locked_only = ach_filter_locked_only, .hints = hr, .nhints = 3, .left_hints = hl,
+								.nleft = filtered_count > max_visible ? 1 : 0};
+			MenuBos_renderAch(screen, &v);
 			GFX_flip(screen);
 			dirty = false;
-		}
+		} else
+			GFX_delay();
 	}
 
 	// Cleanup
+	free(ach_rows);
+	free(ach_state);
+	MenuBos_achDone();
 	free(all_achievements);
 	free(filtered); // This was assigned to ach_menu_achievements
 	ach_menu_achievements = NULL;
@@ -1059,7 +786,7 @@ static bool optIsNumeric(char** values, int n) {
 static void optRow(MenuList* list, MenuItem* mi, bool waiting, MenuBosRow* r) {
 	*r = (MenuBosRow){.name = I18N_text(mi->name), .kind = MB_ROW_NONE};
 	if (waiting) {
-		r->kind = MB_ROW_TEXT, r->value = "...";
+		r->kind = MB_ROW_TEXT, r->value = I18N_text("Waiting…");
 	} else if (mi->values && mi->values != button_labels) {
 		int n = 0;
 		while (mi->values[n])
@@ -1216,6 +943,10 @@ int Menu_options(MenuList* list) {
 				}
 				dirty = true;
 			}
+		} else if (PAD_justPressed(BTN_Y) && opt_depth > 1 && count > 0 && items[selected].desc &&
+				   MenuBos_optDescLong(I18N_text(items[selected].desc))) {
+			Menu_textDialog(I18N_text(items[selected].name), I18N_text(items[selected].desc));
+			dirty = true;
 		} else if (type == MENU_INPUT) {
 			if (PAD_justPressed(BTN_X)) {
 				MenuItem* item = &items[selected];
@@ -1335,6 +1066,7 @@ int Menu_options(MenuList* list) {
 			}
 			BosHint r[3], l[1];
 			int nr = 0, nlh = 0;
+			bool long_desc = d > 0 && count > 0 && items[selected].desc && MenuBos_optDescLong(I18N_text(items[selected].desc));
 			MenuBosRow* hot = d > 0 && count > 0 ? &rows[selected] : NULL;
 			if (type == MENU_INPUT) {
 				r[nr++] = (BosHint){"A", I18N_text("Set")};
@@ -1346,6 +1078,12 @@ int Menu_options(MenuList* list) {
 			if (hot && (hot->kind == MB_ROW_CYCLE || hot->kind == MB_ROW_SLIDER || hot->kind == MB_ROW_TOGGLE))
 				l[nlh++] = (BosHint){"\xE2\x86\x90 \xE2\x86\x92", I18N_text("Change")};
 			r[nr++] = (BosHint){"B", I18N_text("Back")};
+			if (long_desc) // board v2-GameMenuCheat: Y takes the left
+				nlh = 0, l[nlh++] = (BosHint){"Y", I18N_text("Read all")};
+			if (await_input && count > 0) { // binding: the sheet says it all
+				v.prompt = I18N_text(items[selected].name);
+				nr = nlh = 0;
+			}
 			v.hints = r, v.nhints = nr, v.left_hints = l, v.nleft_hints = nlh;
 			MenuBos_renderOptions(screen, &v);
 			GFX_flip(screen);

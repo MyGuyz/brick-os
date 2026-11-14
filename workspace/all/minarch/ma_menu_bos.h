@@ -63,7 +63,46 @@ typedef struct {
 	int nhints;
 	const BosHint* left_hints;
 	int nleft_hints;
+	const char* prompt;			// binding a button: the row's name (a sheet over the page), else NULL
 } MenuBosOptView;
 void MenuBos_renderOptions(SDL_Surface* s, const MenuBosOptView* v);
-bool MenuBos_optMoving(void); // a glide or a scrolling name: draw again
+bool MenuBos_optMoving(void); // a glide, a scrolling name or a toast: draw again
+bool MenuBos_optDescLong(const char* desc); // more than the two lines under the rows: Y reads it all
+
+// ---- "done" (board v2-GameMenuToast): a pill over the options page for 1.8 s, no button ----
+void MenuBos_toast(const char* text);
+
+// ---- a message (board v2-GameMenuMessage): a card over `under` (the screen as it was; NULL: the backdrop) dimmed.
+// icon NULL: a text to read, from the left; else the icon in a icon_bg circle and the text centred ----
+void MenuBos_renderDialog(SDL_Surface* s, SDL_Surface* under, const char* icon, uint32_t icon_bg, const char* title,
+						  const char* body, const BosHint* hints, int nhints);
+
+// ---- achievements (boards v2-GameMenuAch*): the list left, the focused one in full on the right ----
+typedef struct {
+	const char* title;
+	const char* desc;
+	int points;
+	bool unlocked;
+	bool muted;
+	SDL_Surface* badge; // RetroAchievements' picture (its cache owns it), NULL while it downloads
+	const char* state;	// "ได้เมื่อ …", "ทำไปแล้ว 31/50", "ยังไม่ได้"
+	float progress;		// 0..1, < 0: none
+	float rarity;		// % of players who have it, 0: unknown
+	const char* tag;	// its type (translated) or NULL
+} MenuBosAch;
+typedef struct {
+	const MenuBosAch* rows;
+	int n;
+	int sel;
+	int* scroll;
+	int got, total, pts_got, pts_total;
+	bool locked_only;
+	const BosHint* hints;
+	int nhints;
+	const BosHint* left_hints;
+	int nleft;
+} MenuBosAchView;
+void MenuBos_renderAch(SDL_Surface* s, const MenuBosAchView* v);
+bool MenuBos_achMoving(void);
+void MenuBos_achDone(void); // frees the badges' rounded copies
 #endif

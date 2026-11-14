@@ -364,8 +364,9 @@ static bool breakBefore(unsigned prev, unsigned next) {
 	return true;
 }
 
-int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y, int max_w,
-				 int max_lines) {
+// dst NULL: only counts. centre: each line centred in max_w. A "\n" ends a line.
+static int wrapImpl(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y,
+					int max_w, int max_lines, bool centre) {
 	if (!s || !s[0] || max_lines <= 0)
 		return 0;
 	int lh = BOS_lineH(px), lines = 0;
@@ -374,14 +375,36 @@ int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t r
 	while (*p && lines < max_lines) {
 		while (*p == ' ')
 			p++;
-		if (lines == max_lines - 1 || BOS_textW(p, px, weight) <= max_w) { // the last line takes the rest, scrolling
-			BOS_textMarquee(dst, p, px, weight, rgb, alpha, x, y + lines * lh + lh / 2, max_w);
-			return (lines + 1) * lh;
+		if (!*p)
+			break;
+		int seg = (int)strcspn(p, "\n"); // this paragraph
+		if (lines == max_lines - 1) { // the last line takes the rest (paragraphs joined), scrolling
+			int len = 0;
+			for (const char* q = p; *q && len < (int)sizeof(line) - 1; q++)
+				line[len++] = *q == '\n' ? ' ' : *q;
+			line[len] = '\0';
+		} else {
+			int len = seg < (int)sizeof(line) - 1 ? seg : (int)sizeof(line) - 1;
+			memcpy(line, p, len), line[len] = '\0';
+		}
+		if (lines == max_lines - 1 || BOS_textW(line, px, weight) <= max_w) {
+			if (dst) {
+				int w = BOS_textW(line, px, weight);
+				int lx = centre && w < max_w ? x + (max_w - w) / 2 : x;
+				BOS_textMarquee(dst, line, px, weight, rgb, alpha, lx, y + lines * lh + lh / 2, max_w);
+			}
+			lines++;
+			if (lines >= max_lines)
+				break;
+			p += seg;
+			if (*p == '\n')
+				p++;
+			continue;
 		}
 		// the longest head that fits, ending at a space if there is one, else at a legal Thai break
-		const char *q = p, *fit = NULL, *space = NULL;
+		const char *q = p, *fit = NULL, *space = NULL, *stop = p + seg;
 		unsigned prev = 0;
-		while (*q) {
+		while (q < stop) {
 			int n;
 			unsigned cp = cpAt(q, &n);
 			if (q > p && (prev == ' ' || breakBefore(prev, cp))) {
@@ -398,16 +421,35 @@ int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t r
 			prev = cp;
 			q += n;
 		}
-		const char* end = space ? space : fit ? fit : q;
-		if (end == p) // not even one cluster fits: give up on wrapping
-			end = p + strlen(p);
+		const char* end = space ? space : fit ? fit : stop;
+		if (end == p)
+			end = stop;
 		int len = (int)(end - p) < (int)sizeof(line) ? (int)(end - p) : (int)sizeof(line) - 1;
 		memcpy(line, p, len), line[len] = '\0';
-		BOS_text(dst, line, px, weight, rgb, alpha, x, y + lines * lh);
+		if (dst) {
+			int w = BOS_textW(line, px, weight);
+			BOS_text(dst, line, px, weight, rgb, alpha, centre && w < max_w ? x + (max_w - w) / 2 : x, y + lines * lh);
+		}
 		lines++;
 		p = end;
+		if (*p == '\n')
+			p++;
 	}
 	return lines * lh;
+}
+
+int BOS_textWrap(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y, int max_w,
+				 int max_lines) {
+	return dst ? wrapImpl(dst, s, px, weight, rgb, alpha, x, y, max_w, max_lines, false) : 0;
+}
+
+int BOS_textWrapCentre(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y,
+					   int max_w, int max_lines) {
+	return dst ? wrapImpl(dst, s, px, weight, rgb, alpha, x, y, max_w, max_lines, true) : 0;
+}
+
+int BOS_textLines(const char* s, int px, int weight, int max_w, int max_lines) {
+	return wrapImpl(NULL, s, px, weight, 0, 1, 0, 0, max_w, max_lines, false) / BOS_lineH(px);
 }
 
 // ---- shapes ----

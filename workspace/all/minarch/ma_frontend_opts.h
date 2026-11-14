@@ -55,6 +55,7 @@ struct MenuList {
 
 // Public API: functions defined in ma_frontend_opts.c
 int Menu_message(char* message, char** pairs);
+int Menu_textDialog(const char* title, const char* text); // a text to read (translated), B closes
 char* getSaveDesc(void);
 
 int OptionFrontend_openMenu(MenuList* list, int i);
