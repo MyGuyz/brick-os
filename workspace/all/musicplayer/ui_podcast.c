@@ -22,6 +22,23 @@
 #include "ui_album_art.h"
 #include "../common/ui/ui_image.h"
 #include "../common/wget_fetch.h"
+#include <unistd.h>
+#include "../common/ui/ui_draw.h"
+#include "../common/ui/ui_listview.h"
+#include "i18n.h"
+#include "music_bos.h"
+
+// Brick OS pages (ui_podcast_bos part, at the end of this file)
+static void bos_main(SDL_Surface* s, int selected, const char* toast, uint32_t toast_time);
+static void bos_manage(SDL_Surface* s, int sel);
+static void bos_shows(SDL_Surface* s, bool charts, int sel, const char* toast, uint32_t toast_time);
+static void bos_episodes(SDL_Surface* s, int feed_index, int sel, int* scroll, const char* toast, uint32_t toast_time);
+static void bos_queue(SDL_Surface* s, int sel, int* scroll, const char* toast, uint32_t toast_time);
+static void bos_playing(SDL_Surface* s, int feed_index, int episode_index);
+static int bos_play_second;
+bool UIPodcast_bosMoving(void);
+bool UIPodcast_bosListMoving(void);
+void BOS_uiLoading(SDL_Surface* s, const char* title, const char* subtitle);
 
 // Max artwork size (1MB to match radio album art buffer)
 #define PODCAST_ARTWORK_MAX_SIZE (1024 * 1024)
@@ -438,17 +455,19 @@ static void format_date(char* buf, uint32_t timestamp) {
 	if (days < 0)
 		days = 0; // future pub date (timezone-less feed / wrong RTC) → "Today"
 
+	// translated: the old screens' text was translated when drawn, the Brick OS pages draw it as it is
 	if (days == 0) {
-		strcpy(buf, "Today");
+		strcpy(buf, I18N_text("Today"));
 	} else if (days == 1) {
-		strcpy(buf, "Yesterday");
+		strcpy(buf, I18N_text("Yesterday"));
 	} else if (days < 7) {
-		sprintf(buf, "%d days ago", days);
+		sprintf(buf, I18N_text("%d days ago"), days);
 	} else if (days < 30) {
-		sprintf(buf, "%d weeks ago", days / 7);
+		sprintf(buf, I18N_text("%d weeks ago"), days / 7);
 	} else {
+		static const char* mon[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 		struct tm* tm = localtime(&pub);
-		strftime(buf, 32, "%b %d", tm);
+		sprintf(buf, "%d %s", tm->tm_mday, I18N_text(mon[tm->tm_mon]));
 	}
 }
 
@@ -505,6 +524,11 @@ static ListItemRichPos render_rich_list_item(SDL_Surface* screen, ListLayout* la
 void render_podcast_main_page(SDL_Surface* screen, MusicIndicatorType show_setting,
 							  int selected, int* scroll,
 							  const char* toast_message, uint32_t toast_time) {
+	if (UI_bos) {
+		(void)show_setting, (void)scroll;
+		bos_main(screen, selected, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -744,6 +768,11 @@ void render_podcast_main_page(SDL_Surface* screen, MusicIndicatorType show_setti
 // Render the podcast management menu (opened from the context menu)
 void render_podcast_manage(SDL_Surface* screen, MusicIndicatorType show_setting,
 						   int menu_selected, int subscription_count) {
+	if (UI_bos) {
+		(void)show_setting, (void)subscription_count;
+		bos_manage(screen, menu_selected);
+		return;
+	}
 	GFX_clear(screen);
 
 	char truncated[256];
@@ -774,6 +803,11 @@ void render_podcast_manage(SDL_Surface* screen, MusicIndicatorType show_setting,
 void render_podcast_top_shows(SDL_Surface* screen, MusicIndicatorType show_setting,
 							  int selected, int* scroll,
 							  const char* toast_message, uint32_t toast_time) {
+	if (UI_bos) {
+		(void)show_setting, (void)scroll;
+		bos_shows(screen, true, selected, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -852,6 +886,11 @@ void render_podcast_top_shows(SDL_Surface* screen, MusicIndicatorType show_setti
 void render_podcast_search_results(SDL_Surface* screen, MusicIndicatorType show_setting,
 								   int selected, int* scroll,
 								   const char* toast_message, uint32_t toast_time) {
+	if (UI_bos) {
+		(void)show_setting, (void)scroll;
+		bos_shows(screen, false, selected, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -930,6 +969,11 @@ void render_podcast_search_results(SDL_Surface* screen, MusicIndicatorType show_
 void render_podcast_episodes(SDL_Surface* screen, MusicIndicatorType show_setting,
 							 int feed_index, int selected, int* scroll,
 							 const char* toast_message, uint32_t toast_time) {
+	if (UI_bos) {
+		(void)show_setting;
+		bos_episodes(screen, feed_index, selected, scroll, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -1363,6 +1407,11 @@ static void format_eta(char* buf, int buf_size, int seconds) {
 void render_podcast_download_queue(SDL_Surface* screen, MusicIndicatorType show_setting,
 								   int selected, int* scroll,
 								   const char* toast_message, uint32_t toast_time) {
+	if (UI_bos) {
+		(void)show_setting;
+		bos_queue(screen, selected, scroll, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -1524,6 +1573,11 @@ void render_podcast_download_queue(SDL_Surface* screen, MusicIndicatorType show_
 // Render now playing screen for podcast (matches radio/music player style)
 void render_podcast_playing(SDL_Surface* screen, MusicIndicatorType show_setting,
 							int feed_index, int episode_index) {
+	if (UI_bos) {
+		(void)show_setting;
+		bos_playing(screen, feed_index, episode_index);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -1783,6 +1837,10 @@ void render_podcast_playing(SDL_Surface* screen, MusicIndicatorType show_setting
 
 // Render loading screen
 void render_podcast_loading(SDL_Surface* screen, const char* message) {
+	if (UI_bos) {
+		BOS_uiLoading(screen, message ? message : "Loading...", NULL);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -1798,6 +1856,8 @@ void render_podcast_loading(SDL_Surface* screen, const char* message) {
 
 // Check if podcast title is currently scrolling (list or playing screen)
 bool Podcast_isTitleScrolling(void) {
+	if (UI_bos)
+		return false;
 	if (ScrollText_isScrolling(&podcast_title_scroll))
 		return true;
 	// Only scroll playing title when playing, not when paused
@@ -1809,6 +1869,8 @@ bool Podcast_isTitleScrolling(void) {
 // Check if title scroll needs a render to transition from delay to active scrolling
 // Returns true during the delay phase when text is wider than max_width but scrolling hasn't started
 bool Podcast_titleScrollNeedsRender(void) {
+	if (UI_bos)
+		return UIPodcast_bosMoving() || UIPodcast_bosListMoving();
 	if (ScrollText_needsRender(&podcast_title_scroll))
 		return true;
 	if (ScrollText_needsRender(&podcast_playing_title_scroll))
@@ -1818,6 +1880,8 @@ bool Podcast_titleScrollNeedsRender(void) {
 
 // Animate podcast title scroll only (GPU mode, no screen redraw needed)
 void Podcast_animateTitleScroll(void) {
+	if (UI_bos)
+		return;
 	if (ScrollText_isScrolling(&podcast_title_scroll)) {
 		ScrollText_animateOnly(&podcast_title_scroll);
 	}
@@ -1862,6 +1926,10 @@ void PodcastProgress_clear(void) {
 }
 
 bool PodcastProgress_needsRefresh(void) {
+	if (UI_bos) { // the page shows the time: once a second, a redraw
+		const MusicSnapshotWire* snap = MusicClient_snapshot();
+		return snap->state == MUSIC_STATE_PLAYING && snap->position_ms / 1000 != bos_play_second;
+	}
 	if (!progress_position_set)
 		return false;
 	// Only update when playing, not when paused
@@ -1876,6 +1944,8 @@ bool PodcastProgress_needsRefresh(void) {
 }
 
 void PodcastProgress_renderGPU(void) {
+	if (UI_bos)
+		return;
 	if (!progress_position_set)
 		return;
 
@@ -1944,4 +2014,528 @@ void PodcastProgress_renderGPU(void) {
 	SDL_FreeSurface(combined);
 
 	PLAT_GPU_Flip();
+}
+
+// ======================= Brick OS (DESIGN.md 7.2; boards v2-MusicPodcasts, -PodcastShow, -PodcastTop, -Downloads,
+// -PodcastPlaying). Included at the end of ui_podcast.c: it uses the file's artwork and format helpers. ==========
+
+static int bos_play_second = -1; // the playing page shows this second (declared above)
+
+// raw artwork by key (feed_id or itunes_id), loaded once; the kit rounds and keeps its own copies
+#define BOS_ART_SLOTS 24
+static struct {
+	char key[64];
+	SDL_Surface* raw;
+	uint32_t used;
+} bos_art[BOS_ART_SLOTS];
+static uint32_t bos_art_clock;
+
+static SDL_Surface* bosArtLoad(const char* key, const char* path) {
+	if (!key || !key[0])
+		return NULL;
+	bos_art_clock++;
+	int old = 0;
+	for (int i = 0; i < BOS_ART_SLOTS; i++) {
+		if (strcmp(bos_art[i].key, key) == 0) {
+			if (!bos_art[i].raw && path) { // not there last time: try the file again now and then
+				if (bos_art_clock - bos_art[i].used < 120)
+					return NULL;
+				bos_art[i].raw = UI_loadValidatedImage(path, PODCAST_ARTWORK_MAX_SIZE);
+			}
+			bos_art[i].used = bos_art_clock;
+			return bos_art[i].raw;
+		}
+		if (bos_art[i].used < bos_art[old].used)
+			old = i;
+	}
+	if (bos_art[old].raw) {
+		BOS_picForget(bos_art[old].raw);
+		SDL_FreeSurface(bos_art[old].raw);
+	}
+	snprintf(bos_art[old].key, sizeof(bos_art[old].key), "%s", key);
+	bos_art[old].raw = path ? UI_loadValidatedImage(path, PODCAST_ARTWORK_MAX_SIZE) : NULL;
+	bos_art[old].used = bos_art_clock;
+	return bos_art[old].raw;
+}
+
+static SDL_Surface* bosFeedArt(const char* feed_id) {
+	char dir[512], p[768];
+	Podcast_getFeedDataPath(feed_id, dir, sizeof(dir));
+	snprintf(p, sizeof(p), "%s/artwork.jpg", dir);
+	return bosArtLoad(feed_id, p);
+}
+
+// a chart / search show: the cached file, or fetch it in the background (a later frame shows it)
+static SDL_Surface* bosShowArt(const char* itunes_id, const char* url) {
+	char p[768];
+	get_artwork_cache_path(itunes_id, p, sizeof(p));
+	SDL_Surface* s = bosArtLoad(itunes_id, p);
+	if (!s && url && url[0] && access(p, F_OK) != 0) {
+		mkdir(PODCAST_CACHE_PARENT, 493);
+		mkdir(PODCAST_CACHE_DIR, 493);
+		artwork_request_async(url, p);
+	}
+	return s;
+}
+
+static void bosCover(SDL_Surface* s, SDL_Surface* art, const char* title, int x, int y, int size, int r) {
+	SDL_Surface* p = art ? BOS_picRounded(art, size, size, r) : NULL;
+	if (p)
+		BOS_blit(p, s, x, y, 1);
+	else {
+		BOS_rrect(s, x, y, size, size, r, 0xBF5AF2);
+		int ic = size / 2;
+		BOS_icon(s, "mic", 0xFFFFFF, 1, x + (size - ic) / 2, y + (size - ic) / 2, ic);
+	}
+	(void)title;
+}
+
+static void bosPill(SDL_Surface* s, int x, int y, const char* t, uint32_t bg, uint32_t fg) {
+	int h = BOS_px(40), w = BOS_textW(t, 24, 600) + BOS_px(32);
+	BOS_rrect(s, x, y, w, h, h / 2, bg);
+	BOS_textMid(s, t, 24, 600, fg, 1, x + BOS_px(16), y + h / 2);
+}
+
+static int bosPillW(const char* t) {
+	return BOS_textW(t, 24, 600) + BOS_px(32);
+}
+
+// ---- a grid of shows (subscriptions, top shows, results): 5 across, the name under each ----
+#define BOS_GRID_COLS 5
+static BosGlide g_scroll, g_fx, g_fy;
+typedef struct {
+	SDL_Surface* art;
+	const char* name;
+	const char* sub;
+	const char* pill; // ใหม่ N
+	bool tick;		  // followed
+	const char* icon; // a tile with an icon instead of a cover (ดาวน์โหลด)
+	const char* feed_id;   // the cover, loaded when drawn (the cache is small): a followed show's
+	const char* itunes_id; //   or a chart / search show's,
+	const char* art_url;   //   fetched from here when missing
+} BosShow;
+
+static int bosGrid(SDL_Surface* s, int y0, int bottom, const BosShow* shows, int n, int sel, int* scroll_px) {
+	const BosTheme* th = BOS_theme();
+	int size = BOS_px(168), gapx = BOS_px(22), x0 = BOS_px(40), rowh = size + BOS_px(12) + BOS_lineH(24) + BOS_lineH(22) + BOS_px(16);
+	if (n <= 0)
+		return y0;
+	// scroll so the focused row shows
+	int sr = sel >= 0 ? sel / BOS_GRID_COLS : 0, view = bottom - y0 - BOS_px(14);
+	int sc = scroll_px ? *scroll_px : 0;
+	if (sr * rowh < sc)
+		sc = sr * rowh;
+	if ((sr + 1) * rowh > sc + view)
+		sc = (sr + 1) * rowh - view;
+	if (sc < 0)
+		sc = 0;
+	if (scroll_px)
+		*scroll_px = sc;
+	float fsc = BOS_glideTo(&g_scroll, (float)sc, 180, false);
+	SDL_Rect clip = {0, y0, s->w, bottom - y0};
+	SDL_SetClipRect(s, &clip);
+	for (int i = 0; i < n; i++) {
+		int x = x0 + (i % BOS_GRID_COLS) * (size + gapx), y = y0 + BOS_px(14) + (i / BOS_GRID_COLS) * rowh - (int)fsc; // room for the ring
+		if (y + rowh < y0 || y > bottom)
+			continue;
+		const BosShow* sh = &shows[i];
+		bool hot = i == sel;
+		int grow = hot ? size * 8 / 100 / 2 : 0;
+		if (hot) // the ring (§5.3)
+			BOS_rrect(s, x - grow - BOS_px(4), y - grow - BOS_px(4), size + 2 * grow + BOS_px(8), size + 2 * grow + BOS_px(8),
+					  BOS_px(26), th->focus);
+		if (sh->icon) {
+			BOS_rrect(s, x - grow, y - grow, size + 2 * grow, size + 2 * grow, BOS_px(22), th->surface2);
+			int ic = size / 2;
+			BOS_icon(s, sh->icon, BOS_C_TEXT, 1, x + (size - ic) / 2, y + (size - ic) / 2, ic);
+		} else {
+			SDL_Surface* raw = sh->feed_id ? bosFeedArt(sh->feed_id) : sh->itunes_id ? bosShowArt(sh->itunes_id, sh->art_url) : NULL;
+			SDL_Surface* p = raw ? BOS_picRounded(raw, size + 2 * grow, size + 2 * grow, BOS_px(22)) : NULL;
+			if (p)
+				BOS_blit(p, s, x - grow, y - grow, 1);
+			else
+				bosCover(s, NULL, sh->name, x - grow, y - grow, size + 2 * grow, BOS_px(22));
+		}
+		if (sh->pill)
+			bosPill(s, x + size - BOS_px(8) - bosPillW(sh->pill), y + BOS_px(8), sh->pill, th->primary, 0xFFFFFF);
+		if (sh->tick) {
+			int t = BOS_px(34);
+			BOS_rrect(s, x + size - BOS_px(8) - t, y + BOS_px(8), t, t, t / 2, 0xFFFFFF);
+			BOS_icon(s, "checkc", BOS_C_OK, 1, x + size - BOS_px(8) - t, y + BOS_px(8), t);
+		}
+		char t[160];
+		int ty = y + size + grow + BOS_px(12);
+		BOS_fit(sh->name ? sh->name : "", 24, hot ? 600 : 500, size, t, sizeof(t));
+		BOS_text(s, t, 24, hot ? 600 : 500, BOS_C_TEXT, 1, x + (size - BOS_textW(t, 24, hot ? 600 : 500)) / 2, ty);
+		if (sh->sub && sh->sub[0]) {
+			BOS_fit(sh->sub, 22, 400, size, t, sizeof(t));
+			BOS_text(s, t, 22, 400, BOS_C_TEXT2, 1, x + (size - BOS_textW(t, 22, 400)) / 2, ty + BOS_lineH(24));
+		}
+	}
+	SDL_SetClipRect(s, NULL);
+	return y0 + ((n + BOS_GRID_COLS - 1) / BOS_GRID_COLS) * rowh;
+}
+
+bool UIPodcast_bosMoving(void) {
+	return BOS_glideMoving(&g_scroll) || BOS_marqueeActive();
+}
+
+// ---- the main page: ฟังต่อ cards, then the followed shows (and ดาวน์โหลด) ----
+static void bos_main(SDL_Surface* s, int selected, const char* toast, uint32_t toast_time) {
+	const BosTheme* th = BOS_theme();
+	SDL_FillRect(s, NULL, BOS_map(s, th->bg));
+	BOS_statusBar(s, I18N_text("Podcasts"));
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H), y = top + BOS_px(4);
+	int cl_raw = Podcast_getContinueListeningCount();
+	int cl = cl_raw > PODCAST_CONTINUE_LISTENING_DISPLAY ? PODCAST_CONTINUE_LISTENING_DISPLAY : cl_raw;
+	int subn = Podcast_getSubscriptionCount(), dln = 0;
+	Podcast_getDownloadQueue(&dln);
+	if (cl + subn + (dln > 0) == 0) { // nothing followed yet
+		void BOS_uiEmpty(SDL_Surface* s, const char* message, const char* subtitle, char** pairs);
+		BOS_uiEmpty(s, "No podcasts subscribed", "Press A to manage podcasts", (char*[]){"B", "BACK", "A", "MANAGE", NULL});
+		UI_renderToast(s, toast, toast_time);
+		return;
+	}
+	bool on_cards = selected < cl;
+	static int grid_scroll;
+	if (cl > 0 && (on_cards || grid_scroll == 0)) {
+		BOS_text(s, I18N_text("Continue listening"), 30, 600, BOS_C_TEXT2, 1, BOS_px(40), y);
+		y += BOS_lineH(30) + BOS_px(10);
+		int cw = BOS_px(300), ch = BOS_px(124), x = BOS_px(40);
+		for (int i = 0; i < cl; i++) {
+			ContinueListeningEntry* e = Podcast_getContinueListening(i);
+			if (!e)
+				continue;
+			bool hot = i == selected;
+			int g = hot ? cw * 4 / 100 / 2 : 0, gy = hot ? ch * 4 / 100 / 2 : 0;
+			BOS_rrect(s, x - g, y - gy, cw + 2 * g, ch + 2 * gy, BOS_px(22), hot ? th->focus : th->surface);
+			int a = BOS_px(64);
+			bosCover(s, bosFeedArt(e->feed_id), e->feed_title, x + BOS_px(16), y + BOS_px(16), a, BOS_px(12));
+			int tx = x + BOS_px(16) + a + BOS_px(14), room = x + cw - BOS_px(14) - tx;
+			char t[200];
+			BOS_fit(e->episode_title, 26, 600, room, t, sizeof(t));
+			BOS_text(s, t, 26, 600, hot ? th->onfocus : BOS_C_TEXT, 1, tx, y + BOS_px(18));
+			BOS_fit(e->feed_title, 22, 400, room, t, sizeof(t));
+			BOS_text(s, t, 22, 400, hot ? 0x3A3A3C : BOS_C_TEXT2, 1, tx, y + BOS_px(18) + BOS_lineH(26));
+			x += cw + BOS_px(20);
+		}
+		y += ch + BOS_px(24);
+	}
+	BOS_text(s, I18N_text("Following"), 30, 600, BOS_C_TEXT2, 1, BOS_px(40), y);
+	y += BOS_lineH(30) + BOS_px(10);
+	static BosShow shows[PODCAST_MAX_SUBSCRIPTIONS + 1];
+	static char pills[PODCAST_MAX_SUBSCRIPTIONS][24];
+	int n = 0;
+	PodcastFeed* feeds = Podcast_getSubscriptions(NULL);
+	for (int i = 0; i < subn && n < PODCAST_MAX_SUBSCRIPTIONS; i++, n++) {
+		shows[n] = (BosShow){NULL, feeds[i].title, NULL, NULL, false, NULL, feeds[i].feed_id, NULL, NULL};
+		if (feeds[i].new_episode_count > 0) {
+			snprintf(pills[n], sizeof(pills[n]), I18N_text("New %d"), feeds[i].new_episode_count);
+			shows[n].pill = pills[n];
+		}
+	}
+	if (dln > 0) {
+		static char dl[48];
+		snprintf(dl, sizeof(dl), I18N_text("%d in the queue"), dln);
+		shows[n++] = (BosShow){NULL, I18N_text("Downloads"), dl, NULL, false, "download", NULL, NULL, NULL};
+	}
+	bosGrid(s, y, bottom - BOS_px(8), shows, n, on_cards ? -1 : selected - cl, &grid_scroll);
+	if (on_cards)
+		grid_scroll = 0;
+	static BosHint hr[2], hl[1];
+	hr[0] = (BosHint){"A", I18N_text(on_cards ? "Continue" : "Open")};
+	hr[1] = (BosHint){"B", I18N_text("Back")};
+	hl[0] = (BosHint){"MENU", I18N_text("Options")};
+	BOS_hintBar(s, hr, 2, hl, 1);
+	UI_renderToast(s, toast, toast_time);
+}
+
+// left/right/up/down on the main page (cards, then a 5-across grid); returns the new selection
+int UIPodcast_bosMainNav(int sel, int cl, int grid_n) {
+	if (sel < cl) {
+		if (PAD_justRepeated(BTN_LEFT) && sel > 0)
+			return sel - 1;
+		if (PAD_justRepeated(BTN_RIGHT) && sel + 1 < cl)
+			return sel + 1;
+		if (PAD_justRepeated(BTN_DOWN) && grid_n > 0)
+			return cl;
+		return sel;
+	}
+	int g = sel - cl;
+	if (PAD_justRepeated(BTN_LEFT) && g % BOS_GRID_COLS > 0)
+		return sel - 1;
+	if (PAD_justRepeated(BTN_RIGHT) && g % BOS_GRID_COLS < BOS_GRID_COLS - 1 && g + 1 < grid_n)
+		return sel + 1;
+	if (PAD_justRepeated(BTN_UP))
+		return g >= BOS_GRID_COLS ? sel - BOS_GRID_COLS : cl > 0 ? 0 : sel;
+	if (PAD_justRepeated(BTN_DOWN)) {
+		if (g + BOS_GRID_COLS < grid_n)
+			return sel + BOS_GRID_COLS;
+		if (g / BOS_GRID_COLS < (grid_n - 1) / BOS_GRID_COLS)
+			return cl + grid_n - 1;
+	}
+	return sel;
+}
+
+// a grid page's own moves (top shows, results)
+int UIPodcast_bosGridNav(int sel, int n) {
+	if (n <= 0)
+		return sel;
+	if (PAD_justRepeated(BTN_LEFT) && sel % BOS_GRID_COLS > 0)
+		return sel - 1;
+	if (PAD_justRepeated(BTN_RIGHT) && sel % BOS_GRID_COLS < BOS_GRID_COLS - 1 && sel + 1 < n)
+		return sel + 1;
+	if (PAD_justRepeated(BTN_UP) && sel >= BOS_GRID_COLS)
+		return sel - BOS_GRID_COLS;
+	if (PAD_justRepeated(BTN_DOWN)) {
+		if (sel + BOS_GRID_COLS < n)
+			return sel + BOS_GRID_COLS;
+		if (sel / BOS_GRID_COLS < (n - 1) / BOS_GRID_COLS)
+			return n - 1;
+	}
+	return sel;
+}
+
+// ---- manage: Search, Top Shows ----
+static void bos_manage_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	r->label = I18N_text(podcast_manage_items[i]);
+	r->sq_icon = i == 0 ? "search" : "star", r->sq_color = i == 0 ? 0x0A84FF : 0xFF9F0A, r->chevron = true;
+}
+static BosGlide m_pill, m_scroll;
+static void bos_manage(SDL_Surface* s, int sel) {
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_statusBar(s, I18N_text("Podcasts"));
+	int y = BOS_px(BOS_BAR_H) + BOS_largeTitle(s, BOS_px(BOS_BAR_H), I18N_text("Find podcasts"), NULL);
+	SDL_Rect a = {BOS_px(40), y, s->w - BOS_px(80), BOS_px(96) * PODCAST_MANAGE_COUNT};
+	int sc = 0;
+	BOS_groupRows(s, &a, BOS_px(96), PODCAST_MANAGE_COUNT, sel, true, &sc, &m_pill, &m_scroll, false, bos_manage_row, NULL);
+	BosHint hr[2] = {{"A", I18N_text("Open")}, {"B", I18N_text("Back")}};
+	BOS_hintBar(s, hr, 2, NULL, 0);
+}
+
+// ---- top shows / search results: the grid ----
+static void bos_shows(SDL_Surface* s, bool charts, int sel, const char* toast, uint32_t toast_time) {
+	const BosTheme* th = BOS_theme();
+	SDL_FillRect(s, NULL, BOS_map(s, th->bg));
+	BOS_statusBar(s, I18N_text("Podcasts"));
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	int n = 0;
+	static BosShow shows[64];
+	bool loading = false;
+	const char* err = NULL;
+	if (charts) {
+		const PodcastChartsStatus* st = Podcast_getChartsStatus();
+		loading = st->loading, err = st->error_message[0] ? st->error_message : NULL;
+		PodcastChartItem* it = loading ? NULL : Podcast_getTopShows(&n);
+		for (int i = 0; i < n && i < 64; i++)
+			shows[i] = (BosShow){NULL, it[i].title, it[i].genre, NULL, Podcast_isSubscribedByItunesId(it[i].itunes_id),
+								 NULL, NULL, it[i].itunes_id, it[i].artwork_url};
+	} else {
+		const PodcastSearchStatus* st = Podcast_getSearchStatus();
+		loading = st->searching, err = st->error_message[0] ? st->error_message : NULL;
+		PodcastSearchResult* it = loading ? NULL : Podcast_getSearchResults(&n);
+		for (int i = 0; i < n && i < 64; i++)
+			shows[i] = (BosShow){NULL, it[i].title, it[i].genre, NULL, Podcast_isSubscribedByItunesId(it[i].itunes_id),
+								 NULL, NULL, it[i].itunes_id, it[i].artwork_url};
+	}
+	if (n > 64)
+		n = 64;
+	int y = top + BOS_largeTitle(s, top, I18N_text(charts ? "Top shows" : "Search results"),
+								 I18N_text(loading ? "Loading..." : "Green tick: following"));
+	if (!loading && n == 0) {
+		BOS_textWrapCentre(s, I18N_text(err ? err : charts ? "No shows available" : "No results found"), 32, 600,
+						   BOS_C_TEXT2, 1, BOS_px(80), (y + bottom) / 2 - BOS_px(20), s->w - BOS_px(160), 2);
+	} else {
+		static int sc[2];
+		bosGrid(s, y, bottom - BOS_px(8), shows, n, sel, &sc[charts ? 0 : 1]);
+	}
+	bool followed = sel >= 0 && sel < n && shows[sel].tick;
+	BosHint hr[2] = {{"A", I18N_text(followed ? "Unfollow" : "Follow")}, {"B", I18N_text("Back")}};
+	BOS_hintBar(s, n > 0 ? hr : hr + 1, n > 0 ? 2 : 1, NULL, 0);
+	UI_renderToast(s, toast, toast_time);
+}
+
+// ---- a show's episodes ----
+typedef struct {
+	PodcastFeed* feed;
+	int index;
+} EpCtx;
+static char ep_sub[256];
+static void bos_episode_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	EpCtx* c = ctx;
+	(void)hot;
+	static PodcastEpisode ep;
+	if (!Podcast_getEpisode(c->index, i, &ep)) {
+		r->label = "";
+		return;
+	}
+	static char title[PODCAST_MAX_TITLE];
+	snprintf(title, sizeof(title), "%s", ep.title);
+	r->label = title;
+	char date[64] = "", dur[32] = "";
+	format_date(date, ep.pub_date);
+	if (ep.duration_sec > 0)
+		snprintf(dur, sizeof(dur), I18N_text("%d min"), (ep.duration_sec + 59) / 60);
+	snprintf(ep_sub, sizeof(ep_sub), "%s%s%s", date, date[0] && dur[0] ? " · " : "", dur);
+	r->sub = ep_sub;
+	int prog = 0;
+	int dl = Podcast_getEpisodeDownloadStatus(c->feed->feed_url, ep.guid, &prog);
+	bool have = Podcast_episodeFileExists(c->feed, i);
+	static char left[48];
+	if (dl == PODCAST_DOWNLOAD_DOWNLOADING)
+		r->progress = prog > 0 ? prog / 100.0f : 0.02f;
+	else if (dl == PODCAST_DOWNLOAD_PENDING)
+		r->annotation = I18N_text("Queued");
+	else if (ep.is_new)
+		r->pill = I18N_text("New"), r->pill_bg = BOS_theme()->primary, r->pill_fg = 0xFFFFFF;
+	else if (ep.progress_sec > 0 && ep.duration_sec > 0) {
+		snprintf(left, sizeof(left), I18N_text("%d min left"), (ep.duration_sec - ep.progress_sec + 59) / 60);
+		r->annotation = left;
+	} else if (ep.progress_sec == -1)
+		r->right_icon = "checkc", r->right_icon_colour = BOS_C_TEXTOFF;
+	if (have && dl != PODCAST_DOWNLOAD_DOWNLOADING && !r->right_icon)
+		r->right_icon = "download", r->right_icon_colour = BOS_C_OK;
+}
+static BosGlide e_pill, e_scroll;
+static void bos_episodes(SDL_Surface* s, int feed_index, int sel, int* scroll, const char* toast, uint32_t toast_time) {
+	const BosTheme* th = BOS_theme();
+	SDL_FillRect(s, NULL, BOS_map(s, th->bg));
+	BOS_statusBar(s, I18N_text("Podcasts"));
+	PodcastFeed* feed = Podcast_getSubscription(feed_index);
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	if (!feed) {
+		BosHint hb[1] = {{"B", I18N_text("Back")}};
+		BOS_hintBar(s, hb, 1, NULL, 0);
+		return;
+	}
+	int a = BOS_px(112), x = BOS_px(40), y = top + BOS_px(4);
+	bosCover(s, bosFeedArt(feed->feed_id), feed->title, x, y, a, BOS_px(20));
+	char t[256];
+	BOS_fit(feed->title, 48, 700, s->w - x - a - BOS_px(64), t, sizeof(t));
+	BOS_text(s, t, 48, 700, BOS_C_TEXT, 1, x + a + BOS_px(24), y + BOS_px(10));
+	char sub[300];
+	snprintf(sub, sizeof(sub), I18N_text("%s · %d episodes · following"), feed->author, feed->episode_count);
+	BOS_fit(sub, 28, 400, s->w - x - a - BOS_px(64), t, sizeof(t));
+	BOS_text(s, t, 28, 400, BOS_C_TEXT2, 1, x + a + BOS_px(24), y + BOS_px(10) + BOS_lineH(48));
+	y += a + BOS_px(16);
+	EpCtx c = {feed, feed_index};
+	if (feed->episode_count > 0) {
+		SDL_Rect area = {BOS_px(40), y, s->w - BOS_px(80), bottom - BOS_px(12) - y};
+		BOS_groupRows(s, &area, BOS_px(96), feed->episode_count, sel, true, scroll, &e_pill, &e_scroll, false,
+					  bos_episode_row, &c);
+	} else
+		BOS_textWrapCentre(s, I18N_text("No episodes available"), 32, 600, BOS_C_TEXT2, 1, BOS_px(80), y + BOS_px(80),
+						   s->w - BOS_px(160), 2);
+	// what A does on the focused one
+	const char* act = "Download";
+	PodcastEpisode ep;
+	if (feed->episode_count > 0 && Podcast_getEpisode(feed_index, sel, &ep)) {
+		int prog = 0, dl = Podcast_getEpisodeDownloadStatus(feed->feed_url, ep.guid, &prog);
+		if (dl == PODCAST_DOWNLOAD_PENDING || dl == PODCAST_DOWNLOAD_DOWNLOADING)
+			act = "Cancel";
+		else if (Podcast_episodeFileExists(feed, sel))
+			act = ep.progress_sec > 0 ? "Continue" : "Listen";
+	}
+	BosHint hr[2] = {{"A", I18N_text(act)}, {"B", I18N_text("Back")}}, hl[1] = {{"MENU", I18N_text("Options")}};
+	BOS_hintBar(s, feed->episode_count > 0 ? hr : hr + 1, feed->episode_count > 0 ? 2 : 1, hl, 1);
+	UI_renderToast(s, toast, toast_time);
+}
+
+// ---- the download queue ----
+static PodcastDownloadItem bos_q[PODCAST_MAX_DOWNLOAD_QUEUE];
+static int bos_qn;
+static BosGlide q_pill, q_scroll;
+static char q_sub[160];
+static void bos_queue_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	PodcastDownloadItem* it = &bos_q[i];
+	r->label = it->episode_title;
+	const PodcastDownloadProgress* pr = Podcast_getDownloadProgress();
+	int pct = it->progress_percent;
+	if (it->status == PODCAST_DOWNLOAD_DOWNLOADING && strcmp(pr->current_guid, it->episode_guid) == 0)
+		pct = pr->current_percent;
+	switch (it->status) {
+	case PODCAST_DOWNLOAD_DOWNLOADING:
+		snprintf(q_sub, sizeof(q_sub), I18N_text("Downloading · %d%%"), pct);
+		r->progress = pct > 0 ? pct / 100.0f : 0.02f;
+		break;
+	case PODCAST_DOWNLOAD_COMPLETE:
+		snprintf(q_sub, sizeof(q_sub), "%s · %s", it->feed_title, I18N_text("Done"));
+		r->right_icon = "checkc", r->right_icon_colour = BOS_C_OK;
+		break;
+	case PODCAST_DOWNLOAD_FAILED:
+		snprintf(q_sub, sizeof(q_sub), "%s · %s", it->feed_title, I18N_text("Download failed"));
+		r->right_icon = "warn", r->right_icon_colour = BOS_C_WARN;
+		break;
+	default:
+		snprintf(q_sub, sizeof(q_sub), "%s · %s", it->feed_title, I18N_text("Queued"));
+	}
+	r->sub = q_sub;
+	r->sq_icon = "mic", r->sq_color = 0xBF5AF2;
+}
+static void bos_queue(SDL_Surface* s, int sel, int* scroll, const char* toast, uint32_t toast_time) {
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_statusBar(s, I18N_text("Podcasts"));
+	bos_qn = Podcast_copyDownloadQueue(bos_q, PODCAST_MAX_DOWNLOAD_QUEUE);
+	const PodcastDownloadProgress* pr = Podcast_getDownloadProgress();
+	char sub[96];
+	snprintf(sub, sizeof(sub), I18N_text("%d of %d done"), pr->completed_count, pr->total_items);
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	int y = top + BOS_largeTitle(s, top, I18N_text("Downloads"), bos_qn > 0 ? sub : NULL);
+	if (bos_qn > 0) {
+		SDL_Rect a = {BOS_px(40), y, s->w - BOS_px(80), bottom - BOS_px(12) - y};
+		BOS_groupRows(s, &a, BOS_px(96), bos_qn, sel, true, scroll, &q_pill, &q_scroll, false, bos_queue_row, NULL);
+	} else
+		BOS_textWrapCentre(s, I18N_text("No downloads"), 32, 600, BOS_C_TEXT2, 1, BOS_px(80), y + BOS_px(80),
+						   s->w - BOS_px(160), 1);
+	BosHint hr[2] = {{"A", I18N_text("Cancel")}, {"B", I18N_text("Back")}};
+	BOS_hintBar(s, bos_qn > 0 ? hr : hr + 1, bos_qn > 0 ? 2 : 1, NULL, 0);
+	UI_renderToast(s, toast, toast_time);
+}
+
+// ---- the player: as music's, −10 / +30, the speed ----
+static void bos_playing(SDL_Surface* s, int feed_index, int episode_index) {
+	PodcastFeed* feed = Podcast_getSubscription(feed_index);
+	PodcastEpisode ep;
+	bool have = Podcast_getEpisode(feed_index, episode_index, &ep);
+	const MusicSnapshotWire* snap = MusicClient_snapshot();
+	MusicPlayView v = {0};
+	v.status = I18N_text("Podcasts");
+	if (feed && feed->artwork_url[0] && feed->feed_id[0]) {
+		podcast_fetch_artwork(feed->artwork_url, feed->feed_id);
+		v.art = podcast_artwork;
+	}
+	v.icon = "mic", v.icon_colour = 0xBF5AF2;
+	static char speed[32], title[PODCAST_MAX_TITLE], line[300];
+	float sp = MusicClient_speed();
+	snprintf(speed, sizeof(speed), I18N_text("Speed %.2gx"), sp > 0 ? sp : 1.0f);
+	v.pills[0] = speed;
+	v.pills[1] = I18N_text("Podcast");
+	snprintf(title, sizeof(title), "%s", have ? ep.title : snap->title);
+	v.title = title;
+	v.artist = feed ? feed->title : snap->album;
+	if (have) {
+		char date[64] = "";
+		format_date(date, ep.pub_date);
+		snprintf(line, sizeof(line), "%s%s%s", date, have && Podcast_episodeFileExists(feed, episode_index) ? " · " : "",
+				 have && Podcast_episodeFileExists(feed, episode_index) ? I18N_text("Downloaded") : "");
+		v.album = line;
+	}
+	v.pos_ms = snap->position_ms, v.dur_ms = snap->duration_ms;
+	v.paused = snap->state != MUSIC_STATE_PLAYING;
+	v.back_icon = "rew10", v.fwd_icon = "fwd30";
+	static BosHint hr[2], hl[1];
+	hr[0] = (BosHint){"A", I18N_text(v.paused ? "Play" : "Pause")};
+	hr[1] = (BosHint){"B", I18N_text("Back")};
+	hl[0] = (BosHint){"↑↓", I18N_text("Speed")};
+	v.hints = hr, v.nhints = 2, v.left = hl, v.nleft = 1;
+	GFX_clearLayers(LAYER_SCROLLTEXT);
+	MusicBos_playing(s, &v, NULL);
+	bos_play_second = snap->position_ms / 1000;
+}
+
+bool UIPodcast_bosListMoving(void) {
+	return BOS_glideMoving(&e_pill) || BOS_glideMoving(&e_scroll) || BOS_glideMoving(&m_pill) ||
+		   BOS_glideMoving(&q_pill) || BOS_glideMoving(&q_scroll) || BOS_marqueeActive();
 }

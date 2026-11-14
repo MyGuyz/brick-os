@@ -42,4 +42,5 @@ void RadioStatus_clear(void);
 bool RadioStatus_needsRefresh(void);
 void RadioStatus_renderGPU(void);
 
+bool RadioAdd_bosMoving(void);
 #endif

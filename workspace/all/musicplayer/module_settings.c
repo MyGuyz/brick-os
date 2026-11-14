@@ -2,6 +2,8 @@
 #include "api.h"
 #include "module_common.h"
 #include "module_settings.h"
+#include "ui_draw.h"
+bool BOS_uiSettingsMoving(void);
 #include "settings.h"
 #include "music_client.h"
 #include "music_balance.h"
@@ -232,6 +234,8 @@ ModuleExitReason SettingsModule_run(SDL_Surface* screen) {
 
 		// Handle power management
 		ModuleCommon_PWR_update(&dirty, &show_setting);
+		if (UI_bos && BOS_uiSettingsMoving()) // the focus still glides
+			dirty = 1;
 
 		// Render
 		if (dirty) {

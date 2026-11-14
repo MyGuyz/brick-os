@@ -74,7 +74,7 @@ int RadioCatalog_parseCountries(const char* json, CuratedCountry* out, int max,
 		const char* name = json_object_get_string(o, "name");
 		const char* code = json_object_get_string(o, "iso_3166_1");
 		int sc = (int)json_object_get_number(o, "stationcount");
-		if (!name || !code || sc <= 0)
+		if (!name || !name[0] || !code || sc <= 0) // the catalog has nameless entries (UN, ZZ)
 			continue;
 		CuratedCountry* c = &out[count++];
 		snprintf(c->name, sizeof(c->name), "%s", name);

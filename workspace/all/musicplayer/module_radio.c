@@ -636,6 +636,7 @@ ModuleExitReason RadioModule_run(SDL_Surface* screen) {
 		// render.
 		if ((dirty ||
 			 (state == RADIO_INTERNAL_LIST && UI_listViewBusy(RadioList_view())) ||
+			 ((state == RADIO_INTERNAL_ADD_COUNTRY || state == RADIO_INTERNAL_ADD_STATIONS) && RadioAdd_bosMoving()) ||
 			 (state == RADIO_INTERNAL_ADD_COUNTRY && UI_listViewBusy(RadioCountries_view()))) &&
 			!screen_off) {
 			if (ModuleCommon_isScreenOffHintActive()) {

@@ -39,6 +39,7 @@ void MusicBos_home(SDL_Surface* s, const MusicHomeView* v);
 typedef struct {
 	const char* status;			   // the status bar's title
 	SDL_Surface* art;			   // the picture, or NULL:
+	const char* art_text;		   //   these letters (a station) or
 	const char* icon;			   //   this icon on
 	uint32_t icon_colour;		   //   this colour
 	const char* pills[3];		   // format · rate · "3 / 12" (or สด · bitrate …)
@@ -57,5 +58,21 @@ typedef struct {
 } MusicPlayView;
 // vis: where the visualizer goes this frame ({0} none)
 void MusicBos_playing(SDL_Surface* s, const MusicPlayView* v, SDL_Rect* vis);
+
+typedef struct {
+	const char* const* names;	// the playlists
+	const int* counts;
+	int n;
+	int sel;					// n = the "new playlist" row
+	int* scroll;
+	const char* const* preview; // the focused one's first songs
+	int npreview;
+	const BosHint* hints;
+	int nhints;
+	const BosHint* left;
+	int nleft;
+} MusicPlaylistsView;
+void MusicBos_playlists(SDL_Surface* s, const MusicPlaylistsView* v);
+bool MusicBos_playlistsMoving(void);
 bool MusicBos_homeMoving(void);
 #endif

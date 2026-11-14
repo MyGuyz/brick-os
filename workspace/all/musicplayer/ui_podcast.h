@@ -47,4 +47,6 @@ void PodcastProgress_clear(void);
 bool PodcastProgress_needsRefresh(void);
 void PodcastProgress_renderGPU(void);
 
+int UIPodcast_bosMainNav(int sel, int cl, int grid_n);
+int UIPodcast_bosGridNav(int sel, int n);
 #endif

@@ -981,3 +981,76 @@ Hide Lyrics	ซ่อนเนื้อเพลง
 Visualizer	ภาพตามเสียง
 Screen Off (SELECT)	ปิดจอ (SELECT)
 Add Folder to Playlist	เพิ่มทั้งโฟลเดอร์
+Create	สร้าง
+New playlist	เพลย์ลิสต์ใหม่
+Name it, then add songs from Music files with MENU	ตั้งชื่อ แล้วเพิ่มเพลงจากไฟล์เพลงด้วยปุ่ม MENU
+No songs yet: add them from Music files with MENU	ยังไม่มีเพลง เพิ่มจากไฟล์เพลงด้วยปุ่ม MENU
+Live	สด
+%d stations · needs WiFi	%d สถานี · ต้องต่อ WiFi
+Default stations · MENU to manage stations	สถานีเริ่มต้น · กด MENU เพื่อจัดการสถานี
+Listen	ฟัง
+Add stations	เพิ่มสถานี
+%d stations · from radio-browser.info	%d สถานี · จาก radio-browser.info
+Add	เพิ่ม
+Country	ประเทศ
+Pick a country to see its stations. They come from radio-browser.info; some may be offline.	เลือกประเทศเพื่อดูสถานี รายชื่อมาจาก radio-browser.info บางสถานีอาจปิดอยู่
+Add your own stations	เพิ่มสถานีเอง
+Edit this file on the SD card:	แก้ไฟล์นี้ในการ์ด SD:
+One station per line: Name|URL|Genre|Slogan	บรรทัดละสถานี: ชื่อ|URL|แนว|สโลแกน
+MP3, AAC and M3U8 streams · up to 32 stations · the slogan shows when there is no song name	รองรับ MP3, AAC และ M3U8 · ได้สูงสุด 32 สถานี · สโลแกนจะขึ้นตอนไม่มีชื่อเพลง
+More stations: fmstream.org	หาสถานีเพิ่มได้ที่ fmstream.org
+Manage Stations	จัดการสถานี
+Delete Station	ลบสถานี
+Manual Setup Help	วิธีเพิ่มสถานีเอง
+Unavailable - offline or geo-blocked	ฟังไม่ได้ สถานีอาจปิดอยู่หรือจำกัดประเทศ
+Continue listening	ฟังต่อ
+Following	รายการที่ติดตาม
+New %d	ใหม่ %d
+%d in the queue	%d ตอนในคิว
+Find podcasts	หาพอดแคสต์
+Top Shows	ยอดนิยม
+Top shows	ยอดนิยม
+Search results	ผลการค้นหา
+✓ followed	✓ ติดตามแล้ว
+No shows available	ไม่มีรายการ
+No results found	ไม่พบผลการค้นหา
+Unfollow	เลิกติดตาม
+Follow	ติดตาม
+%d min left	เหลือ %d นาที
+%s · %d episodes · following	%s · %d ตอน · ติดตามแล้ว
+No episodes available	ยังไม่มีตอน
+Downloading · %d%%	กำลังดาวน์โหลด · %d%%
+%d of %d done	เสร็จ %d จาก %d
+No downloads	ไม่มีดาวน์โหลด
+Speed %.2gx	ความเร็ว %.2gx
+Podcast	พอดแคสต์
+Downloaded	ดาวน์โหลดแล้ว
+No podcasts subscribed	ยังไม่ได้ติดตามพอดแคสต์
+Press A to manage podcasts	กด A เพื่อหาพอดแคสต์
+MANAGE	หา
+Subscribing...	กำลังติดตาม...
+Refresh Episodes	รีเฟรชตอนใหม่
+Mark Played/Unplayed	ทำเครื่องหมายฟังแล้ว/ยังไม่ฟัง
+Remove Download	ลบไฟล์ที่ดาวน์โหลด
+Manage Podcasts	หาพอดแคสต์
+Checking for new episodes...	กำลังดูตอนใหม่...
+Already up to date	เป็นตอนล่าสุดแล้ว
+Speed: %.2gx	ความเร็ว %.2gx
+Search podcasts	ค้นหาพอดแคสต์
+Green tick: following	เครื่องหมายถูกสีเขียว = ติดตามแล้ว
+%d days ago	%d วันก่อน
+%d weeks ago	%d สัปดาห์ก่อน
+Auto Screen Off	ปิดจอเองตอนเล่น
+Balance	เสียงเกม / เพลง
+Bass Filter	ตัดเสียงทุ้มต่ำ
+Soft Limiter	กันเสียงแตก
+Sample Rate	อัตราสุ่มเสียง
+Resampler Quality	คุณภาพการแปลงเสียง
+Audio Buffer	บัฟเฟอร์เสียง
+Adjust the Game and Music mix	สัดส่วนเสียงเพลงที่เล่นเบื้องหลังเทียบกับเสียงเกม
+High-pass filter to reduce speaker distortion	ตัดเสียงทุ้มต่ำเพื่อลดเสียงแตกจากลำโพง
+Limit volume peaks to prevent clipping	จำกัดเสียงที่ดังเกินไม่ให้แตก
+Device default	ค่าเริ่มต้นของเครื่อง
+Delete cached album art images	ลบภาพปกที่เก็บไว้
+Delete cached lyrics files	ลบเนื้อเพลงที่เก็บไว้
+Add to playlist	เพิ่มลงเพลย์ลิสต์

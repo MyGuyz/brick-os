@@ -22,4 +22,5 @@ void render_playlist_detail(SDL_Surface* screen, IndicatorType show_setting,
 ListView* PlaylistList_view(void);
 ListView* PlaylistDetail_view(void);
 
+bool PlaylistList_bosMoving(void);
 #endif

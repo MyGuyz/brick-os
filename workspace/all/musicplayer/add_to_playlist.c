@@ -2,6 +2,7 @@
 #include <string.h>
 #include "api.h"
 #include "add_to_playlist.h"
+#include "i18n.h"
 #include "playlist.h"
 #include "playlist_m3u.h"
 #include "ui_keyboard.h"
@@ -34,8 +35,7 @@ static void populate_items(void) {
 	// Index 1..N: existing playlists
 	for (int i = 0; i < playlist_count; i++) {
 		snprintf(items[i + 1].text, LISTDIALOG_MAX_TEXT, "%s", playlists[i].name);
-		snprintf(items[i + 1].detail, LISTDIALOG_MAX_TEXT, "%d track%s",
-				 playlists[i].track_count, playlists[i].track_count == 1 ? "" : "s");
+		snprintf(items[i + 1].detail, LISTDIALOG_MAX_TEXT, I18N_text("%d songs"), playlists[i].track_count);
 		items[i + 1].prepend_icons[0] = -1;
 		items[i + 1].append_icons[0] = -1;
 	}

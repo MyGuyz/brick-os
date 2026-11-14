@@ -3,6 +3,9 @@
 // app has set UI_bos (ui_draw.h); everything here translates its text (the old pieces relied on GFX_renderText).
 #include "bos_ui.h"
 #include "i18n.h"
+#include "ui_list.h"
+#include "ui_listview.h"
+#include "ui_listdialog.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -29,14 +32,19 @@ static int pairsToHints(char** pairs, BosHint* right, int* nright, BosHint* left
 		bool face = false;
 		for (int o = 0; o < 4; o++)
 			face |= !strcmp(pairs[i], order[o]);
-		if (!face && *nleft < 2)
-			left[(*nleft)++] = (BosHint){pairs[i], I18N_text(pairs[i + 1])};
+		if (!face && *nleft < 2) {
+			const char* b = pairs[i];
+			b = !strcmp(b, "LEFT/RIGHT") ? "\xE2\x86\x90\xE2\x86\x92" : !strcmp(b, "UP/DOWN") ? "\xE2\x86\x91\xE2\x86\x93" : b;
+			left[(*nleft)++] = (BosHint){b, I18N_text(pairs[i + 1])};
+		}
 	}
 	return *nright + *nleft;
 }
 
 // ---- menu bar / hint bar ----
+static char last_bar_title[128];
 int BOS_uiMenuBar(SDL_Surface* s, const char* title) {
+	snprintf(last_bar_title, sizeof(last_bar_title), "%s", I18N_text(lastPart(title)));
 	BOS_statusBar(s, I18N_text(lastPart(title)));
 	return BOS_px(BOS_BAR_H);
 }
@@ -247,4 +255,97 @@ void BOS_uiControls(SDL_Surface* s, const char* title, const char* const* keys, 
 	}
 	BosHint r[1] = {{"B", I18N_text("Back")}};
 	BOS_hintBar(s, r, 1, NULL, 0);
+}
+
+// ---- the shared settings page (UI_renderSettingsPage) as Settings' rows (DESIGN.md 6.6; board v2-MusicSettings) ----
+static BosGlide sp_pill, sp_scroll;
+typedef struct {
+	UISettingsItem* items;
+	int sel;
+} SpCtx;
+
+static void spRow(void* ctx, int i, bool hot, ListViewRow* r) {
+	SpCtx* c = ctx;
+	UISettingsItem* it = &c->items[i];
+	r->label = I18N_text(it->label ? it->label : "");
+	static char val[4][160];
+	if (it->value && it->value[0]) {
+		const char* v = I18N_text(it->value);
+		if (hot && it->cycleable)
+			snprintf(val[i & 3], sizeof(val[0]), "\xE2\x80\xB9 %s \xE2\x80\xBA", v); // ‹ value ›
+		else
+			snprintf(val[i & 3], sizeof(val[0]), "%s", v);
+		r->annotation = val[i & 3];
+	} else if (!it->cycleable && !it->custom_draw)
+		r->chevron = false;
+	if (it->swatch >= 0)
+		r->sq_text = NULL, r->right_icon = NULL;
+}
+
+void BOS_uiSettingsPage(SDL_Surface* s, UISettingsItem* items, int count, int selected, int* scroll, const char* status_msg) {
+	const BosTheme* th = BOS_theme();
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	SDL_FillRect(s, &(SDL_Rect){0, top, s->w, bottom - top}, BOS_map(s, th->bg));
+	int y = top + (last_bar_title[0] ? BOS_largeTitle(s, top, last_bar_title, NULL) : BOS_px(8));
+	const char* desc = selected >= 0 && selected < count && items[selected].desc ? I18N_text(items[selected].desc) : NULL;
+	int foot = BOS_px(12) + 2 * BOS_lineH(26) + (status_msg ? BOS_lineH(26) : 0);
+	SDL_Rect area = {BOS_px(40), y, s->w - BOS_px(80), bottom - foot - y};
+	SpCtx c = {items, selected};
+	int vis = BOS_groupRows(s, &area, BOS_px(96), count, selected, true, scroll, &sp_pill, &sp_scroll, false, spRow, &c);
+	// swatches and custom values on top of their rows
+	for (int i = scroll ? *scroll : 0, k = 0; i < count && k < vis; i++, k++) {
+		int ry = y + k * BOS_px(96), right = area.x + area.w - BOS_px(24);
+		if (items[i].swatch >= 0) {
+			int d = BOS_px(30);
+			uint32_t c2 = (uint32_t)items[i].swatch & 0xFFFFFF;
+			BOS_rrect(s, right - d, ry + (BOS_px(96) - d) / 2, d, d, d / 2, c2);
+		} else if (items[i].custom_draw)
+			items[i].custom_draw(s, items[i].custom_draw_ctx, area.x + area.w / 2, ry, area.w / 2 - BOS_px(24), BOS_px(96),
+								 i == selected);
+	}
+	int fy = y + vis * BOS_px(96) + BOS_px(12);
+	if (desc && desc[0])
+		fy += BOS_textWrap(s, desc, 26, 400, BOS_C_TEXTOFF, 1, area.x + BOS_px(28), fy, area.w - BOS_px(28), 2);
+	if (status_msg && status_msg[0])
+		BOS_textWrap(s, I18N_text(status_msg), 26, 600, BOS_C_TEXT2, 1, area.x + BOS_px(28), fy, area.w - BOS_px(28), 1);
+}
+
+bool BOS_uiSettingsMoving(void) {
+	return BOS_glideMoving(&sp_pill) || BOS_glideMoving(&sp_scroll);
+}
+
+// ---- the shared list dialog (ListDialog: add to playlist …) as a page with a group (board v2-MusicAddTo) ----
+static BosGlide ld_pill, ld_scroll;
+typedef struct {
+	ListDialogItem* items;
+} LdCtx;
+static void ldRow(void* ctx, int i, bool hot, ListViewRow* r) {
+	LdCtx* c = ctx;
+	(void)hot;
+	const char* t = c->items[i].text;
+	r->label = I18N_text(strncmp(t, "+ ", 2) == 0 ? t + 2 : t);
+	if (c->items[i].detail[0])
+		r->annotation = I18N_text(c->items[i].detail);
+	if (strncmp(t, "New ", 4) == 0 || strncmp(t, "+ ", 2) == 0) { // the "new" row: a plus, in primary
+		r->sq_icon = "plus", r->sq_color = BOS_theme()->surface2, r->sq_raw = true, r->sq_icon_colour = BOS_theme()->primary;
+		r->accent = true;
+	} else
+		r->sq_icon = "list", r->sq_color = 0xFF375F;
+}
+void BOS_uiListDialog(SDL_Surface* s, const char* title, ListDialogItem* items, int count, int sel, int* scroll) {
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	const char* t = I18N_text(lastPart(title));
+	BOS_statusBar(s, t);
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	int y = top + BOS_largeTitle(s, top, t, NULL);
+	BosHint hr[2] = {{"A", I18N_text("Select")}, {"B", I18N_text("Back")}};
+	if (count > 0) {
+		SDL_Rect a = {BOS_px(40), y, s->w - BOS_px(80), bottom - BOS_px(12) - y};
+		LdCtx c = {items};
+		BOS_groupRows(s, &a, BOS_px(96), count, sel, true, scroll, &ld_pill, &ld_scroll, false, ldRow, &c);
+	}
+	BOS_hintBar(s, count > 0 ? hr : hr + 1, count > 0 ? 2 : 1, NULL, 0);
+}
+bool BOS_uiListDialogMoving(void) {
+	return BOS_glideMoving(&ld_pill) || BOS_glideMoving(&ld_scroll) || BOS_marqueeActive();
 }

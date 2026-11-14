@@ -9,6 +9,10 @@
 #include "ui_fonts.h"
 #include "ui_list.h"
 #include "ui_listview.h"
+#include "bos_ui.h"
+#include "music_bos.h"
+#include "i18n.h"
+#include "ui_draw.h"
 #include "ui_toast.h"
 #include "ui_album_art.h"
 #include "album_art.h"
@@ -42,7 +46,13 @@ static void radio_list_get_row(void* ctx, int i, bool selected,
 							   ListViewRow* out) {
 	RadioStation* stations = ctx;
 	out->label = stations[i].name;
-	if (stations[i].genre[0])
+	if (UI_bos) { // board v2-MusicRadio: initials, genre (slogan), สด on the one playing
+		out->sq_text = stations[i].name, out->sq_raw = true;
+		out->sub = stations[i].genre[0] ? stations[i].genre : stations[i].slogan;
+		const MusicSnapshotWire* snap = MusicClient_snapshot();
+		if (snap->source == MUSIC_SOURCE_RADIO && strcmp(snap->current_file, stations[i].url) == 0)
+			out->pill = "Live", out->pill_bg = BOS_C_DANGER, out->pill_fg = 0xFFFFFF, out->pill_dot = true;
+	} else if (stations[i].genre[0])
 		out->annotation = stations[i].genre;
 	(void)selected;
 }
@@ -85,10 +95,25 @@ void render_radio_list(SDL_Surface* screen, IndicatorType show_setting,
 	v->hint_pairs = (station_count > 0)
 						? (char*[]){"B", "BACK", "A", "PLAY", NULL}
 						: NULL;
+	if (UI_bos) {
+		static char sub[64];
+		snprintf(sub, sizeof(sub), I18N_text("%d stations · needs WiFi"), station_count);
+		v->bos_title = I18N_text("Online Radio"), v->bos_sub = sub;
+		v->bos_empty_icon = "radio";
+		v->bos_footer = station_count > 0 && !Radio_hasUserStations() ? "Default stations · MENU to manage stations" : NULL;
+		static BosHint hr[2], hl[1];
+		hr[0] = (BosHint){"A", I18N_text("Listen")};
+		hr[1] = (BosHint){"B", I18N_text("Back")};
+		hl[0] = (BosHint){"MENU", I18N_text("Options")};
+		v->bos_hints = station_count > 0 ? hr : hr + 1, v->bos_nhints = station_count > 0 ? 2 : 1;
+		v->bos_left = hl, v->bos_nleft = 1;
+		if (station_count == 0)
+			v->bos_hints = NULL, v->bos_nhints = 0, v->bos_left = NULL, v->bos_nleft = 0; // the empty state's own
+	}
 	UI_listViewRender(v, screen);
 
 	// Show note for users using default stations (no custom stations yet)
-	if (station_count > 0 && !Radio_hasUserStations()) {
+	if (!UI_bos && station_count > 0 && !Radio_hasUserStations()) {
 		int note_y = hh - SCALE1(BUTTON_SIZE + BUTTON_MARGIN + PADDING + 55);
 
 		const char* note1 = "These are default stations";
@@ -121,8 +146,55 @@ static RadioStation* get_station_by_index(int index) {
 }
 
 // Render the radio playing screen
+// Brick OS (board v2-MusicRadioPlaying): the logo as the picture, สด · bitrate · "1 / 12", the stream's song
+static void render_radio_playing_bos(SDL_Surface* screen, int radio_selected) {
+	const MusicSnapshotWire* snap = MusicClient_snapshot();
+	RadioStation* stations;
+	int count = Radio_getStations(&stations);
+	RadioStation* st = radio_selected >= 0 && radio_selected < count ? &stations[radio_selected] : NULL;
+	MusicPlayView v = {0};
+	v.status = I18N_text("Radio");
+	v.art = album_art_is_fetching() ? NULL : album_art_get();
+	v.art_text = st ? st->name : "FM";
+	static char br[24], cnt[24], song[300];
+	v.pills[0] = I18N_text("Live");
+	int np = 1;
+	if (snap->radio_bitrate > 0) {
+		snprintf(br, sizeof(br), "%d kbps", snap->radio_bitrate);
+		v.pills[np++] = br;
+	}
+	if (count > 0) {
+		snprintf(cnt, sizeof(cnt), "%d / %d", radio_selected + 1, count);
+		v.pills[np++] = cnt;
+	}
+	v.title = st ? st->name : snap->album;
+	v.artist = st ? (st->genre[0] ? st->genre : st->slogan) : "";
+	RadioState rs = (RadioState)snap->source_state;
+	if (rs == RADIO_STATE_CONNECTING || rs == RADIO_STATE_BUFFERING)
+		v.album = I18N_text("Connecting...");
+	if (snap->title[0]) {
+		snprintf(song, sizeof(song), "%s%s%s", snap->title, snap->artist[0] ? " — " : "", snap->artist);
+		v.line_extra_label = I18N_text("Playing now");
+		v.line_extra = song;
+	}
+	v.dur_ms = 0;
+	v.paused = snap->state != MUSIC_STATE_PLAYING;
+	static BosHint hr[2], hl[1];
+	hr[0] = (BosHint){"A", I18N_text(v.paused ? "Play" : "Stop")};
+	hr[1] = (BosHint){"B", I18N_text("Back")};
+	hl[0] = (BosHint){"MENU", I18N_text("Options")};
+	v.hints = hr, v.nhints = 2, v.left = hl, v.nleft = 1;
+	GFX_clearLayers(LAYER_SCROLLTEXT);
+	MusicBos_playing(screen, &v, NULL);
+}
+
 void render_radio_playing(SDL_Surface* screen, IndicatorType show_setting, int radio_selected) {
 	GFX_clear(screen);
+	if (UI_bos) {
+		(void)show_setting;
+		render_radio_playing_bos(screen, radio_selected);
+		return;
+	}
 
 	// Render album art as triangular background (if available and not being fetched)
 	// Skip during fetch to avoid accessing potentially invalid surface
@@ -332,9 +404,77 @@ void render_radio_playing(SDL_Surface* screen, IndicatorType show_setting, int r
 }
 
 // Render add stations - country selection screen
+// Brick OS (board v2-MusicRadioAdd): countries left, the country's stations right
+typedef struct {
+	const CuratedStation* st;
+	const int* order;
+} AddCtx;
+static void bos_country_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	r->label = Radio_getCuratedCountries()[i].name;
+}
+static void bos_station_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	AddCtx* a = ctx;
+	const CuratedStation* st = &a->st[a->order[i]];
+	(void)hot;
+	r->label = st->name;
+	r->sq_text = st->name, r->sq_raw = true;
+	r->sub = st->genre[0] ? st->genre : st->slogan;
+	bool added = Radio_stationExists(st->url);
+	r->right_icon = added ? "checkc" : "plus";
+	r->right_icon_colour = added ? BOS_C_OK : BOS_C_TEXT2;
+}
+static void render_radio_columns(SDL_Surface* screen, const char* code, int sel, int* scroll, const int* order, int n) {
+	BosColumnsView v = {0};
+	v.status = I18N_text("Add stations");
+	v.nleft = Radio_getCuratedCountryCount();
+	v.left_sel = radio_countries_view.selected, v.left_scroll = &radio_countries_view.scroll;
+	v.get_left = bos_country_row;
+	static BosHint hr[2], hl[1];
+	static char sub[96];
+	AddCtx a = {0};
+	if (code) {
+		int count = 0;
+		a.st = Radio_getCuratedStations(code, &count), a.order = order;
+		const char* name = "";
+		const CuratedCountry* cs = Radio_getCuratedCountries();
+		for (int i = 0; i < v.nleft; i++)
+			if (strcmp(cs[i].code, code) == 0)
+				name = cs[i].name;
+		v.title = name;
+		snprintf(sub, sizeof(sub), I18N_text("%d stations · from radio-browser.info"), n);
+		v.sub = sub;
+		v.nright = n, v.right_sel = sel, v.right_scroll = scroll, v.right_focused = true;
+		v.get_right = bos_station_row;
+		bool added = n > 0 && sel < n && Radio_stationExists(a.st[order[sel]].url);
+		hr[0] = (BosHint){"A", I18N_text(added ? "Remove" : "Add")};
+		hl[0] = (BosHint){"L1 R1", I18N_text("Country")};
+		v.lhints = hl, v.nlhints = 0;
+	} else {
+		v.title = I18N_text("Add stations");
+		v.note = I18N_text("Pick a country to see its stations. They come from radio-browser.info; some may be offline.");
+		hr[0] = (BosHint){"A", I18N_text("Open")};
+	}
+	hr[1] = (BosHint){"B", I18N_text("Back")};
+	v.hints = hr, v.nhints = 2;
+	v.ctx = &a;
+	radio_countries_view.input_pending = false;
+	BOS_columns(screen, &v);
+}
+
+bool RadioAdd_bosMoving(void) {
+	return UI_bos && BOS_columnsMoving();
+}
+
 void render_radio_add(SDL_Surface* screen, IndicatorType show_setting,
 					  const char* toast_message, uint32_t toast_time) {
 	(void)show_setting;
+	if (UI_bos) {
+		radio_countries_view.count = Radio_getCuratedCountryCount();
+		render_radio_columns(screen, NULL, 0, NULL, NULL, 0);
+		UI_renderToast(screen, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	UI_renderMenuBar(screen, "Music Player | Manage Stations");
@@ -364,6 +504,12 @@ void render_radio_add_stations(SDL_Surface* screen, IndicatorType show_setting,
 							   int add_station_selected, int* add_station_scroll,
 							   const int* sorted_indices, int sorted_count,
 							   const char* toast_message, uint32_t toast_time) {
+	if (UI_bos) {
+		(void)show_setting;
+		render_radio_columns(screen, country_code, add_station_selected, add_station_scroll, sorted_indices, sorted_count);
+		UI_renderToast(screen, toast_message, toast_time);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;
@@ -467,6 +613,30 @@ void render_radio_add_stations(SDL_Surface* screen, IndicatorType show_setting,
 
 // Render help/instructions screen
 void render_radio_help(SDL_Surface* screen, IndicatorType show_setting, int* help_scroll) {
+	if (UI_bos) {
+		(void)show_setting, (void)help_scroll;
+		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+		BOS_statusBar(screen, I18N_text("Add stations"));
+		int y = BOS_px(BOS_BAR_H) + BOS_largeTitle(screen, BOS_px(BOS_BAR_H), I18N_text("Add your own stations"), NULL);
+		int x = BOS_px(40), w = screen->w - 2 * x, pad = BOS_px(28);
+		static const char* para[] = {
+			"Edit this file on the SD card:", "/.userdata/shared/music-player/radio/stations.txt",
+			"One station per line: Name|URL|Genre|Slogan", "e.g. My Radio|http://example.com/stream|Music|Slogan",
+			"MP3, AAC and M3U8 streams · up to 32 stations · the slogan shows when there is no song name",
+			"More stations: fmstream.org"};
+		int h = BOS_px(560) - y + BOS_px(64);
+		BOS_rrect(screen, x, y, w, BOS_px(440), BOS_px(24), BOS_theme()->surface);
+		int ty = y + pad;
+		for (int i = 0; i < 6; i++) {
+			bool code = i == 1 || i == 3;
+			ty += BOS_textWrap(screen, code ? para[i] : I18N_text(para[i]), code ? 26 : 30, code ? 600 : 400,
+							   code ? BOS_C_TEXT : BOS_C_TEXT2, 1, x + pad, ty, w - 2 * pad, 2) + BOS_px(12);
+		}
+		(void)h;
+		BosHint hr[1] = {{"B", I18N_text("Back")}};
+		BOS_hintBar(screen, hr, 1, NULL, 0);
+		return;
+	}
 	GFX_clear(screen);
 
 	int hw = screen->w;

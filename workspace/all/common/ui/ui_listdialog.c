@@ -163,8 +163,14 @@ static void render_item(SDL_Surface* screen, ListLayout* layout,
 	}
 }
 
+void BOS_uiListDialog(SDL_Surface* s, const char* title, ListDialogItem* items, int count, int sel, int* scroll)
+	__attribute__((weak));
 void ListDialog_render(SDL_Surface* screen) {
 	GFX_clearLayers(LAYER_SCROLLTEXT);
+	if (UI_bos && BOS_uiListDialog) { // Brick OS (ui_draw.h)
+		BOS_uiListDialog(screen, dialog_title, dialog_items, dialog_count, dialog_selected, &dialog_scroll);
+		return;
+	}
 	SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
 
 	UI_renderMenuBar(screen, dialog_title);

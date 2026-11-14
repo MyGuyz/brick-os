@@ -586,12 +586,19 @@ ListItemBadgedPos UI_renderListItemPillBadged(
 // Settings Page Component
 // ============================================
 
+void BOS_uiSettingsPage(SDL_Surface* s, UISettingsItem* items, int count, int selected, int* scroll,
+						const char* status_msg) __attribute__((weak));
 void UI_renderSettingsPageEx(SDL_Surface* screen, ListLayout* layout,
 							 UISettingsItem* items, int count,
 							 int selected, int* scroll,
 							 const char* status_msg, int desc_rows) {
 	if (count == 0)
 		return;
+	if (UI_bos && BOS_uiSettingsPage) { // Brick OS: Settings' rows (ui_draw.h)
+		(void)layout, (void)desc_rows;
+		BOS_uiSettingsPage(screen, items, count, selected, scroll, status_msg);
+		return;
+	}
 
 	int hw = screen->w;
 

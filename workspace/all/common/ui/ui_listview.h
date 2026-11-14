@@ -30,6 +30,15 @@ typedef struct {
 	bool chevron;		  // opens a page
 	bool playing;		  // the ♪ bars: this one plays now
 	bool danger;		  // the name in danger red
+	bool accent;		  // the name in primary (an "add" row)
+	const char* sq_text;  // or a squircle with these letters (a station's initials); colour from the name
+	bool sq_raw;		  // sq_color as it is (not through สีไอคอน)
+	uint32_t sq_icon_colour; // the squircle's glyph colour (0: white)
+	bool art_wide;		  // the picture 16:9 (a video), the letters' squircle 3:2 (a channel logo)
+	const char* right_icon; // a kit icon on the right (a tick, a plus, a download)
+	uint32_t right_icon_colour;
+	bool pill_dot;		  // a dot before the pill's text (สด)
+	float progress;		  // > 0: a small bar on the right (a download)
 } ListViewRow;
 
 typedef enum {
@@ -131,5 +140,31 @@ void UI_listViewTickIdle(ListView* v);
 // Callers that relocate the cursor after a content change call this first,
 // then assign v->selected.
 void UI_listViewReset(ListView* v, int count, const void* list_id);
+
+// ---- Brick OS lists outside a ListView (bos_list.c; apps that link $(BOS_UI_SRCS)) ----
+// A group of rows in area, rows from get(); the focus (focused) or the open row (not focused) at sel.
+int BOS_groupRows(SDL_Surface* s, const SDL_Rect* area, int rh, int count, int sel, bool focused, int* scroll,
+				  BosGlide* pill, BosGlide* scr, bool snap, void (*get)(void* ctx, int i, bool hot, ListViewRow* r),
+				  void* ctx);
+// Two columns: a list left (380), a large title and a group right; the focus in one of them.
+typedef struct {
+	const char* status;
+	int nleft, left_sel;
+	int* left_scroll;
+	const char* title, *sub;
+	const char* note; // the right side's text when it has no rows
+	int nright, right_sel;
+	int* right_scroll;
+	bool right_focused;
+	void (*get_left)(void* ctx, int i, bool hot, ListViewRow* r);
+	void (*get_right)(void* ctx, int i, bool hot, ListViewRow* r);
+	void* ctx;
+	const BosHint* hints;
+	int nhints;
+	const BosHint* lhints;
+	int nlhints;
+} BosColumnsView;
+void BOS_columns(SDL_Surface* s, const BosColumnsView* v);
+bool BOS_columnsMoving(void);
 
 #endif // UI_LISTVIEW_H

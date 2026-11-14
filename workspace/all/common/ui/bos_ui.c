@@ -272,23 +272,59 @@ int BOS_textMid(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rg
 	return BOS_text(dst, s, px, weight, rgb, alpha, x, cy - BOS_lineH(px) / 2);
 }
 
-void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size) {
-	snprintf(out, size, "%s", s ? s : "");
-	if (BOS_textW(out, px, weight) <= max_w)
-		return;
-	size_t n = strlen(out);
-	while (n > 0) {
-		do
-			n--;
-		while (n > 0 && ((unsigned char)out[n] & 0xC0) == 0x80); // back to a UTF-8 lead byte
-		char buf[512];
-		snprintf(buf, sizeof(buf), "%.*s\xE2\x80\xA6", (int)n, out);
-		if (BOS_textW(buf, px, weight) <= max_w) {
-			snprintf(out, size, "%s", buf);
-			return;
-		}
+// the bytes of s that make whole UTF-8 characters, at most max bytes
+static size_t utf8Whole(const char* s, size_t max) {
+	size_t n = strlen(s);
+	if (n > max)
+		n = max;
+	size_t i = n;
+	while (i > 0 && ((unsigned char)s[i - 1] & 0xC0) == 0x80) // back over continuation bytes
+		i--;
+	if (i > 0) { // s[i-1] is a lead byte (or ASCII): keep it only if its whole sequence fits
+		unsigned char c = (unsigned char)s[i - 1];
+		size_t len = c < 0x80 ? 1 : (c & 0xE0) == 0xC0 ? 2 : (c & 0xF0) == 0xE0 ? 3 : 4;
+		if (i - 1 + len <= n)
+			return i - 1 + len;
+		return i - 1;
 	}
-	out[0] = '\0';
+	return 0;
+}
+
+// s cut with "…" to max_w. Cuts only between whole characters (a cut through a Thai letter made text that
+// measured as fitting and then drew nothing), and finds the length by halving, not one letter at a time.
+void BOS_fit(const char* s, int px, int weight, int max_w, char* out, int size) {
+	if (size <= 0)
+		return;
+	s = s ? s : "";
+	size_t whole = utf8Whole(s, (size_t)size - 1);
+	memcpy(out, s, whole);
+	out[whole] = '\0';
+	if (whole == strlen(s) && BOS_textW(out, px, weight) <= max_w)
+		return;
+	// the longest head (whole characters) + "…" that fits
+	char buf[1024];
+	size_t lo = 0, hi = whole < sizeof(buf) - 4 ? whole : sizeof(buf) - 4;
+	while (lo < hi) {
+		size_t mid = utf8Whole(out, (lo + hi + 1) / 2);
+		if (mid <= lo) { // the character at the middle is wider than the gap: step a whole one
+			mid = lo + 1;
+			while (mid < hi && ((unsigned char)out[mid] & 0xC0) == 0x80)
+				mid++;
+		}
+		memcpy(buf, out, mid);
+		memcpy(buf + mid, "\xE2\x80\xA6", 4);
+		if (BOS_textW(buf, px, weight) <= max_w)
+			lo = mid;
+		else
+			hi = mid - 1 > lo ? utf8Whole(out, mid - 1) : lo;
+	}
+	if (lo == 0) {
+		out[0] = '\0';
+		return;
+	}
+	memcpy(buf, out, lo);
+	memcpy(buf + lo, "\xE2\x80\xA6", 4);
+	snprintf(out, size, "%s", buf);
 }
 
 // ---- marquee: a focused text too long for its room scrolls instead of being cut (§5.3) ----

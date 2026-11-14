@@ -172,8 +172,17 @@ void MusicBos_playing(SDL_Surface* s, const MusicPlayView* v, SDL_Rect* vis) {
 		BOS_blit(p, s, ax, ay, 1);
 	else {
 		BOS_rrect(s, ax, ay, as, as, BOS_px(28), v->icon_colour ? v->icon_colour : 0x5E5CE6);
-		int ic = as / 2;
-		BOS_icon(s, v->icon ? v->icon : "music", 0xFFFFFF, 0.9f, ax + (as - ic) / 2, ay + (as - ic) / 2, ic);
+		if (v->art_text) {
+			char t[8];
+			snprintf(t, sizeof(t), "%.2s", v->art_text);
+			for (char* q = t; *q; q++)
+				if (*q >= 'a' && *q <= 'z')
+					*q -= 32;
+			BOS_textMid(s, t, 150, 800, 0xFFFFFF, 1, ax + (as - BOS_textW(t, 150, 800)) / 2, ay + as / 2);
+		} else {
+			int ic = as / 2;
+			BOS_icon(s, v->icon ? v->icon : "music", 0xFFFFFF, 0.9f, ax + (as - ic) / 2, ay + (as - ic) / 2, ic);
+		}
 	}
 
 	// the words
@@ -272,4 +281,102 @@ void MusicBos_playing(SDL_Surface* s, const MusicPlayView* v, SDL_Rect* vis) {
 			BOS_rrect(s, ex + small / 2 - d / 2, rowc + small / 2 + BOS_px(8), d, d, d / 2, th->primary);
 	}
 	BOS_hintBar(s, v->hints, v->nhints, v->left, v->nleft);
+}
+
+// ---- playlists: the list left, the focused one right (board v2-MusicPlaylists) ----
+static BosGlide pl_pill, pl_scroll;
+void MusicBos_playlists(SDL_Surface* s, const MusicPlaylistsView* v) {
+	const BosTheme* th = BOS_theme();
+	SDL_FillRect(s, NULL, BOS_map(s, th->bg));
+	BOS_statusBar(s, I18N_text("Playlists"));
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	int lx = BOS_px(24), lw = BOS_px(380), ly = top + BOS_px(8), rh = BOS_px(84);
+	int n = v->n + 1; // + the "new" row at the end
+	int vis = (bottom - BOS_px(12) - ly) / rh;
+	if (vis > n)
+		vis = n;
+	int sc = v->scroll ? *v->scroll : 0;
+	if (v->sel < sc)
+		sc = v->sel;
+	if (v->sel >= sc + vis)
+		sc = v->sel - vis + 1;
+	if (sc < 0)
+		sc = 0;
+	if (v->scroll)
+		*v->scroll = sc;
+	float fsc = BOS_glideTo(&pl_scroll, (float)(sc * rh), 180, false);
+	float fsel = BOS_glideTo(&pl_pill, (float)(v->sel * rh), 120, false);
+	SDL_Rect box = {lx, ly, lw, vis * rh};
+	BOS_rrect(s, lx, ly, lw, vis * rh, BOS_px(24), th->surface);
+	int gx = (int)(lw * BOS_ROW_SCALE) - lw, gy = (int)(rh * BOS_ROW_SCALE) - rh;
+	SDL_Rect wide = {lx - gx, ly - gy, lw + 2 * gx, vis * rh + 2 * gy};
+	SDL_SetClipRect(s, &wide);
+	BOS_rrect(s, lx - gx / 2, ly + (int)fsel - (int)fsc - gy / 2, lw + gx, rh + gy, BOS_px(BOS_RADIUS_ROW), th->focus);
+	SDL_SetClipRect(s, &box);
+	for (int i = (int)fsc / rh; i < n; i++) {
+		int y = ly + i * rh - (int)fsc;
+		if (y >= ly + vis * rh)
+			break;
+		bool hot = i == v->sel, add = i == v->n;
+		if (hot)
+			SDL_SetClipRect(s, &wide);
+		int cy = y + rh / 2, sq = BOS_px(48), ic = BOS_px(30), sx = lx + BOS_px(18);
+		BOS_rrect(s, sx, cy - sq / 2, sq, sq, sq * 26 / 100, add ? th->surface2 : BOS_iconColor(0xFF375F));
+		BOS_icon(s, add ? "plus" : "list", add ? th->primary : 0xFFFFFF, 1, sx + (sq - ic) / 2, cy - ic / 2, ic);
+		int nx = sx + sq + BOS_px(18), room = lx + lw - BOS_px(18) - nx;
+		const char* name = add ? I18N_text("New playlist") : v->names[i];
+		uint32_t fg = hot ? th->onfocus : add ? th->primary : BOS_C_TEXT;
+		char t[160];
+		if (hot)
+			BOS_textMarquee(s, name, 34, 600, fg, 1, nx, cy, room);
+		else {
+			BOS_fit(name, 34, 500, room, t, sizeof(t));
+			BOS_textMid(s, t, 34, 500, fg, 1, nx, cy);
+		}
+		if (hot)
+			SDL_SetClipRect(s, &box);
+		else if (i + 1 != v->sel && i + 1 < n && y + rh < ly + vis * rh)
+			SDL_FillRect(s, &(SDL_Rect){nx, y + rh - 1, lx + lw - nx, 1}, BOS_map(s, BOS_C_SEPARATOR));
+	}
+	SDL_SetClipRect(s, NULL);
+
+	// right: what the focused row holds
+	int rx = lx + lw + BOS_px(28), rw = s->w - BOS_px(32) - rx, ry = ly, rhh = bottom - BOS_px(12) - ry;
+	BOS_rrect(s, rx, ry, rw, rhh, BOS_px(24), th->surface);
+	int pad = BOS_px(28), cx = rx + pad, cy = ry + pad, big = BOS_px(150);
+	if (v->sel >= v->n) {
+		BOS_rrect(s, cx, cy, big, big, BOS_px(20), th->surface2);
+		int ic = BOS_px(70);
+		BOS_icon(s, "plus", th->primary, 1, cx + (big - ic) / 2, cy + (big - ic) / 2, ic);
+		BOS_text(s, I18N_text("New playlist"), 40, 700, BOS_C_TEXT, 1, cx, cy + big + BOS_px(20));
+		BOS_textWrap(s, I18N_text("Name it, then add songs from Music files with MENU"), 28, 400, BOS_C_TEXT2, 1, cx,
+					 cy + big + BOS_px(20) + BOS_lineH(40) + BOS_px(6), rw - 2 * pad, 3);
+	} else {
+		BOS_rrect(s, cx, cy, big, big, BOS_px(20), BOS_iconColor(0xFF375F));
+		int ic = BOS_px(70);
+		BOS_icon(s, "list", 0xFFFFFF, 1, cx + (big - ic) / 2, cy + (big - ic) / 2, ic);
+		int tx = cx + big + BOS_px(22), troom = rx + rw - pad - tx;
+		char t[200];
+		BOS_fit(v->names[v->sel], 44, 700, troom, t, sizeof(t));
+		BOS_text(s, t, 44, 700, BOS_C_TEXT, 1, tx, cy + BOS_px(30));
+		char c[48];
+		snprintf(c, sizeof(c), I18N_text("%d songs"), v->counts[v->sel]);
+		BOS_text(s, c, 28, 400, BOS_C_TEXT2, 1, tx, cy + BOS_px(30) + BOS_lineH(44));
+		int y = cy + big + BOS_px(22), lh = BOS_px(48);
+		for (int i = 0; i < v->npreview && y + lh <= ry + rhh - pad; i++) {
+			char line[300];
+			snprintf(line, sizeof(line), "%d. %s", i + 1, v->preview[i]);
+			BOS_fit(line, 28, 400, rw - 2 * pad, t, sizeof(t));
+			BOS_textMid(s, t, 28, 400, BOS_C_TEXT, 1, cx, y + lh / 2);
+			SDL_FillRect(s, &(SDL_Rect){cx, y + lh - 1, rw - 2 * pad, 1}, BOS_map(s, BOS_C_SEPARATOR));
+			y += lh;
+		}
+		if (v->npreview == 0)
+			BOS_text(s, I18N_text("No songs yet: add them from Music files with MENU"), 28, 400, BOS_C_TEXTOFF, 1, cx, y);
+	}
+	BOS_hintBar(s, v->hints, v->nhints, v->left, v->nleft);
+}
+
+bool MusicBos_playlistsMoving(void) {
+	return BOS_glideMoving(&pl_pill) || BOS_glideMoving(&pl_scroll) || BOS_marqueeActive();
 }
