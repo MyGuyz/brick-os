@@ -56,7 +56,7 @@ OPUS_INCDIR = -I./include/libogg -I./include/libopus/include -I./include/opusfil
 OPUS_CFLAGS = -O2 -fomit-frame-pointer -DOPUS_BUILD -DVAR_ARRAYS -DHAVE_LRINTF \
               -DOP_DISABLE_HTTP -DOP_DISABLE_FLOAT_API -std=gnu99
 
-SOURCE = $(TARGET).c music_client.c music_balance.c music_service_client.c music_format.c playlist.c playlist_m3u.c radio.c radio_catalog_parse.c radio_catalog.c radio_net.c album_art.c disk_cache.c lyrics.c lrc_parse.c embedded_lyrics.c radio_hls.c tag_meta.c \
+SOURCE = $(TARGET).c music_bos.c music_client.c music_balance.c music_service_client.c music_format.c playlist.c playlist_m3u.c radio.c radio_catalog_parse.c radio_catalog.c radio_net.c album_art.c disk_cache.c lyrics.c lrc_parse.c embedded_lyrics.c radio_hls.c tag_meta.c \
          podcast.c podcast_rss.c podcast_search.c settings.c resume.c add_to_playlist.c background.c \
          module_common.c module_menu.c module_library.c module_player.c module_playlist.c module_radio.c module_podcast.c module_settings.c \
          ui_icons.c ui_utils.c browser.c ui_album_art.c ui_main.c ui_music.c ui_radio.c ui_podcast.c ui_playlist.c ui_settings.c \
@@ -65,7 +65,7 @@ SOURCE = $(TARGET).c music_client.c music_balance.c music_service_client.c music
          ../include/parson/parson.c \
          ../include/mbedtls_entropy_alt.c \
          $(MBEDTLS_SRC) \
-         ../common/utils.c ../common/api.c ../common/text_shape.c ../common/audio_manager.c ../common/config.c ../common/scaler.c ../common/display_helper.c ../common/wifi.c ../common/indicator_autohide.c $(UI_COMPONENT_SRCS) $(UI_DIR)/ui_toast.c $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) $(UI_DIR)/ui_listdialog.c $(UI_DIR)/ui_keyboard.c $(UI_DIR)/ui_contextmenu.c ../common/wget_fetch.c ../common/net_cache.c ../common/tz_country.c ../common/stream_probe.c \
+         ../common/utils.c ../common/api.c ../common/text_shape.c ../common/audio_manager.c ../common/config.c ../common/scaler.c ../common/display_helper.c ../common/wifi.c ../common/indicator_autohide.c $(UI_COMPONENT_SRCS) $(BOS_UI_SRCS) $(UI_DIR)/ui_toast.c $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) $(UI_DIR)/ui_listdialog.c $(UI_DIR)/ui_keyboard.c $(UI_DIR)/ui_contextmenu.c ../common/wget_fetch.c ../common/net_cache.c ../common/tz_country.c ../common/stream_probe.c \
          ../../$(PLATFORM)/platform/platform.c
 
 CC = $(CROSS_COMPILE)gcc

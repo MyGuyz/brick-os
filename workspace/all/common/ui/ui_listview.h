@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "sdl.h"
 #include "ui_list.h"
+#include "bos_ui.h"
 
 // One row of a ListView, filled by the caller's provider. Lazy: requested
 // only for rows the widget needs this frame (visible rows, plus the
@@ -18,6 +19,17 @@ typedef struct {
 	const char* badge;		// optional in-pill right-aligned text; reserves pill width
 	int dim_from;			// optional: byte offset into label where a dimmed disambiguating suffix starts (e.g. a duplicate row's tag); 0 = none
 	bool is_header;			// section header row: half-height gray label, not selectable
+	// Brick OS look only (view.bos; DESIGN.md 5.6): all optional
+	const char* sub;	  // a second line, 26 text2
+	SDL_Surface* art;	  // a 64 picture before the name (rounded by the kit)
+	const char* sq_icon;  // or a 56 squircle with this kit icon
+	uint32_t sq_color;	  // its colour
+	const char* pill;	  // a pill on the right
+	uint32_t pill_bg;	  // 0: surface2
+	uint32_t pill_fg;	  // 0: text
+	bool chevron;		  // opens a page
+	bool playing;		  // the ♪ bars: this one plays now
+	bool danger;		  // the name in danger red
 } ListViewRow;
 
 typedef enum {
@@ -62,6 +74,19 @@ typedef struct {
 	int list_y_override;		// 0 = layout default; else band origin
 	bool list_anchor_top;		// with list_y_override: rows start right under it (the leftover goes below)
 	int max_width_override;		// 0 = layout default; else thumb-adjusted row width
+	// -- Brick OS look (DESIGN.md 5.5-5.6): set bos and link $(BOS_UI_SRCS); everything below is translated text --
+	bool bos;
+	const char* bos_status;		// the status bar's title (NULL: title)
+	const char* bos_title;		// the large title, NULL none
+	const char* bos_sub;		// under it
+	const char* bos_footer;		// under the group
+	const char* bos_empty_icon; // the empty state's icon (kit name)
+	int bos_row_h;				// mockup px, 0 = 96
+	const BosHint* bos_hints;	// the hint bar (hint_pairs is not used)
+	int bos_nhints;
+	const BosHint* bos_left;
+	int bos_nleft;
+	BosGlide bos_pill, bos_scroll;
 	// -- state (widget-owned; zero-init valid) --
 	int selected;
 	int scroll; // first visible row index

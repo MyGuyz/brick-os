@@ -143,4 +143,9 @@ uint32_t BOS_keyMix(uint32_t key, uint32_t v);
 // A picture (ARGB8888, with its own alpha) onto the page at opacity a, inside the page's clip
 void BOS_blit(SDL_Surface* pic, SDL_Surface* s, int x, int y, float a);
 
+// ---- pictures (bos_pic.c): src filled into w x h (cropped, not stretched), corners radius r; made once and kept
+// (owned by the kit: never free it). Call BOS_picForget(src) before freeing src (NULL: forget all). ----
+SDL_Surface* BOS_picRounded(SDL_Surface* src, int w, int h, int r);
+void BOS_picForget(SDL_Surface* src);
+
 #endif

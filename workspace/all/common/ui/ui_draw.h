@@ -1,6 +1,7 @@
 #ifndef UI_DRAW_H
 #define UI_DRAW_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "sdl.h"
 
@@ -25,5 +26,9 @@ SDL_Surface* UI_getScrimAlpha(SDL_Surface** cache, int w, int h, Uint8 alpha);
 // `pairs` is a NULL-terminated {button, label} array, e.g.
 // (char*[]){"B", "CANCEL", "A", "CONFIRM", NULL}.
 void UI_renderCenteredButtons(SDL_Surface* dst, int y, char** pairs);
+
+// Brick OS: the shared pieces (menu bar, hint bar, confirm, MENU popup, toast, empty page, loading, message,
+// splash, controls help, list views) draw the Brick OS way. Apps that link $(BOS_UI_SRCS) set it at start.
+extern bool UI_bos;
 
 #endif // UI_DRAW_H

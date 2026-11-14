@@ -35,6 +35,8 @@ extern int psa_crypto_init(void);
 #include "resume.h"
 #include "background.h"
 #include "../common/display_helper.h"
+#include "ui_draw.h"
+#include "module_playlist.h"
 
 void InitSettings(void);
 void QuitSettings(void);
@@ -119,6 +121,7 @@ int main(int argc, char* argv[]) {
 
 	bool settings_ready = false;
 
+	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.2)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_EFFICIENCY);
 	UI_showSplashScreen(screen, "Music Player");
@@ -207,6 +210,12 @@ int main(int argc, char* argv[]) {
 		}
 		case MENU_LIBRARY:
 			reason = LibraryModule_run(screen);
+			break;
+		case MENU_FILES: // Brick OS home tiles (DESIGN.md 7.2)
+			reason = PlayerModule_run(screen);
+			break;
+		case MENU_PLAYLISTS:
+			reason = PlaylistModule_run(screen);
 			break;
 		case MENU_RADIO:
 			reason = RadioModule_run(screen);

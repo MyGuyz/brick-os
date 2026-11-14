@@ -26,6 +26,7 @@ void Spectrum_quit(void);
 void Spectrum_update(void);
 
 void Spectrum_setPosition(int x, int y, int w, int h);
+void Spectrum_clearPosition(void); // no place this frame: hidden
 void Spectrum_renderGPU(void);
 bool Spectrum_needsRefresh(void);
 

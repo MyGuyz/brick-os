@@ -6,6 +6,9 @@
 #include "defines.h"
 #include <string.h>
 
+void BOS_uiSheet(SDL_Surface* s, const char* const* labels, int n, int sel) __attribute__((weak));
+int BOS_uiSheetCols(int n) __attribute__((weak));
+
 static ContextMenuItem cm_items[CONTEXTMENU_MAX_ITEMS];
 static int cm_count;
 static int cm_selected;
@@ -57,7 +60,21 @@ ContextMenuResult ContextMenu_handleInput(void) {
 		return result;
 	}
 
-	PAD_navigateMenu(&cm_selected, cm_count);
+	if (UI_bos && BOS_uiSheetCols && BOS_uiSheetCols(cm_count) == 2) { // the sheet's two columns
+		int s = cm_selected;
+		if (PAD_justRepeated(BTN_LEFT) && s % 2 == 1)
+			s--;
+		else if (PAD_justRepeated(BTN_RIGHT) && s % 2 == 0 && s + 1 < cm_count)
+			s++;
+		else if (PAD_justRepeated(BTN_UP) && s >= 2)
+			s -= 2;
+		else if (PAD_justRepeated(BTN_DOWN) && s + 2 < cm_count)
+			s += 2;
+		else if (PAD_justRepeated(BTN_DOWN) && s + 1 < cm_count && s % 2 == 0 && (cm_count - 1) / 2 > s / 2)
+			s = cm_count - 1;
+		cm_selected = s;
+	} else
+		PAD_navigateMenu(&cm_selected, cm_count);
 
 	return result;
 }
@@ -78,6 +95,16 @@ void ContextMenu_render(SDL_Surface* screen) {
 									0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
 		if (!surf)
 			return;
+	}
+
+	if (UI_bos && BOS_uiSheet) {
+		const char* labels[CONTEXTMENU_MAX_ITEMS];
+		for (int i = 0; i < cm_count; i++)
+			labels[i] = cm_items[i].label;
+		BOS_uiSheet(surf, labels, cm_count, cm_selected);
+		GFX_clearLayers(LAYER_OVERLAY);
+		GFX_drawOnLayer(surf, 0, 0, sw, sh, 1.0f, false, LAYER_OVERLAY);
+		return;
 	}
 
 	// Semi-transparent backdrop

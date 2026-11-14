@@ -37,4 +37,4 @@ UI_COMPONENT_SRCS = \
 UI_LISTVIEW_SRCS = $(UI_DIR)/ui_listview.c
 
 # Brick OS UI 2.0 kit (bos_ui.h). Opt-in: needs api.c and text_shape.c in the app.
-BOS_UI_SRCS = $(UI_DIR)/bos_ui.c $(UI_DIR)/bos_apps.c $(UI_DIR)/bos_sfx.c $(UI_DIR)/bos_motion.c
+BOS_UI_SRCS = $(UI_DIR)/bos_ui.c $(UI_DIR)/bos_apps.c $(UI_DIR)/bos_sfx.c $(UI_DIR)/bos_motion.c $(UI_DIR)/bos_pic.c $(UI_DIR)/bos_list.c $(UI_DIR)/bos_shared.c

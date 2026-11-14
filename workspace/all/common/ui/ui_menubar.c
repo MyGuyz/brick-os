@@ -169,8 +169,14 @@ int UI_statusWidth(void) {
 	return last_ow;
 }
 
+int BOS_uiMenuBar(SDL_Surface* s, const char* title) __attribute__((weak));
 int UI_renderMenuBarAt(SDL_Surface* screen, const char* title, const char* suffix, int x, bool scrim,
 					   bool title_shadow) {
+	if (UI_bos && BOS_uiMenuBar) {
+		BOS_uiMenuBar(screen, title);
+		last_ow = screen->w / 3;
+		return last_ow;
+	}
 	int bar_h = UI_menuBarHeight();
 	if (scrim) {
 		// Semi-transparent bar background (cached between calls)

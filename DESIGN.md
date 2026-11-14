@@ -723,7 +723,7 @@ User request: "like the theme colour page, with colour choice and a colour code"
 ## 7. Round 2
 **Rule (owner, 2026-11-14): no screen of the old NextUI/minarch UI may remain anywhere,** however rarely it is seen:
 every page, prompt, error and message box gets a v2 board and is redrawn. Round 2 is not finished until a sweep finds none.
-Still old: Music, Video, YouTube, the keyboard. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
+Still old: YouTube, the keyboard; Music (§7.2) and Video (§7.3) are drawn, their code is not done yet. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
 
 YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
 
@@ -767,3 +767,77 @@ YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md`
   high (`surface2`, a green tick circle 48, the text 32/600) above the hint bar, centred on the right column, for 1.8 s.
 
 Still with no mockup at all: PortMaster, Xtras, ภาพปก (ex-Artwork Manager), ตั้งค่าแยกเครื่อง (ex-Emulator Settings), the YouTube player, boot and sleep screens.
+
+### 7.2 เพลง (Music app; boards `design/round2/v2-Music*`, approved 2026-11-14)
+Every screen the app has today, redrawn with §5; nothing dropped. Status bar title = the part of the app (เพลง, ไฟล์เพลง, เพลย์ลิสต์,
+วิทยุ, พอดแคสต์, เซิร์ฟเวอร์เพลง, เพลงฟรี, ตั้งค่าเพลง).
+- **Home (`v2-Music`):** a "กำลังเล่น" card (art 110, ♪ bars + กำลังเล่น 26, title 40/700, artist · time 28, a progress bar,
+  pause) when something plays or can resume; under it six tiles 3×2 (180 high, radius 24, squircle 56, name 34/600, count
+  26 `text2` or a ใหม่ pill): ไฟล์เพลง, เซิร์ฟเวอร์เพลง, เพลย์ลิสต์, เพลงฟรี, วิทยุออนไลน์ (only with the radio feature),
+  พอดแคสต์. A เปิด · B ออก · MENU ตั้งค่าเพลง.
+- **Files (`-Files`, `-Empty`):** large title = the folder, "N เพลง · N โฟลเดอร์"; a §5.6 group: folders (squircle, count,
+  chevron), tracks (art 64, title, artist · length; the playing one has ♪ bars). A เล่น · B กลับ · Y เล่นทั้งหมด · MENU ตัวเลือก.
+  No music: a 140 icon card, "ยังไม่มีเพลง" and how to add (the Music folder, ส่งไฟล์ผ่าน WiFi).
+- **MENU on a track (`-Sheet`)**: the §6.10 sheet: header art 96 + name 44/700 + "artist · length · format"; tiles
+  เพิ่มลงเพลย์ลิสต์ · เล่นถัดไป · เพิ่มทั้งโฟลเดอร์ · เปลี่ยนชื่อ · ลบไฟล์ (`danger`, asks again: `-Confirm`, the §7.1 card).
+  Folder rows offer the folder's actions (เปลี่ยนชื่อ, ลบโฟลเดอร์).
+- **Playing (`-Playing`, `-Lyrics`, `-Visualizer`):** the art blurred behind at 28 %; art 400 (radius 28) left; right: pills
+  format · sample rate (or "44.1→48 kHz") · "3 / 12", title 48/700, artist 32 `text2`, album 28 `textoff`; with lyrics on,
+  four lines under the artist (the sung line 38/700 `text`, the next `text2`, the rest `textoff`); with the visualizer on,
+  its bars there instead. Bottom: a seek bar (10 high, knob 22), position left, length right, between them shuffle · prev ·
+  pause (84 `focus` circle) · next · repeat; an on mode is `primary` with a dot. A pause · B กลับ · X สุ่ม · Y เล่นซ้ำ ·
+  ← → seek · ↑↓/L1 R1 tracks · MENU ตัวเลือก. The old controls-help page goes: its actions are the player sheet
+  (`-PlayerSheet`): เนื้อเพลง · ภาพตามเสียง · เพิ่มลงเพลย์ลิสต์ · เล่นเบื้องหลัง (START) · ปิดจอ (SELECT) · ลบไฟล์.
+- **Screen off (`-ScreenOff`):** moon 56, "ปิดจอแล้ว เพลงยังเล่นต่อ", "กด SELECT + A เพื่อเปิดจอ", then black.
+- **Playlists (`-Playlists`, `-AddTo`):** left a group (380) "+ ใหม่" then the playlists (art 56); right a card: a 2×2 art
+  mosaic 150, name 44/700, "N เพลง · length", the first tracks. A เปิด · Y เล่นทั้งหมด · MENU ตัวเลือก (เปลี่ยนชื่อ, ลบ).
+  Adding: large title เพิ่มลงเพลย์ลิสต์ + the track, a group "+ เพลย์ลิสต์ใหม่" (primary) then the playlists. A เพิ่ม.
+- **Radio (`-Radio`, `-RadioPlaying`, `-RadioAdd`):** stations as rows: a logo squircle (the station's picture, else its
+  initials on a colour), name, genre · country; the playing one has a red "สด" pill. Playing: the logo as the art, pills สด ·
+  bitrate · "1 / 12", name, genre · city, "เพลงตอนนี้" + the stream's title; prev · pause · next, no seek bar. Add: countries
+  left (with counts), the country's stations right ("N สถานี · จาก radio-browser.info"), + to add, a green tick when added.
+  The old help page becomes the footer of the add page.
+- **Podcasts (`-Podcasts`, `-PodcastShow`, `-PodcastPlaying`, `-PodcastTop`, `-Downloads`):** home: "ฟังต่อ" cards (art 64,
+  episode, "เหลือ N นาที", progress) and "รายการที่ติดตาม" covers 168 with "ใหม่ N" pills. A show: art 112, name 48/700,
+  "author · N ตอน · ติดตามแล้ว", episodes as rows with date · length and a state (ใหม่ pill / เหลือ N นาที / download tick /
+  played tick). Playing: as music, controls −10 · pause · +30, a "ความเร็ว 1.5x" pill, ↑↓ speed. Top shows and search
+  results: a 5-column grid of covers, a green tick on followed ones; A ติดตาม · Y ค้นหา. Downloads: rows with a bar, "รอคิว",
+  or a tick; X ยกเลิก.
+- **Settings (`-Settings`):** Settings' own rows (§6.6): ปิดจอเองตอนเล่น, เสียงเกม / เพลง (slider with number), ตัดเสียง
+  ทุ้มต่ำ, กันเสียงแตก, อัตราสุ่มเสียง, คุณภาพการแปลงเสียง, บัฟเฟอร์เสียง, ล้างปกที่เก็บไว้, ล้างเนื้อเพลงที่เก็บไว้.
+- **Own server (new; `-ServerSetup`, `-Server`, `-ServerAlbum`):** the Subsonic API (Navidrome, Subsonic, Airsonic, Gonic).
+  Setup: ที่อยู่เซิร์ฟเวอร์ · ชื่อผู้ใช้ · รหัสผ่าน (kept on the device only) · ทดสอบการเชื่อมต่อ ("เชื่อมต่อได้ · N เพลง" in
+  `ok`). Library: large title + "server · N อัลบั้ม · order", tabs ศิลปิน · อัลบั้ม · เพลย์ลิสต์ · ดาวน์โหลดแล้ว (L1 R1),
+  a grid of covers 200 (a download badge on saved ones). Album: art 300, name, artist · year, "N เพลง · length", a
+  "ดาวน์โหลดแล้ว a / b" pill; tracks numbered with a tick when saved or a bar while saving. A เล่น · X ดาวน์โหลดทั้ง
+  อัลบั้ม · Y สุ่ม. Saved songs go to Music/ดาวน์โหลด and play offline.
+- **Free music (new; `-Free`):** sources Internet Archive (no key) and Jamendo (needs a free developer key; hidden without
+  one) switched with L1 R1, genre chips; rows with the licence as a pill (CC BY, CC BY-SA, สาธารณะ). A ฟัง · X ดาวน์โหลด ·
+  Y ค้นหา.
+- **Art and lyrics found on the card (new):** a `cover.jpg` / `folder.jpg` / `cover.png` in the track's folder is used
+  before any online search; a `.lrc` with the track's name next to it is used before LRCLIB. Order for art: in the file,
+  the folder's picture, the cache, iTunes, Deezer. For lyrics: timed in the file, the `.lrc`, the cache, LRCLIB, untimed
+  in the file.
+
+### 7.3 วิดีโอ (Video app; boards `design/round2/v2-Video*`, approved 2026-11-14)
+- **Home (`v2-Video`):** "ดูต่อ" (videos with a saved place, newest first): 300×169 pictures, radius 18, a red (`danger`)
+  progress line along the bottom, the name 28 and "เหลือ N นาที" 24 `text2`; the focused one has the 4 px ring (§5.3) and
+  x1.04. Under it two tiles 150 high: วิดีโอในเครื่อง ("N ไฟล์ · N โฟลเดอร์") and ทีวีออนไลน์ ("N ช่อง · ต้องต่อ WiFi").
+  A ดูต่อ / เปิด · B ออก (no "Quit?" box) · MENU ตัวเลือก.
+- **Files (`-Files`, `-Empty`):** large title + "N ไฟล์ · N โฟลเดอร์"; rows 96 with a 128×72 picture (radius 10, the red
+  progress line when resumable), the file name and "length · codec · ซับ …" 26 `text2`. Picture: a same-name .jpg/.png
+  beside the file, else one frame taken from the video and cached, else a `surface` card with the film icon. Empty: as
+  Music's, for the Videos folder.
+- **Resume (`-Resume`):** a bottom sheet: picture 160×90 + name 40/700 + "length · codec · subtitles"; two tiles 96 high:
+  ดูต่อ "จาก 8:07 / 14:48" (focused) and เริ่มใหม่ "จากต้นเรื่อง". A video with no saved place plays at once.
+- **Player (`-Player`, `-PlayerQuick`; drawn by our ffplay with the kit's fonts, so Thai shows):** with the controls up
+  (paused, or X): a dark gradient top 150 with the status bar (name left; WiFi, time, battery right) and bottom 300 with
+  three chips 56 high (เสียง <track>, ซับ <language|ปิด>, ภาพ <อัตโนมัติ|16:9|4:3>), a seek bar 10 (red fill, knob 24),
+  position left and "−remaining" right, and the hint bar: A เล่น/หยุด · B ออก · X ซ่อน · Y สัดส่วนภาพ · L1 R1 ±1 นาที; a 120
+  pause disc in the middle while paused. They hide 4 s after the last press while playing. ← → seek 10 s, ↑ audio track,
+  ↓ subtitle: while playing only a pill for what changed ("ซับ: English 2 / 3") near the top and a thin bar with the
+  times and "+10 วิ" at the bottom, gone after 2 s.
+- **Online TV (`-TV`, `-TVAdd`, `-TVError`):** saved channels as rows with a 96×64 logo (the channel's, else its name on a
+  colour), name, country · category, a red "สด" pill on the one playing; A ดู · X เพิ่มช่อง · MENU ตัวเลือก (ลบช่อง, รีเฟรช
+  รายการ). Add: countries left with counts, the country's channels right ("N ช่อง · จาก iptv-org · บางช่องอาจดูไม่ได้"),
+  + to add, a green tick when added. A channel that will not play: the §7.1 message card (warning, "ดูช่องนี้ไม่ได้").

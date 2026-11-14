@@ -20,6 +20,7 @@ extern uint32_t SDL_GetTicks(void);
 #include "module_common.h"
 #include "ui_toast.h"
 #include "module_player.h"
+#include "ui_draw.h"
 #include "music_client.h"
 #include "spectrum.h"
 #include "browser.h"
@@ -60,6 +61,13 @@ static bool initialized = false;
 #define PLAYER_CTX_RENAME 1 // rename selected file/folder
 #define PLAYER_CTX_DELETE 2 // delete selected file/folder (confirm)
 #define PLAYER_CTX_ADD 3	// add selected file/folder to a playlist
+// the player sheet (Brick OS, board v2-MusicPlayerSheet)
+#define PLAYER_CTX_LYRICS 10
+#define PLAYER_CTX_VIS 11
+#define PLAYER_CTX_ADD_NOW 12
+#define PLAYER_CTX_BACKGROUND 13
+#define PLAYER_CTX_SCREEN_OFF 14
+#define PLAYER_CTX_DELETE_NOW 15
 
 // Delete confirmation state
 static bool show_delete_confirm = false;
@@ -429,6 +437,16 @@ static bool handle_browser_input(PlayerInternalState* state, bool* dirty) {
 			return true;
 		}
 		break;
+	case LISTVIEW_BUTTON:
+		if (act.btn == BTN_Y && Browser_countAudioFiles(&browser) > 0) { // เล่นทั้งหมด (board v2-MusicFiles)
+			resume_playlist_path[0] = '\0';
+			resume_folder_path[0] = '\0';
+			if (build_and_start_playlist(browser.current_path, "")) {
+				*state = PLAYER_INTERNAL_PLAYING;
+				*dirty = 1;
+			}
+		}
+		break;
 	case LISTVIEW_ACTIVATED:
 		if (act.index >= 0 && act.index < browser.entry_count) {
 			FileEntry* entry = &browser.entries[act.index];
@@ -662,7 +680,7 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 
 			// Context menu for the browser page: acts on the selected entry
 			// (".." and "Play All" only get Quit App).
-			ContextMenuItem ctx_items[4];
+			ContextMenuItem ctx_items[6];
 			int ctx_count = 0;
 			if (state == PLAYER_INTERNAL_BROWSER) {
 				ListView* v = MusicBrowser_view();
@@ -679,6 +697,13 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 					}
 				}
 				ContextMenu_addItem(ctx_items, &ctx_count, "Quit App", CTX_ID_QUIT);
+			} else if (UI_bos) {
+				ContextMenu_addItem(ctx_items, &ctx_count, Settings_getLyricsEnabled() ? "Hide Lyrics" : "Lyrics", PLAYER_CTX_LYRICS);
+				ContextMenu_addItem(ctx_items, &ctx_count, "Visualizer", PLAYER_CTX_VIS);
+				ContextMenu_addItem(ctx_items, &ctx_count, "Add to Playlist", PLAYER_CTX_ADD_NOW);
+				ContextMenu_addItem(ctx_items, &ctx_count, "Play in Background", PLAYER_CTX_BACKGROUND);
+				ContextMenu_addItem(ctx_items, &ctx_count, "Screen Off (SELECT)", PLAYER_CTX_SCREEN_OFF);
+				ContextMenu_addItem(ctx_items, &ctx_count, "Delete File", PLAYER_CTX_DELETE_NOW);
 			}
 
 			GlobalInputResult global = ModuleCommon_handleGlobalInput(screen, &show_setting, app_state_for_help,
@@ -688,7 +713,49 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 				Browser_freeEntries(&browser);
 				return MODULE_EXIT_QUIT;
 			}
-			if (global.context_id > 0 && state == PLAYER_INTERNAL_BROWSER) {
+			if (global.context_id >= PLAYER_CTX_LYRICS && state == PLAYER_INTERNAL_PLAYING) {
+				const MusicSnapshotWire* snap = MusicClient_snapshot();
+				const char* base = strrchr(snap->current_file, '/');
+				base = base ? base + 1 : snap->current_file;
+				switch (global.context_id) {
+				case PLAYER_CTX_LYRICS:
+					Settings_toggleLyrics();
+					if (!Settings_getLyricsEnabled())
+						Lyrics_clear();
+					else
+						Lyrics_fetch(snap->current_file, snap->artist, snap->title, snap->duration_ms / 1000);
+					break;
+				case PLAYER_CTX_VIS:
+					Spectrum_cycleNext();
+					break;
+				case PLAYER_CTX_ADD_NOW:
+					if (snap->current_file[0])
+						AddToPlaylist_open(snap->current_file, base);
+					break;
+				case PLAYER_CTX_BACKGROUND:
+					cleanup_album_art_background();
+					cleanup_playback(true);
+					Browser_freeEntries(&browser);
+					return MODULE_EXIT_QUIT;
+				case PLAYER_CTX_SCREEN_OFF:
+					ModuleCommon_startScreenOffHint();
+					clear_gpu_layers();
+					break;
+				case PLAYER_CTX_DELETE_NOW:
+					if (snap->current_file[0]) {
+						snprintf(delete_target_path, sizeof(delete_target_path), "%s", snap->current_file);
+						snprintf(delete_target_name, sizeof(delete_target_name), "%s", base);
+						delete_target_is_dir = false;
+						cleanup_playback(true);
+						state = PLAYER_INTERNAL_BROWSER;
+						show_delete_confirm = true;
+						GFX_clearLayers(LAYER_SCROLLTEXT);
+					}
+					break;
+				}
+				dirty = 1;
+			}
+			if (global.context_id > 0 && global.context_id < PLAYER_CTX_LYRICS && state == PLAYER_INTERNAL_BROWSER) {
 				ListView* v = MusicBrowser_view();
 				if (v->selected >= 0 && v->selected < browser.entry_count) {
 					FileEntry* entry = &browser.entries[v->selected];

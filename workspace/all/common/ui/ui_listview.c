@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ui_listview.h"
+#include "ui_draw.h"
 #include "initial_jump.h"
 #include "list_nav.h"
 #include "api.h"
@@ -161,18 +162,30 @@ void UI_listViewReset(ListView* v, int count, const void* list_id) {
 	// handled by UI_listGlideDrawAtY on the next render.
 }
 
+// The Brick OS look lives in the kit (bos_list.c); apps without the kit never set bos
+void BOS_listViewRender(ListView* v, SDL_Surface* screen) __attribute__((weak));
+bool BOS_listViewBusy(ListView* v) __attribute__((weak));
+
 bool UI_listViewBusy(ListView* v) {
+	if ((v->bos || UI_bos) && BOS_listViewBusy)
+		return BOS_listViewBusy(v);
 	return v->input_pending || UI_listGlideActive(&v->glide) ||
 		   ScrollText_needsRender(&v->marquee);
 }
 
 void UI_listViewTickIdle(ListView* v) {
+	if (v->bos || (UI_bos && BOS_listViewRender))
+		return;
 	ScrollText_activateAfterDelay(&v->marquee);
 	if (ScrollText_isScrolling(&v->marquee))
 		ScrollText_animateOnly(&v->marquee);
 }
 
 void UI_listViewRender(ListView* v, SDL_Surface* screen) {
+	if ((v->bos || UI_bos) && BOS_listViewRender) {
+		BOS_listViewRender(v, screen);
+		return;
+	}
 	// 1. Guards. Defensive twin of UI_listViewReset: clears the marquee and
 	// lets the id change snap the glide, but preserves selected/scroll -
 	// hosted callers (settings page stack) sync a restored cursor before

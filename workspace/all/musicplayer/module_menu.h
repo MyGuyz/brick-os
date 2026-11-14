@@ -10,6 +10,8 @@
 #define MENU_RADIO 2
 #define MENU_PODCAST 3
 #define MENU_SETTINGS 4
+#define MENU_FILES 5
+#define MENU_PLAYLISTS 6
 #define MENU_QUIT -1
 
 // First-item mode for the menu

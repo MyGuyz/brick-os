@@ -34,8 +34,14 @@ void UI_renderConfirmDialog(SDL_Surface* dst, const char* title,
 // would not outlive the block it is declared in).
 static char* confirm_default_hints[] = {"B", "CANCEL", "A", "CONFIRM", NULL};
 
+void BOS_uiConfirm(SDL_Surface* s, const char* title, const char* subtitle, char** pairs) __attribute__((weak));
 void UI_renderConfirmDialogHints(SDL_Surface* dst, const char* title,
 								 const char* subtitle, char** hints) {
+	if (UI_bos && BOS_uiConfirm) {
+		GFX_clearLayers(LAYER_SCROLLTEXT);
+		BOS_uiConfirm(dst, title, subtitle, hints && !hints[0] ? hints : hints);
+		return;
+	}
 	if (!hints)
 		hints = confirm_default_hints;
 	bool has_buttons = hints[0] != NULL; // {NULL}: a notice with no buttons

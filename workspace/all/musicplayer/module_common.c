@@ -5,6 +5,7 @@
 #include "defines.h"
 #include "api.h"
 #include "module_common.h"
+#include "ui_draw.h"
 #include "indicator_autohide.h"
 #include "ui_menubar.h"
 #include "module_player.h"
@@ -115,7 +116,8 @@ GlobalInputResult ModuleCommon_handleGlobalInput(SDL_Surface* screen, IndicatorT
 			result.dirty = true;
 		} else if (cmr.action == CONTEXTMENU_CANCEL) {
 			result.dirty = true;
-		} else if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
+		} else if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
+				   PAD_justRepeated(BTN_RIGHT)) {
 			// Selection moved: redraw the overlay (main surface is untouched)
 			ContextMenu_render(screen);
 			PLAT_GPU_Flip();
@@ -131,13 +133,16 @@ GlobalInputResult ModuleCommon_handleGlobalInput(SDL_Surface* screen, IndicatorT
 	// globally by keymon); PAD_tappedMenu only fires on a short release, so
 	// the two don't collide.
 	if (PAD_tappedMenu(SDL_GetTicks())) {
-		if (show_controls_help || app_state == APP_STATE_MUSIC_PLAYING) {
+		if (show_controls_help || (app_state == APP_STATE_MUSIC_PLAYING && !(UI_bos && menu_count > 0))) {
 			show_controls_help = !show_controls_help;
 			GFX_clearLayers(LAYER_SCROLLTEXT);
 			PLAT_clearLayers(LAYER_SPECTRUM);
 			PLAT_clearLayers(LAYER_PLAYTIME);
 			PLAT_GPU_Flip();
 			PlayTime_clear();
+		} else if (menu_count == 1 && !menu_items[0].label[0]) {
+			// a direct item (no label): MENU does that one thing, no sheet (the Music home: its settings)
+			result.context_id = menu_items[0].id;
 		} else if (menu_count > 0) {
 			ContextMenu_open((ContextMenuItem*)menu_items, menu_count);
 			// Clear text/status GPU layers so they don't float above the

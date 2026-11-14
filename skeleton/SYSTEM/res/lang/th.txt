@@ -960,3 +960,24 @@ No cheat file loaded.\nGet cheats from Xtras > Cheat Database.\n\n	ไม่พ�
 Mute notice	ปิดแจ้งเตือน
 Press A to set and X to clear.\nSupports single button and MENU+button.	กด A เพื่อตั้งปุ่ม · X ล้างปุ่ม · ใช้ปุ่มเดียวหรือ MENU + ปุ่มก็ได้
 Press A to set and X to clear.\nOverrides Settings > Emulator Shortcuts.	กด A เพื่อตั้งปุ่ม · X ล้างปุ่ม · ใช้แทนปุ่มลัดในตั้งค่า › อีมูเลเตอร์
+Exit	ออก
+Stop	หยุด
+Music files	ไฟล์เพลง
+%d songs	%d เพลง
+%d lists	%d รายการ
+%d stations	%d สถานี
+%d shows	%d รายการ
+Playing now	กำลังเล่น
+Music settings	ตั้งค่าเพลง
+Play all	เล่นทั้งหมด
+%d songs · %d folders	%d เพลง · %d โฟลเดอร์
+No music yet	ยังไม่มีเพลง
+Put music in the Music folder of the SD card, or send it with WiFi Transfer	ใส่ไฟล์เพลงไว้ในโฟลเดอร์ Music ของการ์ด SD หรือส่งผ่าน WiFi ด้วยแอป ส่งไฟล์ผ่าน WiFi
+Pause	หยุดชั่วคราว
+Shuffle	สุ่ม
+Repeat	เล่นซ้ำ
+Lyrics	เนื้อเพลง
+Hide Lyrics	ซ่อนเนื้อเพลง
+Visualizer	ภาพตามเสียง
+Screen Off (SELECT)	ปิดจอ (SELECT)
+Add Folder to Playlist	เพิ่มทั้งโฟลเดอร์

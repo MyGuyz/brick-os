@@ -291,6 +291,12 @@ void Spectrum_setPosition(int x, int y, int w, int h) {
 	position_set = true;
 }
 
+void Spectrum_clearPosition(void) {
+	if (position_set)
+		PLAT_clearLayers(LAYER_SPECTRUM);
+	position_set = false;
+}
+
 bool Spectrum_needsRefresh(void) {
 	return position_set && spectrum_visible && (MusicClient_snapshot()->state == MUSIC_STATE_PLAYING);
 }

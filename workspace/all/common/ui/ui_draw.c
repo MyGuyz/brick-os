@@ -3,6 +3,8 @@
 #include "defines.h"
 #include <math.h>
 
+bool UI_bos = false;
+
 static uint32_t px_get(SDL_Surface* s, int x, int y) {
 	uint8_t* p = (uint8_t*)s->pixels + y * s->pitch + x * s->format->BytesPerPixel;
 	switch (s->format->BytesPerPixel) {

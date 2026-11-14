@@ -3,7 +3,12 @@
 #include "api.h"
 #include "defines.h"
 
+void BOS_uiLoading(SDL_Surface* s, const char* title, const char* subtitle) __attribute__((weak));
 void UI_renderLoadingOverlay(SDL_Surface* dst, const char* title, const char* subtitle) {
+	if (UI_bos && BOS_uiLoading) {
+		BOS_uiLoading(dst, title, subtitle);
+		return;
+	}
 	// Full-screen semi-transparent overlay (cached, same pattern as button hint bar)
 	static SDL_Surface* overlay = NULL;
 	if (!UI_getScrim(&overlay, dst->w, dst->h))

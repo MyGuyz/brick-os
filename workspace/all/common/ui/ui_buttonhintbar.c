@@ -13,7 +13,10 @@ int UI_renderButtonHintBarEx(SDL_Surface* dst, char** pairs, Uint8 scrim_alpha) 
 	return UI_renderButtonHintBarAt(dst, pairs, scrim_alpha, -1);
 }
 
+int BOS_uiHintBar(SDL_Surface* s, char** pairs) __attribute__((weak));
 int UI_renderButtonHintBarAt(SDL_Surface* dst, char** pairs, Uint8 scrim_alpha, int left) {
+	if (UI_bos && BOS_uiHintBar)
+		return BOS_uiHintBar(dst, pairs);
 	IndicatorType show_setting = PWR_getShowSetting();
 	char** hw_pairs = show_setting ? GFX_getHardwareHintPairs(show_setting) : NULL;
 
