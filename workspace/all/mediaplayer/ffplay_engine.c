@@ -14,6 +14,7 @@
 #include "audio_manager.h"
 #include "display_helper.h"
 #include "ffplay_engine.h"
+#include "i18n.h"
 #include "ffplay_parse.h"
 
 // PID of the currently running ffplay child process (0 = none).
@@ -245,6 +246,7 @@ static int ffplay_exec(FfplayConfig* config, int use_subs) {
 	if (child == 0) {
 		// Child process: ensure ALSA finds .asoundrc managed by audiomon
 		setenv("HOME", USERDATA_PATH, 1);
+		setenv("BOS_LANG", strcmp(I18N_text("Back"), "Back") ? "th" : "en", 1); // the overlay's words
 		// Generate a minimal fontconfig pointing to system fonts directory
 		// so fontconfig doesn't scan the entire filesystem (~13s startup delay)
 		if (use_subs) {

@@ -302,6 +302,9 @@ EOF
 # Copy our patched ffplay.c over the original
 echo "=== Applying patched ffplay.c ==="
 cp $FFPLAY_DIR/ffplay.c $BUILD_DIR/fftools/ffplay.c
+# Brick OS overlay (bos_osd.inc) and the kit's Thai glyph mapping it draws with
+cp $FFPLAY_DIR/bos_osd.inc $BUILD_DIR/fftools/
+cp $FFPLAY_DIR/../../../common/text_thai.c $FFPLAY_DIR/../../../common/text_thai.h $BUILD_DIR/fftools/
 
 # Configure (force reconfigure to pick up libass)
 if [ ! -f "$BUILD_DIR/config.h" ] || ! grep -q "CONFIG_LIBASS 1" "$BUILD_DIR/config.h" || ! grep -q "CONFIG_LIBXML2 1" "$BUILD_DIR/config.h"; then
@@ -404,7 +407,7 @@ if [ ! -f "$BUILD_DIR/config.h" ] || ! grep -q "CONFIG_LIBASS 1" "$BUILD_DIR/con
         --enable-filter=overlay \
         --extra-cflags="-I${INSTALL}/include -I${INSTALL}/include/SDL2 -I${INSTALL}/include/freetype2" \
         --extra-ldflags="-L${INSTALL}/lib -Wl,--unresolved-symbols=ignore-in-shared-libs -Wl,-rpath,/rom/usr/trimui/lib -Wl,-rpath,/usr/lib" \
-        --extra-libs="-lass -lfribidi -lfreetype -lfontconfig -lexpat -lxml2 -lm -ldl -lpthread -lrt" \
+        --extra-libs="-lSDL2_ttf -lass -lfribidi -lfreetype -lfontconfig -lexpat -lxml2 -lm -ldl -lpthread -lrt" \
         2>&1 | tail -10
 
     echo "SDL2 enabled: $(grep CONFIG_SDL2 config.h 2>/dev/null)"

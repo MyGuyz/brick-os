@@ -536,119 +536,7 @@ static void format_time(char* buf, int bufsize, double secs) {
 		snprintf(buf, bufsize, "%d:%02d", m, s);
 }
 
-static void osd_draw(VideoState* is) {
-	double pos, dur, frac;
-	int w, h, bar_x, bar_w, bar_y, fill_w, text_scale;
-	int dot_x, dot_r;
-	char time_cur[32], time_dur[32], time_str[80];
-
-	/* Keep OSD visible while paused; otherwise auto-hide after timeout */
-	if (is->paused) {
-		osd_visible = 1;
-	} else if (!osd_visible) {
-		return;
-	} else if (av_gettime_relative() - osd_last_activity > OSD_TIMEOUT_US) {
-		osd_visible = 0;
-		return;
-	}
-
-	pos = get_master_clock(is);
-	dur = 0;
-	if (is->ic && is->ic->duration > 0)
-		dur = (double)is->ic->duration / AV_TIME_BASE;
-
-	if (isnan(pos))
-		return;
-
-	w = 0;
-	h = 0;
-	SDL_GetRendererOutputSize(renderer, &w, &h);
-	if (w <= 0 || h <= 0)
-		return;
-
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
-	/* Title bar (top) */
-	{
-		char title[256];
-		SDL_Rect tbg = {0, 0, w, OSD_TITLE_HEIGHT};
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
-		SDL_RenderFillRect(renderer, &tbg);
-		if (window_title && window_title != input_filename)
-			snprintf(title, sizeof(title), "%s", window_title);
-		else
-			osd_get_title(input_filename, title, sizeof(title));
-		osd_draw_vga_text(OSD_MARGIN, OSD_TITLE_Y_OFFSET, title,
-						  OSD_TITLE_SCALE, 255, 255, 255, 230,
-						  w - 2 * OSD_MARGIN);
-	}
-
-	/* Bottom bar background */
-	{
-		SDL_Rect bg = {0, h - OSD_BG_HEIGHT, w, OSD_BG_HEIGHT};
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
-		SDL_RenderFillRect(renderer, &bg);
-	}
-
-	/* Time text: "0:23 / 3:45" or "0:23" if no duration */
-	text_scale = 4;
-	format_time(time_cur, sizeof(time_cur), pos);
-	if (dur > 0) {
-		format_time(time_dur, sizeof(time_dur), dur);
-		snprintf(time_str, sizeof(time_str), "%s / %s", time_cur, time_dur);
-	} else {
-		snprintf(time_str, sizeof(time_str), "%s", time_cur);
-	}
-
-	/* Time text on the left */
-	osd_draw_text(OSD_MARGIN, h - OSD_BG_HEIGHT + OSD_TEXT_Y_OFFSET,
-				  time_str, text_scale, 255, 255, 255, 230);
-
-	/* "PAUSED" label on the right */
-	if (is->paused) {
-		int pause_text_w = 6 * 6 * text_scale; /* 6 chars * (5px + 1gap) * scale */
-		osd_draw_text(w - OSD_MARGIN - pause_text_w,
-					  h - OSD_BG_HEIGHT + OSD_TEXT_Y_OFFSET,
-					  "PAUSED", text_scale, 255, 200, 0, 230);
-	}
-
-	/* Progress bar */
-	bar_x = OSD_MARGIN;
-	bar_w = w - 2 * OSD_MARGIN;
-	bar_y = h - OSD_MARGIN / 2 - OSD_BAR_HEIGHT;
-
-	/* Track */
-	{
-		SDL_Rect track = {bar_x, bar_y, bar_w, OSD_BAR_HEIGHT};
-		SDL_SetRenderDrawColor(renderer, 80, 80, 80, 200);
-		SDL_RenderFillRect(renderer, &track);
-	}
-
-	/* Fill */
-	if (dur > 0) {
-		frac = pos / dur;
-		if (frac < 0)
-			frac = 0;
-		if (frac > 1)
-			frac = 1;
-		fill_w = (int)(bar_w * frac);
-
-		{
-			SDL_Rect fill_rect = {bar_x, bar_y, fill_w, OSD_BAR_HEIGHT};
-			SDL_SetRenderDrawColor(renderer, 255, 255, 255, 230);
-			SDL_RenderFillRect(renderer, &fill_rect);
-		}
-
-		/* Playhead dot */
-		dot_x = bar_x + fill_w;
-		dot_r = OSD_BAR_HEIGHT + 6;
-		{
-			SDL_Rect dot = {dot_x - dot_r / 2, bar_y - (dot_r - OSD_BAR_HEIGHT) / 2,
-							dot_r, dot_r};
-			SDL_RenderFillRect(renderer, &dot);
-		}
-	}
-}
+#include "bos_osd.inc"
 
 static const struct TextureFormatEntry {
 	enum AVPixelFormat format;
@@ -1626,32 +1514,6 @@ static void video_display(VideoState* is) {
 	else if (is->video_st)
 		video_image_display(is);
 	osd_draw(is);
-
-	/* Aspect ratio label (shown briefly after toggle, independent of OSD) */
-	if (aspect_osd_until > 0) {
-		if (av_gettime_relative() < aspect_osd_until) {
-			int aw = 0, ah = 0;
-			SDL_GetRendererOutputSize(renderer, &aw, &ah);
-			if (aw > 0 && ah > 0) {
-				const char* label = aspect_mode == 1 ? "16:9" : aspect_mode == 2 ? "4:3"
-																				 : "AUTO";
-				int label_len = (int)strlen(label);
-				int scale = 4;
-				int label_w = label_len * 6 * scale;
-				int label_h = 7 * scale;
-				int lx = (aw - label_w) / 2;
-				int ly = (ah - label_h) / 2;
-				/* Background box */
-				SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-				SDL_Rect bg = {lx - 12, ly - 8, label_w + 24, label_h + 16};
-				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
-				SDL_RenderFillRect(renderer, &bg);
-				osd_draw_text(lx, ly, label, scale, 255, 255, 255, 230);
-			}
-		} else {
-			aspect_osd_until = 0;
-		}
-	}
 
 	SDL_RenderPresent(renderer);
 }
@@ -3778,16 +3640,21 @@ static void event_loop(VideoState* cur_stream) {
 				osd_show();
 				break;
 			case 4: /* L1 = seek back 60s */
-				osd_show();
 				incr = -60.0;
+				osd_seek_note(incr);
 				goto do_seek;
 			case 5: /* R1 = seek forward 60s */
-				osd_show();
 				incr = 60.0;
+				osd_seek_note(incr);
 				goto do_seek;
 			case 2: /* Y = cycle aspect ratio */
 				aspect_mode = (aspect_mode + 1) % 3;
-				aspect_osd_until = av_gettime_relative() + ASPECT_OSD_DURATION_US;
+				{
+					char q[96];
+					snprintf(q, sizeof(q), "%s: %s", T("ภาพ", "Picture"),
+							 aspect_mode == 1 ? "16:9" : aspect_mode == 2 ? "4:3" : T("อัตโนมัติ", "Auto"));
+					osd_quick(q);
+				}
 				cur_stream->force_refresh = 1;
 				break;
 			case 3: /* X = toggle OSD */
@@ -3805,20 +3672,24 @@ static void event_loop(VideoState* cur_stream) {
 		case SDL_JOYHATMOTION:
 			switch (event.jhat.value) {
 			case SDL_HAT_LEFT:
-				osd_show();
 				hat_held_direction = SDL_HAT_LEFT;
 				incr = -10.0;
+				osd_seek_note(incr);
 				goto do_seek;
 			case SDL_HAT_RIGHT:
-				osd_show();
 				hat_held_direction = SDL_HAT_RIGHT;
 				incr = 10.0;
+				osd_seek_note(incr);
 				goto do_seek;
 			case SDL_HAT_UP: {
 				double pos = get_clock(&cur_stream->vidclk);
 				stream_cycle_channel(cur_stream, AVMEDIA_TYPE_AUDIO);
 				if (!isnan(pos))
 					stream_seek(cur_stream, (int64_t)(pos * AV_TIME_BASE), 0, 0);
+				char a[64], q[120];
+				osd_audio_label(cur_stream, a, sizeof(a));
+				snprintf(q, sizeof(q), "%s: %s", T("เสียง", "Audio"), a);
+				osd_quick(q);
 			} break;
 			case SDL_HAT_DOWN:
 				if (nb_vfilters > 1) {
@@ -3830,6 +3701,12 @@ static void event_loop(VideoState* cur_stream) {
 						   (sv && sv[0] != '\0') ? sv : "(off)");
 				} else {
 					stream_cycle_channel(cur_stream, AVMEDIA_TYPE_SUBTITLE);
+				}
+				{
+					char sl[96], q[120];
+					osd_sub_label(cur_stream, sl, sizeof(sl));
+					snprintf(q, sizeof(q), "%s: %s", T("ซับ", "Subtitles"), sl);
+					osd_quick(q);
 				}
 				break;
 			case SDL_HAT_CENTERED:

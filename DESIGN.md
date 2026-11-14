@@ -723,7 +723,7 @@ User request: "like the theme colour page, with colour choice and a colour code"
 ## 7. Round 2
 **Rule (owner, 2026-11-14): no screen of the old NextUI/minarch UI may remain anywhere,** however rarely it is seen:
 every page, prompt, error and message box gets a v2 board and is redrawn. Round 2 is not finished until a sweep finds none.
-Still old: YouTube, the keyboard; Music (§7.2) and Video (§7.3) are drawn, their code is not done yet. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
+Still old: YouTube, the keyboard, and the apps of the next sweep (§7.4). Music (§7.2) and Video (§7.3) are built. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
 
 YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
 
@@ -841,3 +841,23 @@ Every screen the app has today, redrawn with §5; nothing dropped. Status bar ti
   colour), name, country · category, a red "สด" pill on the one playing; A ดู · X เพิ่มช่อง · MENU ตัวเลือก (ลบช่อง, รีเฟรช
   รายการ). Add: countries left with counts, the country's channels right ("N ช่อง · จาก iptv-org · บางช่องอาจดูไม่ได้"),
   + to add, a green tick when added. A channel that will not play: the §7.1 message card (warning, "ดูช่องนี้ไม่ได้").
+
+### 7.4 Built (2026-11-15): where the code differs from the boards, and why
+- **The shared pieces follow one switch** (`UI_bos`, ui_draw.h): menu bar → status bar, hint pairs → the hint bar (A right),
+  confirm box → §7.1 card (trash/warning sign from its words), MENU popup → a bottom sheet of tiles (two columns, an icon
+  per known action), toast → a pill above the hint bar, empty page, loading, message, splash, controls help, the
+  settings page (Settings' rows, ‹ value › on focus) and the list dialog → a page with a group. Lists (ListView) draw as
+  §5.6 groups (`bos_list.c`, rows with picture / squircle / letters, sub line, value, pill, tick, progress). Music and Video
+  set it. **Next sweep:** the other apps that use these pieces (Extras, Scraper, Image Viewer, RA tools, Netplay setup,
+  Cheat database, Emulator options, Game time, Sync) only need the switch and a check of their own drawing.
+- **Music:** the "new playlist" row is the last row (not the first) so the selection keeps meaning the playlist.
+  The file rows show the folder's picture and the format (each song's own art, artist and length need its tags read:
+  later). Songs from the own server and free music are downloaded first, then played (the music service plays files
+  and live radio; podcasts work the same way); they stay under Music/ดาวน์โหลด. Jamendo stays hidden until a developer
+  key is set (none yet); free music searches Internet Archive's netlabels. The player sheet has no header (the shared
+  sheet has none).
+- **Video:** a video's picture is a same-name .jpg/.png beside it; taking a frame from the video needs an extractor the
+  system does not ship yet. The player's status line has the time and battery (no WiFi icon). Its overlay is drawn by
+  our ffplay with SDL_ttf and the kit's Thai glyph mapping (`include/ffplay/bos_osd.inc`), the language from BOS_LANG.
+- **Still old elsewhere:** YouTube and the keyboard (round 2, next); DraStic's own menu (a closed emulator: its menu
+  cannot be redrawn, only replaced by ours if DraStic's hooks allow).
