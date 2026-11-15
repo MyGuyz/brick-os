@@ -195,6 +195,13 @@ Nothing on screen is smaller than 22.
 - **ตั้งค่า › หน้าตา › ภาพเคลื่อนไหว:** เต็ม (default) / น้อย (fades only, 120 ms) / ปิด.
 - This replaces v1's "Show menu animations" and "Show menu transitions".
 
+- **Every list wraps (2026-11-16, the user's rule: "ตามหลักสากล").** In every app (OS, YouTube, the keyboards):
+  a fresh press past an end goes to the other end (Down on the last row → the first row, Right on the last item →
+  the first); a held direction stops at the end (the bump above). Grids read row by row: Left/Right go along the
+  reading order (past a row's end to the next row's start), Up/Down by a row keeping the column (a short last row:
+  its last tile). Two-row pages (Home: เล่นต่อ / apps; Video: cards / tiles): Up/Down past either end is the other
+  row. Kit: `PAD_wrapStep` / `PAD_wrapNav` / `PAD_gridNav` (api.h); YTC `wrap_step` / `grid_step`.
+
 ### 5.9 System overlay: level HUD, quick panel, toasts (2026-11-13)
 TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube included. Brick OS keeps the daemon and replaces everything it shows: no stock picture is left. All pictures come from `scripts/osd/make_osd.py` (tokens of §2, Inter), into `skeleton/SYSTEM/osd`. They are used as drawn: the launcher no longer tints them with the accent.
 
@@ -903,6 +910,14 @@ Every screen the app has today, redrawn with §5; nothing dropped. Status bar ti
   kit; the key left of ก/A is **#+=** (a symbols page: passwords need `- _ = + [ ] { } \ | ; : ' " < > / @`)
   instead of "-". B deletes and closes an empty field; START confirms (an empty field closes, so the launcher's
   START-opened search still toggles shut); L1 shift; L2/R2 move the caret. Apps without the kit (Netplay setup, Image
-  viewer, Scraper) get a plain grid of the same keys until the next sweep.
+  viewer, Scraper) got a plain grid of the same keys until 2026-11-16 (they link the kit now).
+- **2026-11-16:** YouTube's other views (ตั้งค่า › การเรียกดู › มุมมอง: ตาราง, ภาพหมุน, ภาพหมุน 3 มิติ,
+  Coverflow) use the TV view's top (status bar, search pill, tabs, quality badge), cards, focus ring and hint bar;
+  the strips keep their motion with the ring on the centre picture and the title / meta / "n / N" under it. The
+  resume question, the cast picker, linked devices (and its remove question) are §5.7 sheets; the cast remote and
+  the loading veil are drawn the same way. X follows the channel in every view.
+- **The keyboard is the same in every app (2026-11-16):** YouTube's has the system's pages (a shifted English page
+  `! @ # … ? :`, the #+= symbols page, "abc" back) and the system's shift is one-shot like YouTube's (it types one
+  key, then back). Netplay setup, Image viewer and Scraper link the kit now, so their keyboard is this one too.
 - **Still old, seen while testing:** the launcher's other tabs (เกม, เครื่องมือ) when หน้าแรก is not the grid style —
   the menutabs pages. Into the next sweep.

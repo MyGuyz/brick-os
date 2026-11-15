@@ -33,7 +33,7 @@ SOURCE = scraper.c scrape_queue.c scraper_api.c scraper_parse.c scraper_names.c 
          $(COMMON_PATH)/utils.c $(COMMON_PATH)/api.c $(COMMON_PATH)/text_shape.c $(COMMON_PATH)/audio_manager.c \
          $(COMMON_PATH)/config.c $(COMMON_PATH)/scaler.c \
          $(COMMON_PATH)/http.c $(COMMON_PATH)/wifi.c \
-         $(UI_COMPONENT_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) \
+         $(UI_COMPONENT_SRCS) $(BOS_UI_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) \
          $(UI_DIR)/ui_keyboard.c \
          $(COMMON_PATH)/display_helper.c \
          $(COMMON_PATH)/cjson/cJSON.c \

@@ -280,10 +280,8 @@ static void setupPage(SDL_Surface** sp) {
 		SDL_Surface* s = *sp;
 		if (PAD_justPressed(BTN_B))
 			return;
-		if (PAD_justRepeated(BTN_UP) && setup_sel > 0)
-			setup_sel--, dirty = 1;
-		else if (PAD_justRepeated(BTN_DOWN) && setup_sel < 3)
-			setup_sel++, dirty = 1;
+		if (PAD_wrapNav(&setup_sel, 4, BTN_UP, BTN_DOWN))
+			dirty = 1;
 		else if (PAD_justPressed(BTN_A)) {
 			ServerCfg* c = Server_cfg();
 			if (setup_sel < 3) {
@@ -390,10 +388,8 @@ static void albumPage(SDL_Surface** sp, const SrvAlbum* al, bool playlist) {
 		SDL_Surface* s = *sp;
 		if (PAD_justPressed(BTN_B))
 			return;
-		if (PAD_justRepeated(BTN_UP) && sel > 0)
-			sel--, dirty = 1;
-		else if (PAD_justRepeated(BTN_DOWN) && sel + 1 < al_n)
-			sel++, dirty = 1;
+		if (PAD_wrapNav(&sel, al_n, BTN_UP, BTN_DOWN))
+			dirty = 1;
 		else if (PAD_justPressed(BTN_A) && al_n > 0) {
 			if (fetchNow(s, al_urls[sel], al_paths[sel], al_songs[sel].title))
 				playFiles(sp, al_paths, al_n, sel, false);
@@ -589,22 +585,9 @@ ModuleExitReason ServerModule_run(SDL_Surface* screen) {
 			continue;
 		}
 		if (grid) {
-			if (PAD_justRepeated(BTN_LEFT) && *cur % 4)
-				(*cur)--;
-			else if (PAD_justRepeated(BTN_RIGHT) && *cur % 4 < 3 && *cur + 1 < n)
-				(*cur)++;
-			else if (PAD_justRepeated(BTN_UP) && *cur >= 4)
-				*cur -= 4;
-			else if (PAD_justRepeated(BTN_DOWN) && *cur + 4 < n)
-				*cur += 4;
-			else if (PAD_justRepeated(BTN_DOWN) && *cur / 4 < (n - 1) / 4)
-				*cur = n - 1;
-		} else {
-			if (PAD_justRepeated(BTN_UP) && *cur > 0)
-				(*cur)--;
-			else if (PAD_justRepeated(BTN_DOWN) && *cur + 1 < n)
-				(*cur)++;
-		}
+			PAD_gridNav(cur, n, 4);
+		} else
+			PAD_wrapNav(cur, n, BTN_UP, BTN_DOWN);
 		if (PAD_justPressed(BTN_A)) {
 			if (tab == 3 && sub_n < 0) { // ดาวน์โหลดแล้ว: the downloaded files
 				Online_mkdirs(ONLINE_DIR);
@@ -774,10 +757,8 @@ ModuleExitReason FreeModule_run(SDL_Surface* screen) {
 			reload = true;
 			continue;
 		}
-		if (PAD_justRepeated(BTN_UP) && sel > 0)
-			sel--;
-		else if (PAD_justRepeated(BTN_DOWN) && sel + 1 < n)
-			sel++;
+		if (PAD_wrapNav(&sel, n, BTN_UP, BTN_DOWN))
+			;
 		else if (PAD_justPressed(BTN_Y)) {
 			char* v = UIKeyboard_openWith(I18N_text("Search free music"), query, 0);
 			PAD_poll();

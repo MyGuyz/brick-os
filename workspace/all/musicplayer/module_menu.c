@@ -168,24 +168,19 @@ int MenuModule_run(SDL_Surface* screen) {
 		if (sel >= n)
 			sel = n - 1;
 		int old = sel;
-		if (PAD_justRepeated(BTN_UP)) {
-			if (sel >= cols)
-				sel -= cols;
-			else if (sel >= 0 && has_first)
-				sel = -1;
-		} else if (PAD_justRepeated(BTN_DOWN)) {
-			if (sel < 0)
-				sel = 0;
-			else if (sel + cols < n)
-				sel += cols;
-			else if (sel / cols < (n - 1) / cols)
-				sel = n - 1;
-		} else if (PAD_justRepeated(BTN_LEFT)) {
-			if (sel > 0 && sel % cols)
-				sel--;
-		} else if (PAD_justRepeated(BTN_RIGHT)) {
-			if (sel >= 0 && sel % cols < cols - 1 && sel + 1 < n)
-				sel++;
+		if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) { // rows: [the card], the tile rows; round
+			int trows = (n + cols - 1) / cols, rows = trows + (has_first ? 1 : 0);
+			int r = sel < 0 ? 0 : sel / cols + (has_first ? 1 : 0), c = sel < 0 ? 0 : sel % cols;
+			if (PAD_wrapNav(&r, rows, BTN_UP, BTN_DOWN) > 0) {
+				if (has_first && r == 0)
+					sel = -1;
+				else {
+					int t = (r - (has_first ? 1 : 0)) * cols + c;
+					sel = t < n ? t : n - 1;
+				}
+			}
+		} else if ((PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) && sel >= 0) {
+			PAD_wrapNav(&sel, n, BTN_LEFT, BTN_RIGHT);
 		} else if (PAD_justPressed(BTN_A)) {
 			GFX_clearLayers(LAYER_SCROLLTEXT);
 			if (sel < 0)

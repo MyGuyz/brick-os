@@ -968,10 +968,8 @@ static void sheetInput(bool* dirty) {
 			cs_row = 3;
 		*dirty = true;
 	} else if (cs_edit) { // the colour code: Left/Right picks the digit, Up/Down steps it 0-F
-		if (PAD_justRepeated(BTN_LEFT) && cs_digit > 0)
-			cs_digit--, *dirty = true;
-		else if (PAD_justRepeated(BTN_RIGHT) && cs_digit < 5)
-			cs_digit++, *dirty = true;
+		if (PAD_wrapNav(&cs_digit, 6, BTN_LEFT, BTN_RIGHT))
+			*dirty = true;
 		else if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
 			int sh = 4 * (5 - cs_digit);
 			uint32_t c = tabColor(), n = (((c >> sh) & 15) + (PAD_justRepeated(BTN_UP) ? 1 : 15)) & 15;
@@ -979,12 +977,8 @@ static void sheetInput(bool* dirty) {
 			cs_hue = hueOf(tabColor());
 			*dirty = true;
 		}
-	} else if (PAD_justRepeated(BTN_UP) && cs_row > 0) {
-		if (--cs_row < 2)
-			pickSwatch();
-		*dirty = true;
-	} else if (PAD_justRepeated(BTN_DOWN) && cs_row < 3) {
-		if (++cs_row < 2)
+	} else if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
+		if (PAD_wrapNav(&cs_row, 4, BTN_UP, BTN_DOWN) > 0 && cs_row < 2)
 			pickSwatch();
 		*dirty = true;
 	} else if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) {

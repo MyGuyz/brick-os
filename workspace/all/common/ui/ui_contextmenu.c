@@ -61,18 +61,7 @@ ContextMenuResult ContextMenu_handleInput(void) {
 	}
 
 	if (UI_bos && BOS_uiSheetCols && BOS_uiSheetCols(cm_count) == 2) { // the sheet's two columns
-		int s = cm_selected;
-		if (PAD_justRepeated(BTN_LEFT) && s % 2 == 1)
-			s--;
-		else if (PAD_justRepeated(BTN_RIGHT) && s % 2 == 0 && s + 1 < cm_count)
-			s++;
-		else if (PAD_justRepeated(BTN_UP) && s >= 2)
-			s -= 2;
-		else if (PAD_justRepeated(BTN_DOWN) && s + 2 < cm_count)
-			s += 2;
-		else if (PAD_justRepeated(BTN_DOWN) && s + 1 < cm_count && s % 2 == 0 && (cm_count - 1) / 2 > s / 2)
-			s = cm_count - 1;
-		cm_selected = s;
+		PAD_gridNav(&cm_selected, cm_count, 2);
 	} else
 		PAD_navigateMenu(&cm_selected, cm_count);
 

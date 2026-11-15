@@ -589,6 +589,44 @@ static inline int PAD_navigateMenu(int* selected, int count) {
 	return 0;
 }
 
+// DESIGN 5.7: every list wraps. A fresh press at an end goes to the other end; a held direction stops there.
+// Moves *sel by dir (-1 / +1) in [0, n). Returns 1 moved, 2 wrapped, -1 held against an end (for BOS_bump), 0 n<1.
+static inline int PAD_wrapStep(int* sel, int n, int dir, int fresh) {
+	if (n <= 0)
+		return 0;
+	int to = *sel + dir;
+	if (to >= 0 && to < n) {
+		*sel = to;
+		return 1;
+	}
+	if (!fresh || n < 2)
+		return -1;
+	*sel = to < 0 ? n - 1 : 0;
+	return 2;
+}
+// The same from a pair of buttons (BTN_UP / BTN_DOWN or BTN_LEFT / BTN_RIGHT); 0 when neither moved.
+static inline int PAD_wrapNav(int* sel, int n, int btn_prev, int btn_next) {
+	if (PAD_justRepeated(btn_prev))
+		return PAD_wrapStep(sel, n, -1, PAD_justPressed(btn_prev));
+	if (PAD_justRepeated(btn_next))
+		return PAD_wrapStep(sel, n, 1, PAD_justPressed(btn_next));
+	return 0;
+}
+// A grid read row by row (`cols` across): Left / Right go along the reading order (past a row's end to the next
+// row's start), Up / Down by a row keeping the column (a short last row: its last tile). The ends wrap as above.
+static inline int PAD_gridNav(int* sel, int n, int cols) {
+	if (n <= 0 || cols < 1)
+		return 0;
+	int r = PAD_wrapNav(sel, n, BTN_LEFT, BTN_RIGHT);
+	if (r)
+		return r;
+	int rows = (n + cols - 1) / cols, row = *sel / cols, col = *sel % cols;
+	r = PAD_wrapNav(&row, rows, BTN_UP, BTN_DOWN);
+	if (r > 0)
+		*sel = row * cols + col < n ? row * cols + col : n - 1;
+	return r;
+}
+
 int PAD_tappedMenu(uint32_t now);	   // special case, returns 1 on release of BTN_MENU within 250ms if BTN_PLUS/BTN_MINUS haven't been pressed
 int PAD_tappedSelect(uint32_t now);	   // special case, returns 1 on release of BTN_SELECT within 250ms if BTN_PLUS/BTN_MINUS haven't been pressed
 int PAD_tappedStart(uint32_t now);	   // special case, returns 1 on release of BTN_START within 250ms if BTN_PLUS/BTN_MINUS haven't been pressed

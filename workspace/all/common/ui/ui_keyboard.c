@@ -238,19 +238,16 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 		bool confirm = false;
 
 		// BTN_UP/DOWN/LEFT/RIGHT are composites (BTN_DPAD_* | BTN_ANALOG_*), so the left stick navigates too.
-		// Up/Down keep the same spot across rows of different widths; Left/Right wrap.
+		// Up/Down keep the same spot across rows of different widths; the ends wrap on a fresh press (DESIGN 5.7).
 		if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
-			int to = PAD_justRepeated(BTN_UP) ? (row + UIKB_ROWS - 1) % UIKB_ROWS : (row + 1) % UIKB_ROWS;
-			col = kb_col_at(l, to, kb_center(l, row, col));
-			row = to;
+			int to = row;
+			if (PAD_wrapNav(&to, UIKB_ROWS, BTN_UP, BTN_DOWN) > 0) {
+				col = kb_col_at(l, to, kb_center(l, row, col));
+				row = to;
+			}
 			dirty = true;
-		} else if (PAD_justRepeated(BTN_LEFT)) {
-			int n = kb_row_len(l, row);
-			col = (col + n - 1) % n;
-			dirty = true;
-		} else if (PAD_justRepeated(BTN_RIGHT)) {
-			int n = kb_row_len(l, row);
-			col = (col + 1) % n;
+		} else if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) {
+			PAD_wrapNav(&col, kb_row_len(l, row), BTN_LEFT, BTN_RIGHT);
 			dirty = true;
 		} else if (PAD_justRepeated(BTN_B)) {
 			if (len == 0) { // nothing to delete: B closes, as before
@@ -308,8 +305,10 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 				if (caret < len)
 					caret = KbUtf8_next(input, caret, len);
 				dirty = true;
-			} else
+			} else {
 				dirty = kb_insert_str(input, &len, &caret, key);
+				shift = 0; // one-shot, as on phones (and YouTube's keyboard)
+			}
 		}
 		if (confirm) {
 			PAD_reset();

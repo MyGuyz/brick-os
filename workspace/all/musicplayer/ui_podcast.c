@@ -2252,47 +2252,28 @@ static void bos_main(SDL_Surface* s, int selected, const char* toast, uint32_t t
 
 // left/right/up/down on the main page (cards, then a 5-across grid); returns the new selection
 int UIPodcast_bosMainNav(int sel, int cl, int grid_n) {
-	if (sel < cl) {
-		if (PAD_justRepeated(BTN_LEFT) && sel > 0)
-			return sel - 1;
-		if (PAD_justRepeated(BTN_RIGHT) && sel + 1 < cl)
-			return sel + 1;
-		if (PAD_justRepeated(BTN_DOWN) && grid_n > 0)
-			return cl;
+	int n = cl + grid_n, C = BOS_GRID_COLS;
+	if (n <= 0)
+		return sel;
+	if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) { // the reading order, round at the ends
+		PAD_wrapNav(&sel, n, BTN_LEFT, BTN_RIGHT);
 		return sel;
 	}
-	int g = sel - cl;
-	if (PAD_justRepeated(BTN_LEFT) && g % BOS_GRID_COLS > 0)
-		return sel - 1;
-	if (PAD_justRepeated(BTN_RIGHT) && g % BOS_GRID_COLS < BOS_GRID_COLS - 1 && g + 1 < grid_n)
-		return sel + 1;
-	if (PAD_justRepeated(BTN_UP))
-		return g >= BOS_GRID_COLS ? sel - BOS_GRID_COLS : cl > 0 ? 0 : sel;
-	if (PAD_justRepeated(BTN_DOWN)) {
-		if (g + BOS_GRID_COLS < grid_n)
-			return sel + BOS_GRID_COLS;
-		if (g / BOS_GRID_COLS < (grid_n - 1) / BOS_GRID_COLS)
-			return cl + grid_n - 1;
-	}
-	return sel;
+	// rows: the cards (one row), then the grid's; Up/Down keep the column and wrap
+	int top = cl > 0 ? 1 : 0, rows = top + (grid_n + C - 1) / C;
+	int r = sel < cl ? 0 : top + (sel - cl) / C, c = sel < cl ? sel : (sel - cl) % C;
+	if (PAD_wrapNav(&r, rows, BTN_UP, BTN_DOWN) <= 0)
+		return sel;
+	if (top && r == 0)
+		return c < cl ? c : cl - 1;
+	int g = (r - top) * C + c;
+	return cl + (g < grid_n ? g : grid_n - 1);
 }
 
 // a grid page's own moves (top shows, results)
 int UIPodcast_bosGridNav(int sel, int n) {
-	if (n <= 0)
-		return sel;
-	if (PAD_justRepeated(BTN_LEFT) && sel % BOS_GRID_COLS > 0)
-		return sel - 1;
-	if (PAD_justRepeated(BTN_RIGHT) && sel % BOS_GRID_COLS < BOS_GRID_COLS - 1 && sel + 1 < n)
-		return sel + 1;
-	if (PAD_justRepeated(BTN_UP) && sel >= BOS_GRID_COLS)
-		return sel - BOS_GRID_COLS;
-	if (PAD_justRepeated(BTN_DOWN)) {
-		if (sel + BOS_GRID_COLS < n)
-			return sel + BOS_GRID_COLS;
-		if (sel / BOS_GRID_COLS < (n - 1) / BOS_GRID_COLS)
-			return n - 1;
-	}
+	if (n > 0)
+		PAD_gridNav(&sel, n, BOS_GRID_COLS);
 	return sel;
 }
 

@@ -2069,19 +2069,12 @@ static void theme_sync_rows(void) {
 }
 static int theme_cards_input(SettingItem* it) {
 	int c = it->cursor;
-	if (PAD_justRepeated(BTN_LEFT)) {
-		if (c % 3)
-			it->cursor--;
+	if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) { // along the six, round at the ends
+		PAD_wrapNav(&it->cursor, 6, BTN_LEFT, BTN_RIGHT);
 		return 1;
 	}
-	if (PAD_justRepeated(BTN_RIGHT)) {
-		if (c % 3 < 2)
-			it->cursor++;
-		return 1;
-	}
-	if (PAD_justRepeated(BTN_UP)) { // the top row: nothing above the cards
-		if (c >= 3)
-			it->cursor -= 3;
+	if (PAD_justRepeated(BTN_UP) && c >= 3) { // the top row hands Up to the list (it wraps to the bottom)
+		it->cursor -= 3;
 		return 1;
 	}
 	if (PAD_justRepeated(BTN_DOWN) && c < 3) { // the bottom row hands Down to the list (the switch)

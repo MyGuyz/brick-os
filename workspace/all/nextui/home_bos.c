@@ -668,14 +668,11 @@ static HomeBosInput libraryInput(bool* dirty) {
 		*dirty = true;
 		return HOMEBOS_HANDLED;
 	}
-	if (PAD_justRepeated(BTN_LEFT) && f > 0)
-		f--;
-	else if (PAD_justRepeated(BTN_RIGHT) && f < nlorder - 1)
-		f++;
-	else if (PAD_justRepeated(BTN_UP) && f - cols >= 0)
-		f -= cols;
-	else if (PAD_justRepeated(BTN_DOWN) && f < nlorder - 1)
-		f = f + cols < nlorder ? f + cols : nlorder - 1;
+	if (PAD_gridNav(&f, nlorder, cols) < 0)
+		BOS_bump(PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_UP) ? -1 : 1);
+	else if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT) || PAD_justRepeated(BTN_UP) ||
+			 PAD_justRepeated(BTN_DOWN))
+		;
 	else if (PAD_justPressed(BTN_B)) {
 		markSeen();
 		lib = false;
@@ -769,11 +766,11 @@ HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) 
 			afocus = 0;
 		else
 			BOS_bump(1);
-	} else if (PAD_justPressed(BTN_UP)) {
+	} else if (PAD_justPressed(BTN_UP) || PAD_justPressed(BTN_DOWN)) { // two rows: past either end, the other one
 		if (ncards > 0)
-			row = 0;
-	} else if (PAD_justPressed(BTN_DOWN)) {
-		row = 1;
+			row = !row;
+		else
+			row = 1;
 	} else if (PAD_justPressed(BTN_X) && row == 0 && cfocus < ncards) {
 		// ปิด: the game leaves เล่นต่อ and สลับเกม (its save stays), as สลับเกม's X
 		Recents_removeAt(cards[cfocus].recent);

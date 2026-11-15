@@ -106,15 +106,16 @@ int MenuModule_run(SDL_Surface* screen) {
 			continue;
 		}
 		int ntiles = v.tv ? 2 : 1, old = sel;
-		if (PAD_justRepeated(BTN_LEFT) && sel > 0 && sel != v.ncards)
-			sel--;
-		else if (PAD_justRepeated(BTN_RIGHT) && sel + 1 < v.ncards + ntiles && sel + 1 != v.ncards)
-			sel++;
-		else if (PAD_justRepeated(BTN_DOWN) && sel < v.ncards)
-			sel = v.ncards;
-		else if (PAD_justRepeated(BTN_UP) && sel >= v.ncards && v.ncards > 0)
-			sel = 0;
-		else if (PAD_justPressed(BTN_A)) {
+		bool on_cards = sel < v.ncards;
+		if (PAD_justRepeated(BTN_LEFT) || PAD_justRepeated(BTN_RIGHT)) { // along its row, round at the ends
+			int lo = on_cards ? 0 : v.ncards, k = sel - lo;
+			PAD_wrapNav(&k, on_cards ? v.ncards : ntiles, BTN_LEFT, BTN_RIGHT);
+			sel = lo + k;
+		} else if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) { // two rows: past either end, the other
+			int r = on_cards ? 0 : 1;
+			if (v.ncards > 0 && PAD_wrapNav(&r, 2, BTN_UP, BTN_DOWN) > 0)
+				sel = r == 0 ? 0 : v.ncards;
+		} else if (PAD_justPressed(BTN_A)) {
 			GFX_clearLayers(LAYER_SCROLLTEXT);
 			if (sel < v.ncards) {
 				snprintf(picked_path, sizeof(picked_path), "%s", v.cards[sel].path);
