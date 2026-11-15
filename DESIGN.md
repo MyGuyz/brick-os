@@ -723,7 +723,7 @@ User request: "like the theme colour page, with colour choice and a colour code"
 ## 7. Round 2
 **Rule (owner, 2026-11-14): no screen of the old NextUI/minarch UI may remain anywhere,** however rarely it is seen:
 every page, prompt, error and message box gets a v2 board and is redrawn. Round 2 is not finished until a sweep finds none.
-Still old: YouTube, the keyboard, and the apps of the next sweep (§7.4). Music (§7.2) and Video (§7.3) are built. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
+Still old: the apps of the next sweep (§7.4); YouTube (§7.5) and the keyboard (§7.6) are drawn. Music (§7.2) and Video (§7.3) are built. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
 
 YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
 
@@ -861,3 +861,48 @@ Every screen the app has today, redrawn with §5; nothing dropped. Status bar ti
   our ffplay with SDL_ttf and the kit's Thai glyph mapping (`include/ffplay/bos_osd.inc`), the language from BOS_LANG.
 - **Still old elsewhere:** YouTube and the keyboard (round 2, next); DraStic's own menu (a closed emulator: its menu
   cannot be redrawn, only replaced by ours if DraStic's hooks allow).
+
+### 7.5 YouTube (YTC; boards `design/round2/v2-YouTube*`, approved 2026-11-15)
+- **Chrome:** the status bar (§5.1, title "YouTube"; "ตั้งค่า YouTube" in its settings) and the hint bar (§5.2, A at the
+  right) as everywhere; the focus colour from ธีมสี (no more blue ring).
+- **Home / lists (`v2-YouTube`):** the rail 96 wide (56 circles, the current page `surface2`, the focused one `focus`),
+  the search pill 220×48, tab chips 48 (selected `text` with black words), the quality badge; rows of cards 300×169
+  radius 18, a duration pill, a red (`youtube`) watched line, title 22/600 and meta 18 `text2`; the focused card
+  x1.04 with a 4 px `focus` ring outside a 4 px gap. Hints: A เล่น · B กลับ · X ติดตามช่อง · Y ค้นหา · SELECT ตัวเลือก.
+  Favourite channels, watch later, downloads, history and search results use the same page.
+- **Drawer (`-Drawer`, START or the rail):** 380 wide from the left over the page at 60 % black, rows 72 with icon and
+  name (ค้นหา, หน้าแรก, ช่องโปรด, ดูภายหลัง, ประวัติ, ตั้งค่า, เพลย์ลิสต์โปรด, ที่ดาวน์โหลด), the current one focused.
+- **Options (`-Options`, SELECT on a video, and the player's menu):** the §6.10 sheet: header thumb 160×90 + title +
+  meta; two columns of tiles 80 high: ดูภายหลัง, ติดตาม/เลิกติดตามช่อง, คำอธิบาย, ความคิดเห็น, ไปที่ช่อง, ข้อมูลช่อง,
+  แคสต์ไปทีวี, ดาวน์โหลด (the player adds การเล่น first: quality, speed, captions …).
+- **Player (`-Player`):** the video player's overlay (§7.3): the name and channel at the top, chips คุณภาพ · ความเร็ว ·
+  คำบรรยาย · ติดตาม, the red seek bar with chapter marks and the chapter's name between the times, the hint bar
+  A เล่น/หยุด · B ออก · X ซ่อน · Y ความคิดเห็น · L1 R1 ตอน.
+- **Comments / description (`-Comments`, `-Description`):** a 640 panel on the right over the dimmed page, radius 28:
+  a title 36/700 and a line under it; comments with a 48 letter circle, @name · time · likes, text 24, "▸ N การตอบกลับ"
+  in `primary`; the focused one on `focus`. Description: the title 30/700, pills (views, date, likes), the text 26.
+- **Channel (`-Channel`):** avatar 96, name 44/700, "@handle · ผู้ติดตาม · วิดีโอ", a ติดตามแล้ว / ติดตาม pill, tabs, the rows.
+- **Settings (`-Settings`):** Settings' two columns (§6.6): เสียง, วิดีโอ, คำบรรยาย, การเล่น, การเรียกดู, ภาษา,
+  อุปกรณ์ที่เชื่อมต่อ; values as switches, sliders with numbers, ‹ value ›.
+
+### 7.6 คีย์บอร์ด (every app: YouTube search, names, Wi-Fi …; boards `v2-KeyboardThai`, `-English`)
+- The status bar, then the label 26 `text2`, the field 80 high radius 20 `surface` with the text 36 and a `primary`
+  caret, suggestion / history chips 48 (history in `text2`).
+- The panel `#121214` at the bottom: keys 62 high radius 14 `surface2`, gap 8, rows gap 10, columns lined up (Thai 12,
+  English 10 with a digits row); the focused key `focus` x1.08; ⇧ ⌫ and ก/A in 600; ค้นหา / ตกลง `primary` with white.
+  Marks alone on their keys (no dotted circle).
+- Bottom row: ◀ ▶ เว้นวรรค (6 / 4) - or . , ก/A, ค้นหา (2). Hints: A พิมพ์ · B ลบ · X เว้นวรรค · Y ก/A · START ค้นหา
+  (L1 Shift on the left when there is room).
+- **Built (2026-11-15), where the code differs:** YTC reads ธีมสี and แถบสถานะ from the OS's settings file
+  (re-read every 2 s) and the OS icon set (64 px copies in YTC's data/icons/bos); its status bar shows WiFi, clock and
+  battery (no music / BT / mute: YTC does not know them), and it keeps a black page under พื้นหลังเทาเข้ม. The rail's
+  focus and START both open the drawer (START's has ออก at the end). Settings shows value rows as ‹ value › (the
+  volume too, no slider) and on/off rows as switches; Left on a value row changes it, so B goes back. The player's
+  chips are information (they change from the options); X hides the overlay, Y opens the comments.
+  The system keyboard (`ui_keyboard.c`) has the same look (`BOS_uiKeyboard`, bos_shared.c) where the app links the
+  kit; the key left of ก/A is **#+=** (a symbols page: passwords need `- _ = + [ ] { } \ | ; : ' " < > / @`)
+  instead of "-". B deletes and closes an empty field; START confirms (an empty field closes, so the launcher's
+  START-opened search still toggles shut); L1 shift; L2/R2 move the caret. Apps without the kit (Netplay setup, Image
+  viewer, Scraper) get a plain grid of the same keys until the next sweep.
+- **Still old, seen while testing:** the launcher's other tabs (เกม, เครื่องมือ) when หน้าแรก is not the grid style —
+  the menutabs pages. Into the next sweep.

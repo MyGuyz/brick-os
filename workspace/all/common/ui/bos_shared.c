@@ -6,6 +6,7 @@
 #include "ui_list.h"
 #include "ui_listview.h"
 #include "ui_listdialog.h"
+#include "ui_keyboard.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -348,4 +349,119 @@ void BOS_uiListDialog(SDL_Surface* s, const char* title, ListDialogItem* items, 
 }
 bool BOS_uiListDialogMoving(void) {
 	return BOS_glideMoving(&ld_pill) || BOS_glideMoving(&ld_scroll) || BOS_marqueeActive();
+}
+
+// ---- the keyboard (DESIGN.md 7.6, boards v2-KeyboardThai / -English) ----
+// The status bar; the label 26 text2, the field 80 (radius 20, surface, text 36, a primary caret); the key panel
+// (#121214, a surface line on top) above the hint bar: keys 62 high, radius 14, surface2, gap 8, rows gap 10; the
+// focused key in the focus colour x1.08; ⇧ ⌫ ก/A and the words 24/600; the confirm key primary.
+static int kb_mark_shift(const char* k, int px) { // a lone Thai mark: pulled to the key's centre
+	const unsigned char* u = (const unsigned char*)k;
+	if (strlen(k) != 3 || u[0] != 0xE0)
+		return 0;
+	int lh = BOS_lineH(px);
+	if (u[1] == 0xB8 && (u[2] == 0xB8 || u[2] == 0xB9 || u[2] == 0xBA))
+		return -lh * 28 / 100; // below: ุ ู ฺ
+	if (u[1] == 0xB8 && (u[2] == 0xB1 || (u[2] >= 0xB4 && u[2] <= 0xB7)))
+		return lh * 30 / 100; // above: ั ิ ี ึ ื
+	if (u[1] == 0xB9 && u[2] >= 0x87 && u[2] <= 0x8D)
+		return lh * 30 / 100; // ็ ่ ้ ๊ ๋ ์ ํ
+	return 0;
+}
+
+void BOS_uiKeyboard(SDL_Surface* s, const UIKeyboardView* v) {
+	const BosTheme* th = BOS_theme();
+	SDL_FillRect(s, NULL, BOS_map(s, th->bg));
+	BOS_statusBar(s, NULL);
+	int x0 = BOS_px(40), y = BOS_px(68);
+	if (v->prompt && v->prompt[0]) {
+		char p[256];
+		BOS_fit(I18N_text(v->prompt), 26, 400, s->w - 2 * x0, p, sizeof(p));
+		BOS_text(s, p, 26, 400, BOS_C_TEXT2, 1, x0, y);
+	}
+	y += BOS_lineH(26) + BOS_px(8);
+	int fw = s->w - 2 * x0, fh = BOS_px(80);
+	BOS_rrect(s, x0, y, fw, fh, BOS_px(20), th->surface);
+	// the field: the part that fits, keeping the caret in view
+	{
+		const char* in = v->input;
+		int n = (int)strlen(in), caret = v->caret, avail = fw - BOS_px(48), start = 0;
+		char buf[512];
+		for (;;) {
+			snprintf(buf, sizeof(buf), "%.*s", caret - start, in + start);
+			if (start >= caret || BOS_textW(buf, 36, 500) <= avail)
+				break;
+			start++;
+			while (start < n && ((unsigned char)in[start] & 0xC0) == 0x80)
+				start++;
+		}
+		int end = start;
+		while (end < n) {
+			int e = end + 1;
+			while (e < n && ((unsigned char)in[e] & 0xC0) == 0x80)
+				e++;
+			snprintf(buf, sizeof(buf), "%.*s", e - start, in + start);
+			if (BOS_textW(buf, 36, 500) > avail)
+				break;
+			end = e;
+		}
+		int tx = x0 + BOS_px(24), cy = y + fh / 2;
+		snprintf(buf, sizeof(buf), "%.*s", end - start, in + start);
+		if (buf[0])
+			BOS_textMid(s, buf, 36, 500, BOS_C_TEXT, 1, tx, cy);
+		snprintf(buf, sizeof(buf), "%.*s", caret - start, in + start);
+		int cx = tx + (buf[0] ? BOS_textW(buf, 36, 500) : 0) + BOS_px(2);
+		SDL_FillRect(s, &(SDL_Rect){cx, cy - BOS_px(22), BOS_px(3), BOS_px(44)}, BOS_map(s, th->primary));
+	}
+	// the panel
+	int keyh = BOS_px(62), gap = BOS_px(8), rgap = BOS_px(10), bottom = s->h - BOS_px(BOS_BAR_H);
+	int panel_h = BOS_px(16) * 2 + UIKB_ROWS * keyh + (UIKB_ROWS - 1) * rgap, py = bottom - panel_h;
+	SDL_FillRect(s, &(SDL_Rect){0, py, s->w, panel_h}, BOS_map(s, 0x121214));
+	SDL_FillRect(s, &(SDL_Rect){0, py, s->w, BOS_px(1) > 0 ? BOS_px(1) : 1}, BOS_map(s, th->surface));
+	int inner = s->w - BOS_px(48);
+	float unit = (inner - (v->units - 1) * gap) / (float)v->units;
+	for (int pass = 0; pass < 2; pass++) // the focused key last, over its neighbours
+		for (int r = 0; r < UIKB_ROWS; r++) {
+			int ky = py + BOS_px(16) + r * (keyh + rgap);
+			float x = BOS_px(24);
+			for (int c = 0; c < UIKB_COLS && v->keys[r][c]; c++) {
+				int sp = v->span[r][c];
+				int kw = (int)(unit * sp + gap * (sp - 1));
+				bool foc = r == v->row && c == v->col;
+				if (foc != (pass == 1)) {
+					x += kw + gap;
+					continue;
+				}
+				const char* k = v->keys[r][c];
+				bool go = strcmp(k, UIKB_GO) == 0, word = false;
+				int kx = (int)x, kyy = ky, w = kw, h = keyh;
+				if (foc) {
+					kx -= kw * 4 / 100;
+					kyy -= keyh * 4 / 100;
+					w = kw * 108 / 100;
+					h = keyh * 108 / 100;
+				}
+				BOS_rrect(s, kx, kyy, w, h, BOS_px(14), foc ? th->focus : go ? th->primary : th->surface2);
+				uint32_t tc = foc ? th->onfocus : go ? th->onprimary : BOS_C_TEXT;
+				const char* label = k;
+				if (go)
+					label = I18N_text(v->search ? "Search" : "OK"), word = true;
+				else if (strcmp(k, UIKB_SPACE) == 0)
+					label = I18N_text("Space"), word = true;
+				else if (strcmp(k, UIKB_SYM) == 0)
+					label = v->sym ? "abc" : "#+=", word = true;
+				else if (strcmp(k, UIKB_LANG) == 0)
+					word = true;
+				if (strcmp(k, UIKB_SHIFT) == 0 && v->shift && !foc)
+					tc = th->primary;
+				int px = word ? 24 : 32, wt = word ? 600 : 400;
+				int lw = BOS_textW(label, px, wt), dy = word ? 0 : kb_mark_shift(label, px);
+				BOS_textMid(s, label, px, wt, tc, 1, kx + (w - (dy && lw < BOS_px(4) ? 0 : lw)) / 2, kyy + h / 2 + dy);
+				x += kw + gap;
+			}
+		}
+	BosHint right[4] = {{"A", I18N_text("Type")}, {"B", I18N_text("Delete")}, {"X", I18N_text("Space")},
+						{"Y", UIKB_LANG}};
+	BosHint left[1] = {{"START", I18N_text(v->search ? "Search" : "OK")}};
+	BOS_hintBar(s, right, 4, left, 1);
 }

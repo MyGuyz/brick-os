@@ -1119,3 +1119,4 @@ Genre	แนว
 No songs to play in this one	รายการนี้ไม่มีเพลงให้เล่น
 Can't reach archive.org	ติดต่อ archive.org ไม่ได้
 Public domain	สาธารณะ
+Type	พิมพ์
