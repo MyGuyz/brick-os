@@ -349,11 +349,6 @@ static void centredName(SDL_Surface* s, const char* nm, int px, int weight, uint
 }
 
 static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int r, float a, bool ring) {
-	if (ring) { // picture focus: 4 px ring, offset 4 (§4)
-		int o = BOS_px(BOS_RING), q = 2 * o;
-		BOS_rrect(s, x - q, y - q, w + 2 * q, h + 2 * q, r + q, BOS_theme()->focus);
-		BOS_rrect(s, x - o, y - o, w + 2 * o, h + 2 * o, r + o, BOS_theme()->bg);
-	}
 	SDL_Surface* pic = NULL;
 	HomeArtState st = HomeArt_continue(c->entry->path, c->preview[0] ? c->preview : NULL, w, h, r, &pic);
 	if (st == HOMEART_LOADING)
@@ -362,6 +357,8 @@ static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int
 		BOS_blit(pic, s, x, y, a * gdim);
 	} else
 		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a * gdim));
+	if (ring) // last, over the picture (DESIGN 1: draw order)
+		BOS_focusRing(s, x, y, w, h, r);
 }
 
 static int sectionLabel(SDL_Surface* s, int y, const char* t) { // 30/600 text2, padding 8 40 10
@@ -817,11 +814,6 @@ static float sw_shift, sw_from;
 static uint32_t sw_start;
 
 static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, int x, int y, int w, int h, int r, float a, bool ring) {
-	if (ring) {
-		int o = BOS_px(BOS_RING), q = 2 * o;
-		BOS_rrect(s, x - q, y - q, w + 2 * q, h + 2 * q, r + q, BOS_theme()->focus);
-		BOS_rrect(s, x - o, y - o, w + 2 * o, h + 2 * o, r + o, BOS_theme()->bg);
-	}
 	SDL_Surface* pic = NULL;
 	HomeArtState st = HomeArt_continue(c->path, c->preview[0] ? c->preview : NULL, w, h, r, &pic);
 	if (st == HOMEART_LOADING)
@@ -833,6 +825,8 @@ static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, int x, int y, i
 		int ic = h / 3;
 		BOS_icon(s, "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
 	}
+	if (ring) // last, over the picture (DESIGN 1: draw order)
+		BOS_focusRing(s, x, y, w, h, r);
 }
 
 void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int sel, int count, bool playing,

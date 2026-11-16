@@ -60,6 +60,11 @@ int BOS_textLines(const char* s, int px, int weight, int max_w, int max_lines);
 // ---- shapes ----
 uint32_t BOS_map(SDL_Surface* s, uint32_t rgb);
 void BOS_rrect(SDL_Surface* s, int x, int y, int w, int h, int r, uint32_t rgb);
+// A rounded outline th wide just inside (x, y, w, h), blended over what is there (nothing is painted to cut
+// its middle out). Draw it last: after the picture it surrounds (DESIGN 1, draw order).
+void BOS_ring(SDL_Surface* s, int x, int y, int w, int h, int r, int th, uint32_t rgb);
+// The picture focus ring (DESIGN 4) around a picture at (x, y, w, h) with corner radius r
+void BOS_focusRing(SDL_Surface* s, int x, int y, int w, int h, int r);
 
 // ---- icons: res/bos/icons/<name>.png (white, 128 px, made by scripts/design/make_icons.py), tinted ----
 void BOS_icon(SDL_Surface* dst, const char* name, uint32_t rgb, float alpha, int x, int y, int size);

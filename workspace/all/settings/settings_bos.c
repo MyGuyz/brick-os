@@ -836,12 +836,6 @@ void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w
 		float a = focus || i == cur ? 1.0f : BOS_DIM;
 		uint32_t pf, pp;
 		BOS_preset(i, &pf, &pp);
-		if (focus) { // the picture ring (§4): 4 px, 4 px off the card
-			int o = BOS_px(BOS_RING) * 2;
-			BOS_rrect(s, cx - o, cy - o, cw + 2 * o, ch + 2 * o, BOS_px(16) + o, BOS_theme()->focus);
-			o = BOS_px(BOS_RING);
-			BOS_rrect(s, cx - o, cy - o, cw + 2 * o, ch + 2 * o, BOS_px(16) + o, bg);
-		}
 		BOS_rrect(s, cx, cy, cw, ch, BOS_px(16), mix(0x38383A, bg, a));
 		BOS_rrect(s, cx + 2, cy + 2, cw - 4, ch - 4, BOS_px(14), BOS_C_BG);
 		int ix = cx + BOS_px(12), iw = cw - 2 * BOS_px(12);
@@ -851,6 +845,8 @@ void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w
 		int tw = BOS_px(34), th = BOS_px(20);
 		BOS_rrect(s, ix + iw - tw, ry - th / 2, tw, th, th / 2, mix(pp, BOS_C_BG, a));
 		BOS_rrect(s, ix + iw - BOS_px(18), ry - BOS_px(8), BOS_px(16), BOS_px(16), BOS_px(8), mix(0xFFFFFF, BOS_C_BG, a));
+		if (focus) // the picture ring (§4), after the card it surrounds; the badge sits on top of it
+			BOS_focusRing(s, cx, cy, cw, ch, BOS_px(16));
 		if (i == cur) { // the theme in use: a primary check badge on the corner
 			int b = BOS_px(36);
 			BOS_rrect(s, cx + cw - b + BOS_px(8), cy - BOS_px(8), b, b, b / 2, BOS_theme()->primary);

@@ -31,6 +31,15 @@
 - Icons: stroke line icons, stroke 2 on a 24 grid, one set (the SVG paths in `mockup_v2.py` `ICONS`).
 - Animation: one tween, ease-out 180 ms, on pre-scaled images (scale covers/logos once when loaded, never per frame). Target ≥ 58 fps (NX_BENCH).
 - Every token lives in one file, `res/bos/tokens.h` (C and C++). No hex colour or font size outside it.
+- **Draw order (whole OS, YouTube too), back to front:**
+  1. page background;
+  2. the picture or card (its own rounded corners are part of it, made once when it is loaded);
+  3. what sits on the picture: watched bar, duration pill, badges;
+  4. the focus ring, **last**;
+  5. anything that must cover the ring on purpose (a check badge on a corner), then overlays (toast, sheet, popup).
+  - Never "erase" with the background colour: no bg-coloured shape painted over another to cut a hole or to round a corner on screen. An outline is drawn as one ring shape (`BOS_ring` / `BOS_focusRing`, YTC `Renderer::ring`).
+  - Corner masks may only touch the inside of their own rectangle. They still must come before the ring, because a rectangle's square corner reaches into the ring's curve.
+  - A page that redraws only what moved must start whole after anything else touched the screen (sleep, a popup, another app).
 
 ## 2. Colours
 

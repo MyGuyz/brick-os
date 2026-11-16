@@ -497,6 +497,58 @@ void BOS_rrect(SDL_Surface* s, int x, int y, int w, int h, int r, uint32_t rgb) 
 	UI_fillRoundedRect(s, x, y, w, h, r, BOS_map(s, rgb));
 }
 
+void BOS_ring(SDL_Surface* s, int x, int y, int w, int h, int r, int th, uint32_t rgb) {
+	if (w <= 0 || h <= 0 || th <= 0)
+		return;
+	if (s->format->BytesPerPixel != 4) { // not expected: the old way
+		BOS_rrect(s, x, y, w, h, r, rgb);
+		BOS_rrect(s, x + th, y + th, w - 2 * th, h - 2 * th, r > th ? r - th : 0, BOS_theme()->bg);
+		return;
+	}
+	float hw = w / 2.0f, hh = h / 2.0f, rad = r < hw && r < hh ? r : (hw < hh ? hw : hh);
+	float cx = x + hw, cy = y + hh;
+	int cr = (rgb >> 16) & 255, cg = (rgb >> 8) & 255, cb = rgb & 255;
+	SDL_Rect clip;
+	SDL_GetClipRect(s, &clip);
+	int y0 = y > clip.y ? y : clip.y, y1 = y + h < clip.y + clip.h ? y + h : clip.y + clip.h;
+	int xa = x > clip.x ? x : clip.x, xb = x + w < clip.x + clip.w ? x + w : clip.x + clip.w;
+	if (SDL_MUSTLOCK(s))
+		SDL_LockSurface(s);
+	for (int py = y0; py < y1; py++) {
+		uint32_t* row = (uint32_t*)((uint8_t*)s->pixels + py * s->pitch);
+		float dy = (py + 0.5f) - cy;
+		bool straight = (dy < 0 ? -dy : dy) < hh - rad - 1; // between the corners: only the two side bands
+		for (int px = xa; px < xb; px++) {
+			if (straight && px >= x + th + 1 && px < x + w - th - 1) {
+				px = x + w - th - 2;
+				continue;
+			}
+			float dx = (px + 0.5f) - cx;
+			float qx = (dx < 0 ? -dx : dx) - hw + rad, qy = (dy < 0 ? -dy : dy) - hh + rad;
+			float mx = qx > 0 ? qx : 0, my = qy > 0 ? qy : 0;
+			float in = qx > qy ? qx : qy;
+			float d = sqrtf(mx * mx + my * my) + (in < 0 ? in : 0) - rad; // < 0 inside the rounded box
+			float a = 0.5f - d, b = 0.5f - d - th;
+			a = a < 0 ? 0 : a > 1 ? 1 : a;
+			b = b < 0 ? 0 : b > 1 ? 1 : b;
+			float k = a - b;
+			if (k <= 0)
+				continue;
+			Uint8 r8, g8, b8;
+			SDL_GetRGB(row[px], s->format, &r8, &g8, &b8);
+			row[px] = SDL_MapRGB(s->format, (Uint8)(r8 + (cr - r8) * k + 0.5f), (Uint8)(g8 + (cg - g8) * k + 0.5f),
+								 (Uint8)(b8 + (cb - b8) * k + 0.5f));
+		}
+	}
+	if (SDL_MUSTLOCK(s))
+		SDL_UnlockSurface(s);
+}
+
+void BOS_focusRing(SDL_Surface* s, int x, int y, int w, int h, int r) {
+	int q = 2 * BOS_px(BOS_RING);
+	BOS_ring(s, x - q, y - q, w + 2 * q, h + 2 * q, r + q, BOS_px(BOS_RING), BOS_theme()->focus);
+}
+
 // ---- icons ----
 typedef struct {
 	char name[24];

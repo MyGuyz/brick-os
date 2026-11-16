@@ -401,11 +401,6 @@ static int gamesCount(void) {
 }
 
 static void gamePic(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r, float a, bool ring) {
-	if (ring) {
-		int o = BOS_px(BOS_RING), q = 2 * o;
-		BOS_rrect(s, x - q, y - q, w + 2 * q, h + 2 * q, r + q, BOS_theme()->focus);
-		BOS_rrect(s, x - o, y - o, w + 2 * o, h + 2 * o, r + o, BOS_theme()->bg);
-	}
 	SDL_Surface* pic = NULL;
 	if (e->type == ENTRY_ROM) {
 		HomeArtState st = HomeArt_pin(e->path, w, h, r, &pic);
@@ -419,6 +414,8 @@ static void gamePic(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r,
 		int ic = h / 3;
 		BOS_icon(s, e->type == ENTRY_DIR ? "folder" : "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
 	}
+	if (ring) // last, over the picture (DESIGN 1: draw order)
+		BOS_focusRing(s, x, y, w, h, r);
 }
 
 static void lastPlayed(Entry* e, char* out, size_t size) {
