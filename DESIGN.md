@@ -930,3 +930,36 @@ Every screen the app has today, redrawn with §5; nothing dropped. Status bar ti
   key, then back). Netplay setup, Image viewer and Scraper link the kit now, so their keyboard is this one too.
 - **Still old, seen while testing:** the launcher's other tabs (เกม, เครื่องมือ) when หน้าแรก is not the grid style —
   the menutabs pages. Into the next sweep.
+
+### 7.7 ปุ่มจอย (boards `design/round2/v2-Controls`, approved 2026-11-16)
+Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the keyboard.
+- **Player:** A play/pause · B back · ◀▶ 10 s (hold = scrub) · **▲ shows the controls and the title** · **▼ an
+  "ถัดไป" row of next clips from the bottom (A plays one)** · **L1/R1 previous / next clip** · **L2/R2 previous /
+  next chapter (no chapters: −/+30 s)** · **X captions on/off** · Y comments · SELECT options · **START hides the
+  controls**. Volume is on the side buttons only (▲▼ no longer change it). Hint bar while the controls show:
+  L1 R1 คลิปก่อน/ถัดไป · X คำบรรยาย · B กลับ · A หยุด (≤ 4 + one on the left).
+- **Keyboard (every app):** A type · B delete (held: repeats; on an empty field a fresh press closes) · X space ·
+  Y ก/A · **L1 one-shot shift, a double tap = caps lock (⇧ drawn filled, until L1 again)** · **R1 the #+= page /
+  back to abc** · L2/R2 caret left/right, held = repeat · START search / OK · SELECT close (keeps the text).
+- **Whole OS:** L2/R2 page up / down in every long list (games, history, music, settings). B walks back to the app's
+  first page, then one more B asks before leaving the app (§5.7 sheet: ออกจาก <app> ไหม · ออก (danger) · อยู่ต่อ).
+  SELECT = options of the focused thing, START = the app's main menu, everywhere.
+
+### 7.8 Shorts และเล่นอัตโนมัติ (boards `design/round2/v3-Shorts`, approved 2026-11-16)
+- **Shorts mode:** A on any Short (Home shelf, a channel's Shorts tab, search) opens it. The clip fills the screen's
+  height (432×768, centre); the right column (from x 760, 240 wide) has the channel (avatar 48 + name 24/600), the
+  title 26/600 (2 lines), meta 22 `text2`, likes, comment count and "n / N"; dots on the left (8, the current one
+  8×28 white) say where in the list. The column and the hint bar (Y ความเห็น · B กลับ · A หยุด) hide after 3 s idle.
+  Near the end of the list it loads more, so it never runs out.
+- **Moving:** ▼ / R1 next, ▲ / L1 previous (held = several); the old clip slides up and out, the new one slides in
+  from the bottom (ease-out 180 ms) and plays as soon as it lands; the next clip is resolved while this one plays.
+  ◀▶ 5 s. X captions, Y comments, SELECT options, START hides the column. B goes back with the last Short watched
+  selected.
+- **Autoplay** (one setting: ตั้งค่า › การเล่น › เล่นอัตโนมัติ, and the first row of the player's SELECT sheet, a
+  switch with "จบคลิปแล้วเล่นคลิปถัดไป"): on → a Short moves to the next one, a video shows "ถัดไป: …" and plays the
+  next (B cancels); off → a Short loops, a video stops and goes back to its list.
+- **7.7/7.8 built (2026-11-16):** YouTube's player, Shorts mode, the autoplay switch (a tile with a switch in the
+  player's options) and both keyboards (YouTube's and `ui_keyboard.c`: L1 twice = caps lock with ⇧ filled in
+  `primary`, R1 #+=, SELECT closes). YouTube's lists page with L2/R2. Not yet: L2/R2 paging and the B-then-ask
+  exit in the other apps (launcher, Settings, Music, Video, Image viewer, Game Tracker, Xtras, Scraper, RA,
+  Sync, Netplay).

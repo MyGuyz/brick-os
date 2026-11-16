@@ -441,8 +441,9 @@ void BOS_uiKeyboard(SDL_Surface* s, const UIKeyboardView* v) {
 					w = kw * 108 / 100;
 					h = keyh * 108 / 100;
 				}
-				BOS_rrect(s, kx, kyy, w, h, BOS_px(14), foc ? th->focus : go ? th->primary : th->surface2);
-				uint32_t tc = foc ? th->onfocus : go ? th->onprimary : BOS_C_TEXT;
+				bool caps = strcmp(k, UIKB_SHIFT) == 0 && v->shift == 2; // caps lock: the shift key filled
+				BOS_rrect(s, kx, kyy, w, h, BOS_px(14), foc ? th->focus : (go || caps) ? th->primary : th->surface2);
+				uint32_t tc = foc ? th->onfocus : (go || caps) ? th->onprimary : BOS_C_TEXT;
 				const char* label = k;
 				if (go)
 					label = I18N_text(v->search ? "Search" : "OK"), word = true;
@@ -452,7 +453,7 @@ void BOS_uiKeyboard(SDL_Surface* s, const UIKeyboardView* v) {
 					label = v->sym ? "abc" : "#+=", word = true;
 				else if (strcmp(k, UIKB_LANG) == 0)
 					word = true;
-				if (strcmp(k, UIKB_SHIFT) == 0 && v->shift && !foc)
+				if (strcmp(k, UIKB_SHIFT) == 0 && v->shift == 1 && !foc)
 					tc = th->primary;
 				int px = word ? 24 : 32, wt = word ? 600 : 400;
 				int lw = BOS_textW(label, px, wt), dy = word ? 0 : kb_mark_shift(label, px);

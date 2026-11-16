@@ -1,0 +1,126 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shorts และเล่นอัตโนมัติ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#000;--surf:#1C1C1F;--surf2:#2C2C30;--text:#fff;--text2:#B4B4BA;--off:#6E6E73;--focus:#5EE08A;--hint:#73E6F5;--yt:#FF0033;--ok:#30D158}
+body{margin:0;background:#0B0B0D;color:var(--text);font-family:Inter,'IBM Plex Sans Thai',sans-serif;line-height:1.3}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:30px;margin:0 0 6px}h2{font-size:24px;margin:40px 0 10px}
+.note{color:var(--text2);font-size:17px;margin:0 0 10px}
+.fit{width:100%;overflow:hidden;border-radius:14px;border:1px solid #2C2C30}
+.screen{width:1024px;height:768px;background:var(--bg);position:relative;overflow:hidden;transform-origin:0 0}
+.cap{color:var(--text2);font-size:15px;margin:8px 0 0}
+.b{display:inline-flex;align-items:center;justify-content:center;height:40px;min-width:40px;padding:0 10px;box-sizing:border-box;border-radius:20px;background:var(--hint);color:#000;font-weight:700;font-size:20px}
+.b.sq{border-radius:12px}
+.hints{position:absolute;right:32px;bottom:0;height:64px;display:flex;gap:26px;align-items:center;font-size:26px}
+.hints span{display:flex;gap:10px;align-items:center}
+/* shorts */
+.vid{position:absolute;top:0;width:432px;height:768px;left:296px;border-radius:0;overflow:hidden}
+.g1{background:radial-gradient(circle at 40% 30%,#7a4b9a,#24113a 60%,#0d0718)}
+.g2{background:radial-gradient(circle at 60% 60%,#1f7a6a,#0d3a33 60%,#061513)}
+.g3{background:radial-gradient(circle at 50% 40%,#9a6a2b,#3a250d 60%,#150d05)}
+.prog{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.25)}
+.prog i{display:block;height:5px;width:38%;background:var(--yt)}
+.side{position:absolute;left:760px;top:40px;width:240px}
+.ch{display:flex;gap:12px;align-items:center;font-size:24px;font-weight:600}
+.av{width:48px;height:48px;border-radius:24px;background:#3a3a3e}
+.ttl{font-size:26px;font-weight:600;margin:18px 0 8px}
+.meta{font-size:22px;color:var(--text2)}
+.stat{display:flex;gap:12px;align-items:center;font-size:22px;color:var(--text2);margin-top:14px}
+.left{position:absolute;left:40px;top:40px;width:230px}
+.dots{display:flex;flex-direction:column;gap:10px;position:absolute;left:250px;top:300px}
+.dots i{display:block;width:8px;height:8px;border-radius:4px;background:#48484A}
+.dots i.on{height:28px;background:#fff}
+.peek{position:absolute;left:296px;width:432px;height:60px;border-radius:0}
+.lbl{position:absolute;font-size:22px;color:var(--text2)}
+.arrow{font-size:26px;color:#fff;display:flex;gap:10px;align-items:center}
+/* sheet */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surf);border-radius:30px 30px 0 0;padding:28px 40px 80px}
+.sheet h3{margin:0 0 18px;font-size:34px}
+.row{height:96px;border-radius:20px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:32px;margin-bottom:12px;background:var(--surf2);opacity:.6}
+.row.f{background:#F2F2F7;color:#0B0B0D;opacity:1;font-weight:600}
+.row small{font-size:24px;color:var(--text2);display:block;font-weight:400}
+.row.f small{color:#3a3a3e}
+.val{color:var(--text2);font-size:30px}
+.tog{width:80px;height:46px;border-radius:23px;background:var(--ok);position:relative;flex:none}
+.tog:after{content:"";position:absolute;right:4px;top:4px;width:38px;height:38px;border-radius:19px;background:#fff}
+table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:19px}
+td{background:#1C1C1F;padding:10px 14px;vertical-align:middle}
+td:first-child{border-radius:12px 0 0 12px;width:120px}td:last-child{border-radius:0 12px 12px 0}
+td.old{color:#8E8E93;width:30%}
+tr.new td{background:#1E2A1F}
+.tag{display:inline-block;font-size:14px;font-weight:600;color:#000;background:#5EE08A;border-radius:6px;padding:1px 7px;margin-left:8px}
+td .b{height:32px;min-width:32px;font-size:16px;padding:0 8px}
+</style></head><body><div class="wrap">
+<h1>Shorts ปัดดูต่อเรื่อยๆ + เล่นอัตโนมัติ (ร่าง)</h1>
+<p class="note">จอ 1024×768 ของเครื่องจริง · ภาพในคลิปเป็นสีแทนภาพจริง</p>
+
+<h2>1. โหมด Shorts</h2>
+<p class="note">กด A ที่ Short ใดก็ได้ (ชั้น Shorts หน้าหลัก แท็บ Shorts ในช่อง หรือผลค้นหา) แล้วเข้าโหมดนี้ คลิปเต็มความสูงจอตรงกลาง ข้อมูลอยู่ด้านขวาไม่ทับภาพ ดูใกล้หมดแล้วโหลดเพิ่มเอง จึงปัดได้ไม่สิ้นสุด</p>
+<div class="fit"><div class="screen">
+  <div class="left">
+    <div class="arrow"><span class="b sq">▲</span> คลิปก่อน</div>
+    <div class="arrow" style="margin-top:560px"><span class="b sq">▼</span> คลิปถัดไป</div>
+  </div>
+  <div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+  <div class="vid g1"><div class="prog"><i></i></div></div>
+  <div class="side">
+    <div class="ch"><div class="av"></div>GAVIN:D</div>
+    <div class="ttl">อยากรู้ว่าเขาลืมหรือยัง ลองส่องดู…</div>
+    <div class="meta">การดู 4.1 หมื่นครั้ง · 1 เดือนที่แล้ว</div>
+    <div class="stat">♥ 2.3 พัน</div>
+    <div class="stat">💬 128 ความคิดเห็น</div>
+    <div class="stat" style="margin-top:40px;color:#fff;font-weight:600">3 / 20</div>
+  </div>
+  <div class="hints"><span><span class="b">Y</span>ความเห็น</span><span><span class="b">B</span>กลับ</span><span><span class="b">A</span>หยุด</span></div>
+</div></div>
+<p class="cap">ข้อมูลด้านขวาและแถบปุ่มซ่อนเองหลังไม่กดอะไร 3 วินาที (เหมือนตัวเล่นปกติ) กดปุ่มใดก็ขึ้นมาใหม่ จุดด้านซ้ายบอกว่าอยู่คลิปที่เท่าไร</p>
+
+<h2>2. ตอนเลื่อนไปคลิปถัดไป</h2>
+<p class="note">กด ▼ แล้วคลิปเดิมเลื่อนขึ้นไป คลิปใหม่เลื่อนตามขึ้นมาจากด้านล่าง (ease-out 180 ms เหมือนทั้ง OS) เริ่มเล่นทันทีที่เข้าที่ ระหว่างดูคลิปนี้ระบบโหลดคลิปถัดไปรอไว้แล้ว จึงไม่ต้องรอนาน</p>
+<div class="fit"><div class="screen">
+  <div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div>
+  <div class="vid g1" style="top:-430px;height:768px"></div>
+  <div class="vid g2" style="top:338px;height:768px"></div>
+  <div class="lbl" style="left:760px;top:60px;font-size:24px">กำลังเลื่อน ▲</div>
+</div></div>
+
+<h2>3. คลิปจบ</h2>
+<table>
+<tr class="new"><td>เล่นอัตโนมัติ เปิด</td><td>Shorts: เลื่อนไปคลิปถัดไปเอง · คลิปปกติ: ขึ้น "ถัดไป: ชื่อคลิป" 5 วินาทีแล้วเล่นต่อ (กด B ยกเลิก)</td><td class="old">คลิปปกติ: มีแล้ว</td></tr>
+<tr class="new"><td>เล่นอัตโนมัติ ปิด</td><td>Shorts: เล่นวนคลิปเดิม (แบบแอป YouTube) · คลิปปกติ: หยุดและกลับหน้ารายการ</td><td class="old">คลิปปกติ: มีแล้ว</td></tr>
+</table>
+
+<h2>4. สวิตช์เล่นอัตโนมัติในเมนู SELECT ของตัวเล่น</h2>
+<p class="note">เปิด/ปิดได้ระหว่างดู ไม่ต้องออกไปที่ตั้งค่า เป็นค่าเดียวกับ ตั้งค่า › การเล่น › เล่นอัตโนมัติ (เปลี่ยนที่ไหนก็ตรงกัน)</p>
+<div class="fit"><div class="screen">
+  <div class="vid g3" style="left:0;width:1024px"></div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <h3>ตัวเลือก</h3>
+    <div class="row f"><div>เล่นอัตโนมัติ<small>จบคลิปแล้วเล่นคลิปถัดไป</small></div><div class="tog"></div></div>
+    <div class="row"><div>คุณภาพ</div><div class="val">720p ›</div></div>
+    <div class="row"><div>ความเร็ว</div><div class="val">1x ›</div></div>
+  </div>
+  <div class="hints"><span><span class="b">B</span>ปิด</span><span><span class="b">A</span>เปลี่ยน</span></div>
+</div></div>
+<p class="cap">แถวเล่นอัตโนมัติอยู่บนสุด ส่วนเสียงพากย์และคำบรรยายอยู่ถัดลงไปเหมือนเดิม</p>
+
+<h2>5. ปุ่มในโหมด Shorts</h2>
+<table>
+<tr><td><span class="b">A</span></td><td>เล่น / หยุด</td><td class="old">เหมือนตัวเล่นปกติ</td></tr>
+<tr><td><span class="b">B</span></td><td>กลับไปหน้าที่มา โดยเลือกค้างไว้ที่ Short ล่าสุดที่ดู</td><td class="old">เหมือนตัวเล่นปกติ</td></tr>
+<tr class="new"><td><span class="b sq">▲</span><span class="b sq">▼</span></td><td>คลิปก่อน / คลิปถัดไป (กดค้าง = ข้ามหลายคลิป) <span class="tag">ใหม่</span></td><td class="old">คลิปปกติ: แถบควบคุม / แถวคลิปถัดไป (ร่าง v2)</td></tr>
+<tr><td><span class="b sq">L1</span><span class="b sq">R1</span></td><td>คลิปก่อน / คลิปถัดไป</td><td class="old">เหมือนคลิปปกติในร่าง v2</td></tr>
+<tr><td><span class="b sq">◀ ▶</span></td><td>ถอย / ข้าม 5 วิ (Shorts สั้น จึงข้ามทีละน้อยกว่าคลิปปกติที่ 10 วิ)</td><td class="old">คลิปปกติ 10 วิ</td></tr>
+<tr><td><span class="b">X</span></td><td>เปิด / ปิด คำบรรยาย</td><td class="old">เหมือนร่าง v2</td></tr>
+<tr><td><span class="b">Y</span></td><td>ความคิดเห็น</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b sq">SELECT</span></td><td>ตัวเลือก (มีสวิตช์เล่นอัตโนมัติ)</td><td class="old">เหมือนเดิม + แถวใหม่</td></tr>
+<tr><td><span class="b sq">START</span></td><td>ซ่อนข้อมูลด้านขวาทันที</td><td class="old">เหมือนร่าง v2</td></tr>
+</table>
+</div>
+<script>
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const s=f.firstElementChild,k=Math.min(1,f.clientWidth/1024);s.style.transform='scale('+k+')';f.style.height=(768*k)+'px'})}
+addEventListener('resize',fit);fit();
+</script>
+</body></html>

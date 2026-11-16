@@ -1,0 +1,62 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ปุ่มจอย</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0;background:#000;color:#fff;font-family:Inter,'IBM Plex Sans Thai',sans-serif;line-height:1.3}
+.wrap{max-width:1024px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:34px;margin:0 0 6px}
+h2{font-size:28px;margin:36px 0 12px}
+.note{color:#B4B4BA;font-size:20px;margin:0 0 8px}
+table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:21px}
+td{background:#1C1C1F;padding:12px 14px;vertical-align:middle}
+td:first-child{border-radius:14px 0 0 14px;width:120px}
+td:last-child{border-radius:0 14px 14px 0}
+td.old{color:#8E8E93;width:28%}
+tr.new td{background:#1E2A1F}
+.tag{display:inline-block;font-size:15px;font-weight:600;color:#000;background:#5EE08A;border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:2px}
+.b{display:inline-flex;align-items:center;justify-content:center;height:34px;min-width:34px;padding:0 8px;box-sizing:border-box;border-radius:17px;background:#73E6F5;color:#000;font-weight:700;font-size:17px;margin-right:4px}
+.b.sq{border-radius:8px}
+.hint{display:flex;justify-content:flex-end;gap:22px;align-items:center;background:#000;border:1px solid #2C2C30;border-radius:16px;padding:12px 18px;margin:10px 0 0;font-size:22px;flex-wrap:wrap}
+.hint span{display:flex;align-items:center;gap:6px}
+.th{font-size:15px;color:#8E8E93;margin-top:4px}
+</style></head><body><div class="wrap">
+<h1>ปุ่มจอย: คีย์บอร์ด และ ตัวเล่นวิดีโอ (ร่าง)</h1>
+<p class="note">แถวสีเขียว = เปลี่ยนจากเดิม · หลักที่ใช้: แบบ YouTube บนทีวี/เครื่องเกม และคีย์บอร์ดแบบ Steam Deck / Switch</p>
+
+<h2>ตัวเล่นวิดีโอ</h2>
+<table>
+<tr><td><span class="b">A</span></td><td>เล่น / หยุด</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b">B</span></td><td>กลับ</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b sq">◀ ▶</span></td><td>ถอย / ข้าม 10 วิ · กดค้าง = กรอเร็ว</td><td class="old">เหมือนเดิม</td></tr>
+<tr class="new"><td><span class="b sq">▲</span></td><td>แสดงแถบควบคุม + ชื่อคลิป <span class="tag">ใหม่</span></td><td class="old">เดิม: เพิ่มเสียง (ใช้ปุ่มเสียงข้างเครื่องแทน)</td></tr>
+<tr class="new"><td><span class="b sq">▼</span></td><td>แถว "คลิปถัดไป" ขึ้นจากด้านล่าง เลือกแล้วกด A เล่นต่อทันที <span class="tag">ใหม่</span></td><td class="old">เดิม: ลดเสียง</td></tr>
+<tr class="new"><td><span class="b sq">L1</span><span class="b sq">R1</span></td><td>คลิปก่อนหน้า / คลิปถัดไป <span class="tag">ใหม่</span></td><td class="old">เดิม: บทก่อน / บทถัดไป</td></tr>
+<tr class="new"><td><span class="b sq">L2</span><span class="b sq">R2</span></td><td>บทก่อน / บทถัดไป (คลิปที่ไม่มีบท: ถอย / ข้าม 30 วิ) <span class="tag">ย้ายมา</span></td><td class="old">เดิม: ไม่ได้ใช้</td></tr>
+<tr class="new"><td><span class="b">X</span></td><td>เปิด / ปิด คำบรรยาย (CC) <span class="tag">ใหม่</span></td><td class="old">เดิม: ซ่อนแถบควบคุม</td></tr>
+<tr><td><span class="b">Y</span></td><td>ความคิดเห็น</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b sq">SELECT</span></td><td>ตัวเลือก: คุณภาพ ความเร็ว เสียงพากย์</td><td class="old">เหมือนเดิม</td></tr>
+<tr class="new"><td><span class="b sq">START</span></td><td>ซ่อนแถบควบคุมทันที (ดูภาพเต็ม) <span class="tag">ย้ายมา</span></td><td class="old">เดิม: อยู่ที่ X</td></tr>
+</table>
+<div class="hint"><span><span class="b sq">L1</span><span class="b sq">R1</span>คลิปก่อน/ถัดไป</span><span><span class="b">X</span>คำบรรยาย</span><span><span class="b">B</span>กลับ</span><span><span class="b">A</span>หยุด</span></div>
+<div class="th">แถบปุ่มล่างตอนแถบควบคุมเปิดอยู่ (ไม่เกิน 4 ปุ่มตาม DESIGN)</div>
+
+<h2>คีย์บอร์ด (เหมือนกันทุกแอป)</h2>
+<table>
+<tr><td><span class="b">A</span></td><td>พิมพ์ตัวที่เลือก</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b">B</span></td><td>ลบ · กดค้าง = ลบรัว · ช่องว่างแล้วกด B = ปิด</td><td class="old">ทำแล้ว (ลบรัว)</td></tr>
+<tr><td><span class="b">X</span></td><td>เว้นวรรค</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b">Y</span></td><td>สลับ ไทย / อังกฤษ</td><td class="old">เหมือนเดิม</td></tr>
+<tr class="new"><td><span class="b sq">L1</span></td><td>Shift 1 ตัว · กดสองครั้งเร็วๆ = ล็อกตัวพิมพ์ใหญ่ (Caps Lock) <span class="tag">ใหม่</span></td><td class="old">เดิม: Shift 1 ตัวอย่างเดียว</td></tr>
+<tr class="new"><td><span class="b sq">R1</span></td><td>หน้าสัญลักษณ์ #+= / กลับ abc <span class="tag">ใหม่</span></td><td class="old">เดิม: ไม่ได้ใช้</td></tr>
+<tr><td><span class="b sq">L2</span><span class="b sq">R2</span></td><td>เลื่อนเคอร์เซอร์ ซ้าย / ขวา (กดค้าง = เลื่อนรัว)</td><td class="old">เดิม: เลื่อนได้ทีละ 1 ไม่รัว</td></tr>
+<tr><td><span class="b sq">START</span></td><td>ค้นหา / ตกลง</td><td class="old">เหมือนเดิม</td></tr>
+<tr><td><span class="b sq">SELECT</span></td><td>ปิดคีย์บอร์ด (ไม่ลบที่พิมพ์)</td><td class="old">เหมือนเดิม</td></tr>
+</table>
+<div class="hint"><span><span class="b sq">START</span>ค้นหา</span><span><span class="b">X</span>เว้นวรรค</span><span><span class="b">B</span>ลบ</span><span><span class="b">A</span>พิมพ์</span></div>
+
+<h2>ส่วนอื่นที่แนะนำ (ทั้ง OS)</h2>
+<table>
+<tr class="new"><td><span class="b sq">L2</span><span class="b sq">R2</span></td><td>ในรายการยาวทุกหน้า (คลังเกม ประวัติ เพลง ตั้งค่า): เลื่อนทีละหน้า <span class="tag">ใหม่</span></td><td class="old">ตอนนี้แต่ละแอปไม่เหมือนกัน</td></tr>
+<tr class="new"><td><span class="b">B</span></td><td>ทุกแอป: B ย้อนไปจนถึงหน้าแรกของแอป แล้วกดอีกทีถามว่าจะออกไหม (แบบที่ทำใน YouTube) <span class="tag">ใหม่</span></td><td class="old">ตอนนี้บางแอปออกทันที</td></tr>
+<tr><td><span class="b sq">SELECT</span></td><td>ตัวเลือกของสิ่งที่เลือกอยู่ · <span class="b sq">START</span> เมนูหลักของแอป</td><td class="old">ยืนยันให้เหมือนกันทุกแอป</td></tr>
+</table>
+</div></body></html>

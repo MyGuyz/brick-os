@@ -218,7 +218,8 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 	}
 	int caret = len; // byte offset of the edit position, always on a char boundary
 	int row = 1, col = 0;
-	int shift = 0, sym = 0;
+	int shift = 0, sym = 0, caps = 0; // caps: L1 twice quickly, until L1 again
+	uint32_t l1_at = 0;
 	bool dirty = true;
 
 	// The keyboard takes over the whole screen, but hardware overlay layers
@@ -260,18 +261,32 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 			dirty = kb_insert_str(input, &len, &caret, " ");
 		} else if (PAD_justPressed(BTN_Y)) {
 			kb_thai_mode = !kb_thai_mode;
-			shift = sym = 0;
+			shift = sym = caps = 0;
 			dirty = true;
-		} else if (PAD_justPressed(BTN_L1)) {
-			shift = !shift;
+		} else if (PAD_justPressed(BTN_L1)) { // one-shot shift; twice quickly = caps lock; again = off (DESIGN 7.7)
+			uint32_t now = SDL_GetTicks();
+			if (caps)
+				caps = shift = 0;
+			else if (shift && now - l1_at < 400)
+				caps = 1;
+			else
+				shift = !shift;
+			l1_at = now;
 			sym = 0;
 			dirty = true;
+		} else if (PAD_justPressed(BTN_R1)) { // the #+= page / back to abc
+			sym = !sym;
+			shift = caps = 0;
+			dirty = true;
+		} else if (PAD_justPressed(BTN_SELECT)) { // close, as B on an empty field
+			PAD_reset();
+			return NULL;
 		} else if (PAD_justRepeated(BTN_L2)) {
 			if (caret > 0) {
 				caret = KbUtf8_prev(input, caret);
 				dirty = true;
 			}
-		} else if (PAD_justRepeated(BTN_R2) || PAD_justRepeated(BTN_R1)) {
+		} else if (PAD_justRepeated(BTN_R2)) {
 			if (caret < len) {
 				caret = KbUtf8_next(input, caret, len);
 				dirty = true;
@@ -286,15 +301,15 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 				confirm = true;
 			else if (strcmp(key, UIKB_LANG) == 0) {
 				kb_thai_mode = !kb_thai_mode;
-				shift = sym = 0;
+				shift = sym = caps = 0;
 				dirty = true;
 			} else if (strcmp(key, UIKB_SYM) == 0) {
 				sym = !sym;
-				shift = 0;
+				shift = caps = 0;
 				dirty = true;
 			} else if (strcmp(key, UIKB_SHIFT) == 0) {
 				shift = !shift;
-				sym = 0;
+				sym = caps = 0;
 				dirty = true;
 			} else if (strcmp(key, UIKB_DEL) == 0)
 				dirty = kb_delete(input, &len, &caret);
@@ -308,7 +323,8 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 				dirty = true;
 			} else {
 				dirty = kb_insert_str(input, &len, &caret, key);
-				shift = 0; // one-shot, as on phones (and YouTube's keyboard)
+				if (!caps)
+					shift = 0; // one-shot, as on phones (and YouTube's keyboard); caps lock stays
 			}
 		}
 		if (confirm) {
@@ -329,7 +345,7 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 			kb_view(&v, l);
 			v.row = row;
 			v.col = col;
-			v.shift = shift;
+			v.shift = caps ? 2 : shift; // 2: caps lock
 			v.sym = sym;
 			v.search = kb_searchy(prompt);
 			if (BOS_uiKeyboard) {
