@@ -4819,6 +4819,7 @@ void PWR_sleep(void) {
 	system("gametimectl.elf stop_all");
 
 	GFX_clear(gfx.screen);
+	flip_count++; // the screen no longer holds the last frame: a page that redraws only what moved starts whole
 	PAD_reset();
 	PWR_enterSleep();
 	PWR_waitForWake();

@@ -250,11 +250,12 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 			PAD_wrapNav(&col, kb_row_len(l, row), BTN_LEFT, BTN_RIGHT);
 			dirty = true;
 		} else if (PAD_justRepeated(BTN_B)) {
-			if (len == 0) { // nothing to delete: B closes, as before
-				PAD_reset();
-				return NULL;
-			}
-			dirty = kb_delete(input, &len, &caret);
+			if (len == 0) { // nothing to delete: a fresh B closes; a held B that emptied the field stops there
+				if (PAD_justPressed(BTN_B)) {
+					PAD_reset();
+					return NULL;
+				}
+			} else dirty = kb_delete(input, &len, &caret);
 		} else if (PAD_justRepeated(BTN_X)) {
 			dirty = kb_insert_str(input, &len, &caret, " ");
 		} else if (PAD_justPressed(BTN_Y)) {
