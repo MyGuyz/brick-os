@@ -388,7 +388,7 @@ static void albumPage(SDL_Surface** sp, const SrvAlbum* al, bool playlist) {
 		SDL_Surface* s = *sp;
 		if (PAD_justPressed(BTN_B))
 			return;
-		if (PAD_wrapNav(&sel, al_n, BTN_UP, BTN_DOWN))
+		if (PAD_wrapNav(&sel, al_n, BTN_UP, BTN_DOWN) || PAD_pageNav(&sel, al_n, 5) > 0)
 			dirty = 1;
 		else if (PAD_justPressed(BTN_A) && al_n > 0) {
 			if (fetchNow(s, al_urls[sel], al_paths[sel], al_songs[sel].title))
@@ -588,6 +588,7 @@ ModuleExitReason ServerModule_run(SDL_Surface* screen) {
 			PAD_gridNav(cur, n, 4);
 		} else
 			PAD_wrapNav(cur, n, BTN_UP, BTN_DOWN);
+		PAD_pageNav(cur, n, grid ? 8 : 5); // L2 / R2: a screen (DESIGN 7.7)
 		if (PAD_justPressed(BTN_A)) {
 			if (tab == 3 && sub_n < 0) { // ดาวน์โหลดแล้ว: the downloaded files
 				Online_mkdirs(ONLINE_DIR);
@@ -757,7 +758,7 @@ ModuleExitReason FreeModule_run(SDL_Surface* screen) {
 			reload = true;
 			continue;
 		}
-		if (PAD_wrapNav(&sel, n, BTN_UP, BTN_DOWN))
+		if (PAD_wrapNav(&sel, n, BTN_UP, BTN_DOWN) || PAD_pageNav(&sel, n, 5) > 0)
 			;
 		else if (PAD_justPressed(BTN_Y)) {
 			char* v = UIKeyboard_openWith(I18N_text("Search free music"), query, 0);

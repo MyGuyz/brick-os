@@ -23,6 +23,7 @@
 
 #include "defines.h"
 #include "api.h"
+#include "bos_ui.h"
 #include "config.h"
 #include "ui_listview.h"
 #include "ui_menubar.h"
@@ -976,10 +977,14 @@ int main(int argc, char* argv[]) {
 				UI_listViewReset(&wiz_menu_view, shown_count, shown_items);
 				wiz_menu_view.selected = mode_selected;
 				dirty = true;
-			} else if (act.type == LISTVIEW_BACK) {
+			} else if (act.type == LISTVIEW_BACK) { // the first page: ask before leaving (DESIGN 7.7)
 				role_selected = wiz_menu_view.selected;
-				exit_code = 1;
-				app_quit = true;
+				GFX_clearLayers(LAYER_SCROLLTEXT);
+				if (BOS_askQuit(wiz_screen, "Netplay")) {
+					exit_code = 1;
+					app_quit = true;
+				}
+				dirty = true;
 			}
 			if (UI_listViewBusy(&wiz_menu_view))
 				dirty = true;

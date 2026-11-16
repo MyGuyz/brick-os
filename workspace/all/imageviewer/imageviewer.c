@@ -8,6 +8,7 @@
 #include <msettings.h>
 
 #include "api.h"
+#include "bos_ui.h"
 #include "iv_defines.h"
 #include "iv_browser.h"
 #include "iv_fileops.h"
@@ -344,8 +345,11 @@ int main(int argc, char* argv[]) {
 						}
 						GFX_clearLayers(LAYER_SCROLLTEXT);
 						dirty = true;
-					} else {
-						quit = true;
+					} else { // the first page: ask before leaving (DESIGN 7.7)
+						GFX_clearLayers(LAYER_SCROLLTEXT);
+						if (BOS_askQuit(screen, "Image Viewer"))
+							quit = true;
+						dirty = true;
 					}
 					break;
 				case LISTVIEW_ACTIVATED:

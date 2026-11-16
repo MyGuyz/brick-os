@@ -213,6 +213,26 @@ static void cycle_item_prev(SettingItem* item, int step) {
 // The screen the menu last drew on: the full description opens on it (settings_menu_render keeps it).
 static SDL_Surface* menu_screen = NULL;
 
+// B: one page back; on the first page of an app that set one, it asks before leaving (DESIGN 7.7)
+static const char* leave_app = NULL;
+void settings_menu_askOnLeave(const char* app) {
+	leave_app = app;
+}
+static void go_back(bool* quit) {
+	if (stack_depth <= 1 && leave_app && menu_screen && !BOS_askQuit(menu_screen, leave_app))
+		return;
+	settings_menu_pop();
+	if (stack_depth <= 0)
+		*quit = true;
+}
+
+// About one screen of rows (96 each between the large title and the description), for L2 / R2
+static int settings_page_rows(void) {
+	int h = menu_screen ? menu_screen->h : 768;
+	int n = (h - 2 * BOS_px(BOS_BAR_H) - BOS_px(110) - BOS_px(70)) / BOS_px(96);
+	return n > 1 ? n : 1;
+}
+
 // A row's description in full, on its own page (the description area cuts it at two lines): B or Y closes.
 static void show_full_desc(const char* title, const char* desc) {
 	SDL_Surface* screen = menu_screen;
@@ -270,10 +290,8 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 
 		// Allow back/exit even with no items
 		if (PAD_justPressed(BTN_B)) {
-			settings_menu_pop();
+			go_back(quit);
 			*dirty = true;
-			if (stack_depth <= 0)
-				*quit = true;
 		}
 		return;
 	}
@@ -314,6 +332,14 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 		else
 			BOS_bump(1);
 		changed = 1;
+	}
+	// L2 / R2: about a screen of rows up / down, stopping at the ends (DESIGN 7.7)
+	{
+		int r = PAD_pageNav(&page->selected, vis_count, settings_page_rows());
+		if (r < 0)
+			BOS_bump(PAD_justRepeated(BTN_L2) ? -1 : 1);
+		if (r)
+			changed = 1;
 	}
 
 	// Value cycling (disabled when input_blocked)
@@ -430,10 +456,8 @@ void settings_menu_handle_input(bool* quit, bool* dirty) {
 
 	// Back (B button)
 	if (PAD_justPressed(BTN_B)) {
-		settings_menu_pop();
+		go_back(quit);
 		changed = 1;
-		if (stack_depth <= 0)
-			*quit = true;
 	}
 
 	if (changed)

@@ -11,6 +11,7 @@
 
 #include "defines.h"
 #include "api.h"
+#include "bos_ui.h"
 #include "ui_buttonhintbar.h"
 #include "ui_confirmdialog.h"
 #include "ui_downloadprogress.h"
@@ -1301,8 +1302,10 @@ int main(int argc, char* argv[]) {
 		switch (current_screen) {
 		case SCREEN_MAIN_MENU: {
 			ListViewAction act = UI_listViewHandleInput(&main_menu_view);
-			if (act.type == LISTVIEW_BACK) {
-				app_quit = true;
+			if (act.type == LISTVIEW_BACK) { // the first page: ask before leaving (DESIGN 7.7)
+				GFX_clearLayers(LAYER_SCROLLTEXT);
+				app_quit = BOS_askQuit(screen, "Artwork Manager");
+				dirty = true;
 				break;
 			}
 			if (act.type == LISTVIEW_ACTIVATED) {
@@ -1439,8 +1442,8 @@ int main(int argc, char* argv[]) {
 			pthread_mutex_lock(&queue_mutex);
 			int count = scrape_queue.count;
 			pthread_mutex_unlock(&queue_mutex);
-			if (count > 0 && PAD_navigateMenu(&progress_selected, count))
-				dirty = true;
+			if (count > 0 && (PAD_navigateMenu(&progress_selected, count) || PAD_pageNav(&progress_selected, count, 5) > 0))
+				dirty = true; // L2 / R2: a screen (DESIGN 7.7)
 
 			break;
 		}

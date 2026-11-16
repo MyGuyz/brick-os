@@ -143,6 +143,8 @@ typedef struct SettingsPage {
 
 // Page stack management
 void settings_menu_init(void);
+// B on the first page asks "ออกจาก <app> ไหม" before leaving (DESIGN 7.7); NULL (the default): it leaves at once
+void settings_menu_askOnLeave(const char* app);
 void settings_menu_push(SettingsPage* page);
 void settings_menu_pop(void);
 SettingsPage* settings_menu_current(void);

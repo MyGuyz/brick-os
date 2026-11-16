@@ -124,7 +124,9 @@ int MenuModule_run(SDL_Surface* screen) {
 			return sel == v.ncards ? MENU_LOCAL : MENU_IPTV;
 		} else if (PAD_justPressed(BTN_B)) {
 			GFX_clearLayers(LAYER_SCROLLTEXT);
-			return MENU_QUIT;
+			if (BOS_askQuit(screen, "Video")) // the first page: ask before leaving (DESIGN 7.7)
+				return MENU_QUIT;
+			dirty = 1;
 		}
 		if (sel != old || VidBos_homeMoving())
 			dirty = 1;

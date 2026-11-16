@@ -7,6 +7,7 @@
 #include "defines.h"
 #include "config.h"
 #include "api.h"
+#include "bos_ui.h"
 #include "image_load.h"
 #include "ui_buttonhintbar.h"
 #include "ui_confirmdialog.h"
@@ -491,14 +492,24 @@ int main(int argc, char* argv[]) {
 					end += 1;
 				}
 				dirty = true;
+			} else if (PAD_pageNav(&selected, count, layout.items_per_page) > 0) { // L2 / R2 (DESIGN 7.7)
+				if (selected < start)
+					start = selected;
+				else if (selected >= end)
+					start = selected - layout.items_per_page + 1;
+				start = MAX(0, start);
+				end = MIN(count, start + layout.items_per_page);
+				dirty = true;
 			} else if (PAD_justPressed(BTN_X)) {
 				confirm_delete = true;
 				dirty = true;
 			} else if (PAD_justPressed(BTN_B)) {
-				app_quit = true;
+				app_quit = BOS_askQuit(screen, "Game Tracker"); // the only page: ask first (DESIGN 7.7)
+				dirty = true;
 			}
 		} else if (PAD_justPressed(BTN_B)) {
-			app_quit = true;
+			app_quit = BOS_askQuit(screen, "Game Tracker");
+			dirty = true;
 		}
 
 		PWR_update(&dirty, &show_setting, NULL, NULL);

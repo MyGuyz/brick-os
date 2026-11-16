@@ -842,7 +842,14 @@ BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu
 		gameMove(bg_gsel - LIST_ROWS > 0 ? bg_gsel - LIST_ROWS : 0);
 	else if (bg_listmode && PAD_justRepeated(BTN_RIGHT))
 		gameMove(bg_gsel + LIST_ROWS < ng ? bg_gsel + LIST_ROWS : ng - 1);
-	else if (PAD_justPressed(BTN_X) && ng > 0) {
+	else if ((PAD_justRepeated(BTN_L2) || PAD_justRepeated(BTN_R2)) && ng > 0) { // a screen, no wrap (DESIGN 7.7)
+		int dir = PAD_justRepeated(BTN_L2) ? -1 : 1, to = bg_gsel + dir * (bg_listmode ? LIST_ROWS : 5);
+		to = to < 0 ? 0 : to >= ng ? ng - 1 : to;
+		if (to != bg_gsel)
+			gameMove(to);
+		else
+			BOS_bump(dir);
+	} else if (PAD_justPressed(BTN_X) && ng > 0) {
 		Entry* e = bg_games->entries->items[bg_gsel];
 		if (e->type == ENTRY_ROM) {
 			bool in_favs = bg_cons[bg_sel].fav;

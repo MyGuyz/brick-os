@@ -960,6 +960,21 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   next (B cancels); off → a Short loops, a video stops and goes back to its list.
 - **7.7/7.8 built (2026-11-16):** YouTube's player, Shorts mode, the autoplay switch (a tile with a switch in the
   player's options) and both keyboards (YouTube's and `ui_keyboard.c`: L1 twice = caps lock with ⇧ filled in
-  `primary`, R1 #+=, SELECT closes). YouTube's lists page with L2/R2. Not yet: L2/R2 paging and the B-then-ask
-  exit in the other apps (launcher, Settings, Music, Video, Image viewer, Game Tracker, Xtras, Scraper, RA,
-  Sync, Netplay).
+  `primary`, R1 #+=, SELECT closes). YouTube's lists page with L2/R2.
+- **Whole OS built (2026-11-17):**
+  - **L2/R2 paging:** every `ListView` list pages by the rows it shows (`UI_listViewHandleInput`: Music's
+    library / playlists / radio, Video's files and TV, Image viewer, Xtras, Scraper, RA, Netplay's lists); the
+    hand-made lists use `PAD_pageNav` (api.h: Settings, Game Tracker, Scraper's progress, RA's game and
+    achievement lists, Music's server and free-music lists) or `ListWindow_page` (the launcher's lists and the
+    switcher's list). เกม's games: 5 rows in list mode, 5 covers in cover mode. A press with nowhere to go
+    knocks (§5.10 bump) where the list already had one. Music's player keeps L2/R2 for the visualiser / lyrics.
+  - **Leaving an app:** `BOS_askQuit(screen, app)` (bos_shared.c) — the §5.7 sheet over the page (60 % black,
+    radius 32, question 34/700, rows 88: ออก in `danger` with the power icon, อยู่ต่อ with play; ▲▼ move, A picks,
+    B stays; slides up 220 ms). B on the first page asks in Settings (`settings_menu_askOnLeave`), Music (when
+    nothing plays; while music plays the old "keep playing?" question stays), Video, Image viewer, Game Tracker,
+    Xtras (B on the second tab goes to the first), Artwork Manager, RetroAchievements, Device Sync (B on the
+    done / error pages goes back to the first page) and Netplay setup. The launcher is the OS itself: Home never
+    asks. MENU + SELECT still asks with the old full-screen question in the tools (left for the old-UI sweep).
+  - Seen on the device 2026-11-17: Settings, Game Tracker, Xtras, Artwork Manager, RA, Device Sync, Image
+    viewer, Video, Music, the launcher's game list (L2 and R2). Netplay setup is built but not yet seen (it only
+    opens when a game starts with netplay). Test keys: `l2` / `r2` in `scripts/device/make_keys.py`.

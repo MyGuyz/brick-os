@@ -2201,6 +2201,11 @@ GameListResult GameList_handleInput(unsigned long now, int currentScreen,
 			ListWindow_page(total, row_count, -1, &selected, &top->start, &top->end);
 		else if (stack->count > 1 && PAD_justRepeated(BTN_RIGHT))
 			ListWindow_page(total, row_count, 1, &selected, &top->start, &top->end);
+		// L2 / R2: a page in every list, the root's too (DESIGN 7.7)
+		else if (PAD_justRepeated(BTN_L2))
+			ListWindow_page(total, row_count, -1, &selected, &top->start, &top->end);
+		else if (PAD_justRepeated(BTN_R2))
+			ListWindow_page(total, row_count, 1, &selected, &top->start, &top->end);
 	}
 
 	// L1/R1 at the root switch tabs (no repeat); in lists they jump by letter

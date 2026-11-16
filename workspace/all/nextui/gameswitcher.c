@@ -325,6 +325,11 @@ GameSwitcherResult GameSwitcher_handleInput(unsigned long now) {
 											&switcher_selected, &gs_dir.start, &gs_dir.end)) {
 			gs_dir.selected = switcher_selected;
 			result.dirty = true;
+		} else if (PAD_justRepeated(BTN_L2) || PAD_justRepeated(BTN_R2)) { // a screen, no wrap (DESIGN 7.7)
+			ListWindow_page(gs_count, rows, PAD_justRepeated(BTN_L2) ? -1 : 1, &switcher_selected, &gs_dir.start,
+							&gs_dir.end);
+			gs_dir.selected = switcher_selected;
+			result.dirty = true;
 		}
 	} else if (gs_count > 0 && PAD_justPressed(BTN_RIGHT)) {
 		switcher_selected++;

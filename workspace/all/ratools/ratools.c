@@ -7,6 +7,7 @@
 
 #include "defines.h"
 #include "api.h"
+#include "bos_ui.h"
 #include "config.h"
 #include "settings_menu.h"
 #include "ui_list.h"
@@ -526,8 +527,10 @@ int main(int argc, char* argv[]) {
 
 		if (!quit) {
 			ListViewAction act = UI_listViewHandleInput(&main_view);
-			if (act.type == LISTVIEW_BACK) {
-				quit = true;
+			if (act.type == LISTVIEW_BACK) { // the first page: ask before leaving (DESIGN 7.7)
+				GFX_clearLayers(LAYER_SCROLLTEXT);
+				quit = BOS_askQuit(screen, "RetroAchievements");
+				dirty = true;
 			} else if (act.type == LISTVIEW_ACTIVATED) {
 				switch (act.index) {
 				case 0:

@@ -18,6 +18,7 @@
 
 #include "defines.h"
 #include "api.h"
+#include "bos_ui.h"
 #include "ui_buttonhintbar.h"
 #include "ui_list.h"
 #include "ui_menubar.h"
@@ -1712,8 +1713,10 @@ int main(int argc, char* argv[]) {
 				sync_roms = !sync_roms;
 				dirty = true;
 			}
-			if (PAD_justPressed(BTN_B))
-				app_quit = true;
+			if (PAD_justPressed(BTN_B)) { // the first page: ask before leaving (DESIGN 7.7)
+				app_quit = BOS_askQuit(screen, "Device Sync");
+				dirty = true;
+			}
 			break;
 
 		case STATE_WAITING:
@@ -1768,8 +1771,11 @@ int main(int argc, char* argv[]) {
 				state = STATE_READY;
 				dirty = true;
 			}
-			if (PAD_justPressed(BTN_B))
-				app_quit = true;
+			if (PAD_justPressed(BTN_B)) { // B walks back to the first page (DESIGN 7.7)
+				log_clear();
+				state = STATE_READY;
+				dirty = true;
+			}
 			break;
 
 		case STATE_DONE:
@@ -1778,8 +1784,11 @@ int main(int argc, char* argv[]) {
 				state = STATE_READY;
 				dirty = true;
 			}
-			if (PAD_justPressed(BTN_B))
-				app_quit = true;
+			if (PAD_justPressed(BTN_B)) { // B walks back to the first page (DESIGN 7.7)
+				log_clear();
+				state = STATE_READY;
+				dirty = true;
+			}
 			break;
 		}
 

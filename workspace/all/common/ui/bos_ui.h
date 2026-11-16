@@ -69,6 +69,12 @@ void BOS_focusRing(SDL_Surface* s, int x, int y, int w, int h, int r);
 // ---- icons: res/bos/icons/<name>.png (white, 128 px, made by scripts/design/make_icons.py), tinted ----
 void BOS_icon(SDL_Surface* dst, const char* name, uint32_t rgb, float alpha, int x, int y, int size);
 
+// ---- leaving an app (DESIGN 7.7, bos_shared.c): B on the app's first page asks first ----
+// A §5.7 sheet over the page now on `screen`: "ออกจาก <app> ไหม" with ออก (danger) and อยู่ต่อ; ▲▼ move, A picks,
+// B stays. Blocking (auto-sleep and the power key keep working). `app` is the English name (translated here).
+// True: leave. Either way the caller draws its page again (GPU sprites were dropped).
+bool BOS_askQuit(SDL_Surface* screen, const char* app);
+
 // ---- status bar (§5.1): title left; music · BT · mute · WiFi · clock · battery right ----
 void BOS_setMusicPlaying(bool playing); // the app that knows (nextui asks the music service) tells the kit
 void BOS_statusBar(SDL_Surface* dst, const char* title);

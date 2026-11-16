@@ -7,8 +7,95 @@
 #include "ui_listview.h"
 #include "ui_listdialog.h"
 #include "ui_keyboard.h"
+#include "ui_confirmdialog.h"
+#include "api.h"
 #include <stdio.h>
 #include <string.h>
+
+// ---- leaving an app (DESIGN 7.7): the §5.7 sheet YouTube's render_quit_prompt draws, for every app ----
+// The page behind is the frame on screen, dimmed to 60 % black between the bars once; the sheet (surface, radius
+// 32) slides up from the hint bar (220 ms): the question 34/700, then rows 88 (40/500, 600 focused) with an icon 32.
+typedef struct {
+	SDL_Surface* back;
+	char head[192];
+	int sel;
+	uint32_t t0;
+	int ms;
+} QuitAsk;
+
+static void quitRender(SDL_Surface* s, void* vctx) {
+	QuitAsk* q = vctx;
+	const BosTheme* th = BOS_theme();
+	SDL_BlitSurface(q->back, NULL, s, NULL);
+	int W = s->w, bottom = s->h - BOS_px(BOS_BAR_H), rh = BOS_px(88), padx = BOS_px(40);
+	int head = BOS_px(24) + BOS_lineH(34) + BOS_px(16), sh = head + 2 * rh + BOS_px(28);
+	float t = q->ms > 0 ? (SDL_GetTicks() - q->t0) / (float)q->ms : 1;
+	int top = bottom - sh + (t < 1 ? (int)(sh * (1 - BOS_ease(t))) : 0);
+	BOS_rrect(s, 0, top, W, sh + BOS_px(40), BOS_px(32), th->surface);
+	char h[192];
+	BOS_fit(q->head, 34, 700, W - 2 * padx, h, sizeof(h));
+	BOS_text(s, h, 34, 700, BOS_C_TEXT, 1, padx, top + BOS_px(24));
+	static const char* const words[2] = {"Leave", "Stay"};
+	static const char* const icons[2] = {"power", "play"};
+	for (int i = 0; i < 2; i++) {
+		int x = padx - BOS_px(8), y = top + head + i * rh, w = W - 2 * padx + BOS_px(16);
+		bool foc = i == q->sel;
+		if (foc) {
+			int dw = w / 50, dh = rh / 50;
+			BOS_rrect(s, x - dw, y - dh, w + 2 * dw, rh + 2 * dh, BOS_px(22), th->focus);
+		}
+		uint32_t tc = foc ? th->onfocus : i == 0 ? BOS_C_DANGER : BOS_C_TEXT;
+		int lx = x + BOS_px(28), cy = y + rh / 2, ic = BOS_px(32);
+		BOS_icon(s, icons[i], tc, 1, lx, cy - ic / 2, ic);
+		BOS_textMid(s, I18N_text(words[i]), 40, foc ? 600 : 500, tc, 1, lx + BOS_px(48), cy);
+	}
+	BosHint r[2] = {{"A", I18N_text("Select")}, {"B", I18N_text("Close")}};
+	BOS_hintBar(s, r, 2, NULL, 0);
+}
+
+static int quitHandle(void* vctx) {
+	QuitAsk* q = vctx;
+	if (PAD_justPressed(BTN_A))
+		return q->sel == 0 ? 1 : 0;
+	if (PAD_justPressed(BTN_B))
+		return 0;
+	if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
+		PAD_justRepeated(BTN_RIGHT)) {
+		q->sel ^= 1;
+		return UI_MODAL_DIRTY;
+	}
+	return SDL_GetTicks() - q->t0 < (uint32_t)q->ms + 20 ? UI_MODAL_DIRTY : UI_MODAL_CONTINUE;
+}
+
+bool BOS_askQuit(SDL_Surface* screen, const char* app) {
+	QuitAsk q = {0};
+	q.back = SDL_ConvertSurface(screen, screen->format, 0);
+	if (q.back) { // the page behind, 60 % black between the bars
+		int top = BOS_px(BOS_BAR_H), bh = screen->h - 2 * top;
+		SDL_Surface* dim = SDL_CreateRGBSurfaceWithFormat(0, screen->w, bh, 32, SDL_PIXELFORMAT_ARGB8888);
+		if (dim) {
+			SDL_FillRect(dim, NULL, SDL_MapRGBA(dim->format, 0, 0, 0, 153));
+			SDL_SetSurfaceBlendMode(dim, SDL_BLENDMODE_BLEND);
+			SDL_BlitSurface(dim, NULL, q.back, &(SDL_Rect){0, top, screen->w, bh});
+			SDL_FreeSurface(dim);
+		}
+	}
+	snprintf(q.head, sizeof(q.head), I18N_text("Leave %s?"), I18N_text(app));
+	q.t0 = SDL_GetTicks();
+	q.ms = BOS_motionMs(220);
+	BOS_partialCancel();
+	BOS_transCancel();
+	BOS_sfx(BOS_SFX_OPEN);
+	BOS_sfxFlush();
+	int r = 0;
+	if (q.back) {
+		UI_ModalOpts o = {screen, quitRender, quitHandle, &q, NULL, 0, false, true};
+		r = UI_modalLoop(&o);
+		SDL_FreeSurface(q.back);
+	} else
+		r = 1; // no memory for the picture: leave as before
+	return r == 1;
+}
 
 // ---- strings ----
 // "Music Player | Files" -> "Files": the part after the last " | " (the old title put the app first)

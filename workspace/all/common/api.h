@@ -626,6 +626,23 @@ static inline int PAD_gridNav(int* sel, int n, int cols) {
 		*sel = row * cols + col < n ? row * cols + col : n - 1;
 	return r;
 }
+// DESIGN 7.7: L2 / R2 move about one screen (`page` rows) up / down in a long list, stopping at the ends (paging
+// does not wrap). Returns 1 moved, -1 already at that end (for BOS_bump), 0 neither pressed.
+static inline int PAD_pageNav(int* sel, int n, int page) {
+	if (n <= 0)
+		return 0;
+	if (page < 1)
+		page = 1;
+	int dir = PAD_justRepeated(BTN_L2) ? -1 : PAD_justRepeated(BTN_R2) ? 1 : 0;
+	if (!dir)
+		return 0;
+	int to = *sel + dir * page;
+	to = to < 0 ? 0 : to >= n ? n - 1 : to;
+	if (to == *sel)
+		return -1;
+	*sel = to;
+	return 1;
+}
 
 int PAD_tappedMenu(uint32_t now);	   // special case, returns 1 on release of BTN_MENU within 250ms if BTN_PLUS/BTN_MINUS haven't been pressed
 int PAD_tappedSelect(uint32_t now);	   // special case, returns 1 on release of BTN_SELECT within 250ms if BTN_PLUS/BTN_MINUS haven't been pressed

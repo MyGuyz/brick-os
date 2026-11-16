@@ -110,7 +110,7 @@ typedef struct {
 } ListView;
 
 // Input: UP/DOWN PAD_justRepeated, wraps unless no_wrap, skips headers.
-// LEFT/RIGHT page by the visible window, clamped. A => ACTIVATED{index},
+// LEFT/RIGHT (unless no_lr_paging) and L2/R2 page by the visible window, clamped. A => ACTIVATED{index},
 // B => BACK, MENU tap => MENU{index}, X/Y => BUTTON{btn,index}. Everything
 // else untouched, NONE returned. When the list is empty, B/MENU/X/Y still
 // report (index -1) so apps keep their empty-state actions, and A reports

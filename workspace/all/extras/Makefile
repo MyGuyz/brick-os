@@ -26,7 +26,7 @@ include ../common/ui/ui.mk
 SOURCE = extras.c xtras_compat.c xtras_meta.c \
          ../common/utils.c ../common/api.c ../common/text_shape.c ../common/audio_manager.c \
          ../common/config.c ../common/scaler.c ../common/wget_fetch.c \
-         $(UI_COMPONENT_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) \
+         $(UI_COMPONENT_SRCS) $(BOS_UI_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) $(UI_DIR)/ui_keyboard.c \
          ../../$(PLATFORM)/platform/platform.c
 
 CC = $(CROSS_COMPILE)gcc

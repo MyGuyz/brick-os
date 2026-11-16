@@ -353,6 +353,8 @@ static void rat_show_achievements(SDL_Surface* screen, const RAT_Game* game) {
 			selected = (selected - 1 + count) % count;
 			dirty = true;
 		}
+		if (PAD_pageNav(&selected, count, 5) > 0) // L2 / R2: a screen, no wrap (DESIGN 7.7)
+			dirty = true;
 		if (PAD_justPressed(BTN_B))
 			quit = true;
 		if (PAD_justPressed(BTN_A) && count > 0) {
@@ -453,6 +455,8 @@ void RATBrowser_run(SDL_Surface* screen) {
 			selected = (selected - 1 + count) % count;
 			dirty = true;
 		}
+		if (PAD_pageNav(&selected, count, 5) > 0) // L2 / R2: a screen, no wrap (DESIGN 7.7)
+			dirty = true;
 		if (PAD_justPressed(BTN_B))
 			quit = true;
 		if (PAD_justPressed(BTN_A) && count > 0) {

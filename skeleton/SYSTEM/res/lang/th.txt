@@ -1120,3 +1120,7 @@ No songs to play in this one	รายการนี้ไม่มีเพล
 Can't reach archive.org	ติดต่อ archive.org ไม่ได้
 Public domain	สาธารณะ
 Type	พิมพ์
+Leave %s?	ออกจาก %s ไหม
+Leave	ออก
+Stay	อยู่ต่อ
+RetroAchievements	RetroAchievements

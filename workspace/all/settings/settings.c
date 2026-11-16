@@ -2927,6 +2927,7 @@ int main(int argc, char* argv[]) {
 	update_page.screen = screen; // อัปเดต (DESIGN 6.7a): the updater draws its pages on it
 
 	settings_menu_init();
+	settings_menu_askOnLeave("Settings");
 	settings_menu_push(&main_page);
 	// back from the launcher's pick (ปุ่มพิเศษ): straight to ปุ่มลัด with the key's popup open
 	int resume_key = SettingsBos_keyResume();

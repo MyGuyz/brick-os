@@ -83,6 +83,10 @@ ListViewAction UI_listViewHandleInput(ListView* v) {
 			v->selected = nearest_selectable(v, v->selected - page, -1);
 		} else if (!v->no_lr_paging && PAD_justRepeated(BTN_RIGHT)) {
 			v->selected = nearest_selectable(v, v->selected + page, +1);
+		} else if (PAD_justRepeated(BTN_L2)) { // DESIGN 7.7: L2/R2 a page up / down, stopping at the ends
+			v->selected = nearest_selectable(v, v->selected - page, -1);
+		} else if (PAD_justRepeated(BTN_R2)) {
+			v->selected = nearest_selectable(v, v->selected + page, +1);
 		}
 		if (v->selected != prev) {
 			v->input_pending = true;

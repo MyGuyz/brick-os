@@ -12,6 +12,7 @@
 #include "settings.h"
 #include "ui_main.h"
 #include "ui_confirmdialog.h"
+#include "bos_ui.h"
 #include "ui_music.h"
 #include "ui_radio.h"
 #include "music_client.h"
@@ -32,8 +33,8 @@ static bool show_controls_help = false;
 bool ModuleCommon_confirmAppExit(SDL_Surface* screen) {
 	MusicClient_update();
 	const MusicSnapshotWire* snapshot = MusicClient_snapshot();
-	if (snapshot->state != MUSIC_STATE_PLAYING)
-		return true;
+	if (snapshot->state != MUSIC_STATE_PLAYING) // nothing playing: the plain question (DESIGN 7.7)
+		return BOS_askQuit(screen, "Music");
 
 	int choice = UI_choiceModal(screen, "Continue playback in background?",
 								"Music will keep playing after the app exits.", NULL, true, true);

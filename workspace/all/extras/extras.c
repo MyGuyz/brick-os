@@ -26,6 +26,7 @@
 
 #include "defines.h"
 #include "api.h"
+#include "bos_ui.h"
 #include "wget_fetch.h" // latest-release API queries (settings_updater's helper)
 #include "ui_accent.h"
 #include "ui_buttonhintbar.h"
@@ -611,8 +612,19 @@ static void run_list(void) {
 			dirty = true;
 		}
 		ListViewAction act = UI_listViewHandleInput(&extras_view);
-		if (act.type == LISTVIEW_BACK)
-			break;
+		if (act.type == LISTVIEW_BACK) { // B: back to the first tab, then ask before leaving (DESIGN 7.7)
+			if (active_tab != TAB_GAMES) {
+				active_tab = TAB_GAMES;
+				build_tab_rows(active_tab, &rows);
+				UI_listViewReset(&extras_view, extras_widget_count(&rows), TAB_LABEL[active_tab]);
+			} else {
+				GFX_clearLayers(LAYER_SCROLLTEXT);
+				if (BOS_askQuit(screen, "Xtras"))
+					break;
+			}
+			act.type = LISTVIEW_NONE;
+			dirty = true;
+		}
 		if (act.type == LISTVIEW_ACTIVATED) {
 			// act.index is a widget row; ACTIVATED is never a header row.
 			AddonEntry* e = &entries[rows.indices[extras_widget_to_entry(&rows, act.index)]];
