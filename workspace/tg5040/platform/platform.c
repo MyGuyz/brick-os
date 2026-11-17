@@ -947,21 +947,25 @@ void PLAT_getTimezones(char timezones[MAX_TIMEZONES][MAX_TZ_LENGTH], int* tz_cou
 	*tz_count = cached_tz_count;
 }
 
-char* PLAT_getCurrentTimezone() {
-	char* output = (char*)malloc(256);
-	if (!output) {
-		return false;
-	}
-	FILE* fp = popen("uci get system.@system[0].zonename", "r");
-	if (!fp) {
-		free(output);
-		return false;
-	}
-	fgets(output, 256, fp);
-	pclose(fp);
-	trimTrailingNewlines(output);
+// uci runs in a shell (tens of ms): read once, then kept (this process's own changes update it). Settings asked for
+// both on every frame of its System page, which made it ~100 ms a frame.
+static char cur_tz[256];
+static bool cur_tz_read = false;
+static int ntp_cached = -1;
 
-	return output;
+char* PLAT_getCurrentTimezone() {
+	if (!cur_tz_read) {
+		cur_tz[0] = '\0';
+		FILE* fp = popen("uci get system.@system[0].zonename", "r");
+		if (!fp)
+			return NULL;
+		if (!fgets(cur_tz, sizeof(cur_tz), fp))
+			cur_tz[0] = '\0';
+		pclose(fp);
+		trimTrailingNewlines(cur_tz);
+		cur_tz_read = true;
+	}
+	return strdup(cur_tz);
 }
 
 void PLAT_setCurrentTimezone(const char* tz) {
@@ -975,6 +979,8 @@ void PLAT_setCurrentTimezone(const char* tz) {
 	if (!zonename)
 		return;
 	snprintf(zonename, 256, "uci set system.@system[0].zonename=\"%s\"", tz);
+	snprintf(cur_tz, sizeof(cur_tz), "%s", tz);
+	cur_tz_read = true;
 	system(zonename);
 	system("uci del -q system.@system[0].timezone");
 	system("uci commit system");
@@ -1000,6 +1006,8 @@ void PLAT_setCurrentTimezone(const char* tz) {
 }
 
 bool PLAT_getNetworkTimeSync(void) {
+	if (ntp_cached >= 0)
+		return ntp_cached == 1;
 	char* output = (char*)malloc(256);
 	if (!output) {
 		return false;
@@ -1013,10 +1021,12 @@ bool PLAT_getNetworkTimeSync(void) {
 	pclose(fp);
 	bool result = (output[0] == '1');
 	free(output);
+	ntp_cached = result ? 1 : 0;
 	return result;
 }
 
 void PLAT_setNetworkTimeSync(bool on) {
+	ntp_cached = on ? 1 : 0;
 	// note: this is not the service residing at /etc/init.d/ntpd - that one has hardcoded time server URLs and does not interact with UCI.
 	if (on) {
 		// permanment

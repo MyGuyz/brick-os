@@ -511,13 +511,33 @@ static void itemRow(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h,
 		int ww = keyCaps(NULL, "MENU+SELECT", 0, 0, 1, 0);
 		if (ww > widest)
 			widest = ww;
-	} else if (k == V_TEXT && (it->type == ITEM_CYCLE || it->type == ITEM_COLOR) && it->labels)
-		for (int i = 0; i < it->label_count; i++)
-			if (it->labels[i]) {
-				int lw = BOS_textW(I18N_text(it->labels[i]), BOS_FS_SMALL, 400);
-				if (lw > widest)
-					widest = lw;
-			}
+	} else if (k == V_TEXT && (it->type == ITEM_CYCLE || it->type == ITEM_COLOR) && it->labels) {
+		// measured once per row and list (a time zone row has hundreds of choices: every frame it cost ms)
+		static struct {
+			const SettingItem* it;
+			const char* const* labels;
+			int count, w;
+		} wc[32];
+		static int wn;
+		int hit = -1;
+		for (int i = 0; i < wn; i++)
+			if (wc[i].it == it && wc[i].labels == (const char* const*)it->labels && wc[i].count == it->label_count)
+				hit = i;
+		if (hit < 0) {
+			int lw_max = 0;
+			for (int i = 0; i < it->label_count; i++)
+				if (it->labels[i]) {
+					int lw = BOS_textW(I18N_text(it->labels[i]), BOS_FS_SMALL, 400);
+					if (lw > lw_max)
+						lw_max = lw;
+				}
+			hit = wn < 32 ? wn++ : (int)(((uintptr_t)it >> 4) % 32);
+			wc[hit].it = it, wc[hit].labels = (const char* const*)it->labels, wc[hit].count = it->label_count;
+			wc[hit].w = lw_max;
+		}
+		if (wc[hit].w > widest)
+			widest = wc[hit].w;
+	}
 	int arw_max = SettingsBos_isPickable(it) ? 2 * (ar + ag) : 0;
 	bool two = k != V_NONE && k != V_TOGGLE && BOS_textW(name, BOS_FS_BODY, 600) + BOS_px(16) + widest + arw_max > room - grown;
 	if (two && k == V_TEXT && cw + arw > room && hot)
