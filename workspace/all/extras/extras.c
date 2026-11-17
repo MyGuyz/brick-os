@@ -333,86 +333,6 @@ static void build_tab_rows(AddonTab tab, TabRows* rows) {
 			rows->indices[rows->count++] = i;
 }
 
-// iOS-style segmented-control GAMES/TOOLS switcher (Task 13c; supersedes the
-// original separate-pill-buttons look), drawn directly under the menu bar
-// and switched via D-pad LEFT/RIGHT in run_list() below. One rounded THEME_COLOR2
-// "container" strip holds both segments, left-aligned and only as wide as
-// the segments themselves (not full screen width); the active segment is a
-// smaller pill in the accent token (UI_accentMapped: Color 1 unless an
-// accent override is set) inset within the strip, with the accent's ink as
-// its text color (UI_getListTextColor), same as an entry row's own selected
-// pill; the inactive segment is plain text in the dim gray the shared
-// ListView's section-header rows use for "Installed", sitting directly on
-// the strip with no background of its own.
-//
-// Both the strip and the active pill are drawn with UI_renderRoundedRectBg
-// (a vector-drawn rounded rect, precise at any size) rather than the
-// bitmap ASSET_WHITE_PILL an entry row's pill uses (via UI_drawListItemBg) -
-// the active segment's inset height is well under a full item_h pill, and
-// mixing a stretched bitmap pill inside a vector-drawn strip risks visibly
-// mismatched corner curvature between the two; one consistent primitive for
-// both keeps the container and the segment reading as one shape family.
-//
-// Local to extras.c - promote to common/ui if a second pak ever needs a
-// segmented control. The reserved vertical band (and so the returned y) is
-// the strip's own height (it once reserved a whole row height above the
-// list's top, which read as a gap under the title).
-static int render_tab_bar(SDL_Surface* screen, ListLayout* layout, AddonTab active_tab) {
-	// just under the page title (6 dp below its text), not at the list's own top, which left a wide gap at any UI
-	// scale; the list's rows then start right under it (list_anchor_top)
-	int y = UI_pageTitleBandTop() + NX_DP(6);
-	if (y > layout->list_y)
-		y = layout->list_y;
-	int strip_h = (layout->item_h * 3) / 4;
-	int inset = SCALE1(3);
-	int x = SCALE1(PADDING);
-
-	// Pass 1: measure every segment's cell width up front, so the
-	// container strip (drawn before any segment) can be sized to their sum
-	// - "hugs the tabs", not full list width. UI_calcListPillWidth's own
-	// truncated-text buffer must stay sized 256 regardless of TAB_LABEL's
-	// short length (its internal strncpy(...,255) always writes the full
-	// 255+NUL - this exact gotcha once caused a stack overflow in the old
-	// bespoke entry-row renderer's badge-reservation path).
-	int cell_w[TAB_COUNT];
-	char cell_text[TAB_COUNT][256];
-	int total_w = 0;
-	for (int t = 0; t < (int)TAB_COUNT; t++) {
-		cell_w[t] = UI_calcListPillWidth(font.small, TAB_LABEL[t], cell_text[t], layout->max_width, 0);
-		total_w += cell_w[t];
-	}
-
-	UI_renderRoundedRectBg(screen, x, y, total_w, strip_h, THEME_COLOR2);
-
-	int cx = x;
-	for (int t = 0; t < (int)TAB_COUNT; t++) {
-		bool selected = (t == (int)active_tab);
-		if (selected) {
-			UI_renderRoundedRectBg(screen, cx + inset, y + inset,
-								   cell_w[t] - inset * 2, strip_h - inset * 2,
-								   UI_accentMapped(screen->format));
-		}
-
-		// Active label: same bright "selected" text color an entry row's own
-		// pill uses. Inactive label: the dim gray a section-header row uses
-		// for "Installed" (COLOR_GRAY) - NOT UI_getListTextColor(false),
-		// which returns THEME_COLOR4 (the ordinary unselected list-row
-		// color, not this dim one) and made the inactive tab read as bright
-		// as the active one.
-		SDL_Color color = selected ? UI_getListTextColor(true) : COLOR_GRAY;
-		SDL_Surface* surf = GFX_renderText(font.small, cell_text[t], color);
-		if (surf) {
-			int tx = cx + (cell_w[t] - surf->w) / 2;
-			int ty = y + (strip_h - surf->h) / 2;
-			SDL_BlitSurface(surf, NULL, screen, &(SDL_Rect){tx, ty, 0, 0});
-			SDL_FreeSurface(surf);
-		}
-		cx += cell_w[t];
-	}
-
-	return y + strip_h;
-}
-
 // Shared-ListView row model (Task 17): the widget's rows are the TabRows
 // entries PLUS synthesized section-header rows, interleaved in display
 // order:
@@ -530,62 +450,30 @@ static void xt_row(void* ctx, int i, bool hot, ListViewRow* out) {
 }
 
 static void render_extras_list(SDL_Surface* screen, AddonTab active_tab, const TabRows* rows) {
-	if (UI_bos) {
-		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
-		BOS_statusBar(screen, I18N_text("Xtras"));
-		int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
-		static const char* tabs[] = {"Games", "Tools"};
-		int y = top + BOS_px(8);
-		y += BOS_chips(screen, gx, y, tabs, 2, (int)active_tab);
-		extras_ctx.rows = rows;
-		extras_view.count = extras_widget_count(rows);
-		extras_view.get_row = extras_get_row;
-		extras_view.ctx = &extras_ctx;
-		int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
-		if (rows->count) {
-			BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), extras_view.count, extras_view.selected,
-						  true, &extras_view.scroll, &extras_view.bos_pill, &extras_view.bos_scroll, false, xt_row, &extras_ctx);
-			extras_view.last_visible = (bottom - y) / BOS_px(BOS_ROW_H);
-		} else
-			BOS_resultCard(screen, "store", BOS_theme()->surface2, "Nothing here yet", NULL);
-		extras_view.input_pending = false;
-		BosHint h[] = {{"A", I18N_text("Details")}, {"B", I18N_text("Exit")}};
-		BosHint l[] = {{"L1", ""}, {"R1", I18N_text("Tab")}};
-		if (rows->count)
-			BOS_hintBar(screen, h, 2, l, 2);
-		else
-			BOS_hintBar(screen, h + 1, 1, l, 2);
-		return;
-	}
-	UI_renderMenuBar(screen, "Xtras");
-	ListLayout layout = UI_calcListLayout(screen);
-	// Function-scope arrays: hint_pairs must outlive the UI_listViewRender
-	// call below, so a branch-scoped compound literal would be UB (see
-	// ui_listview.h).
-	char* hints_full[] = {"LEFT/RIGHT", "TAB", "B", "EXIT", "A", "DETAILS", NULL};
-	char* hints_empty[] = {"LEFT/RIGHT", "TAB", "B", "EXIT", NULL};
-
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Xtras"));
+	int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
+	static const char* tabs[] = {"Games", "Tools"};
+	int y = top + BOS_px(8);
+	y += BOS_chips(screen, gx, y, tabs, 2, (int)active_tab);
 	extras_ctx.rows = rows;
-	extras_view.title = NULL;
-	extras_view.font = font.large;
 	extras_view.count = extras_widget_count(rows);
 	extras_view.get_row = extras_get_row;
 	extras_view.ctx = &extras_ctx;
-	extras_view.list_id = TAB_LABEL[active_tab];
-	extras_view.empty_title = "Nothing here yet";
-	extras_view.list_y_override = render_tab_bar(screen, &layout, active_tab);
-	extras_view.list_anchor_top = true; // the rows right under the tabs (their arrow strip between)
-	// LEFT/RIGHT (TAB) leads the bar, then B, then A.
-	// Always shown, even on an empty tab (v1 ships with TOOLS empty) -
-	// otherwise the tab switcher's only remaining discoverability hint (see
-	// run_list's own comment below) disappears exactly when a user most
-	// needs it, on the one screen with nothing else to look at. A/DETAILS
-	// only makes sense once there's a row to select.
+	int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+	if (rows->count) {
+		BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), extras_view.count, extras_view.selected,
+					  true, &extras_view.scroll, &extras_view.bos_pill, &extras_view.bos_scroll, false, xt_row, &extras_ctx);
+		extras_view.last_visible = (bottom - y) / BOS_px(BOS_ROW_H);
+	} else
+		BOS_resultCard(screen, "store", BOS_theme()->surface2, "Nothing here yet", NULL);
+	extras_view.input_pending = false;
+	BosHint h[] = {{"A", I18N_text("Details")}, {"B", I18N_text("Exit")}};
+	BosHint l[] = {{"L1", ""}, {"R1", I18N_text("Tab")}};
 	if (rows->count)
-		extras_view.hint_pairs = hints_full;
+		BOS_hintBar(screen, h, 2, l, 2);
 	else
-		extras_view.hint_pairs = hints_empty;
-	UI_listViewRender(&extras_view, screen);
+		BOS_hintBar(screen, h + 1, 1, l, 2);
 }
 
 static int run_detail(AddonEntry* e); // Task 4; returns 1 if install state changed
@@ -820,77 +708,13 @@ static int wrap_text(TTF_Font* f, const char* text, int max_width,
 // NULL/empty to omit) renders as a second, dimmer, smaller single-line
 // block below it - used for the "full log is at ..." pointer on failure.
 static void draw_result_dialog(const char* title, const char* subtitle, const char* detail) {
-	if (UI_bos) {
-		(void)detail; // the log's path stays in the log
-		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
-		BOS_statusBar(screen, I18N_text("Xtras"));
-		bool bad = title && (strstr(title, "failed") || strstr(title, "rror"));
-		BOS_resultCard(screen, bad ? "warn" : "check", bad ? BOS_C_DANGER : BOS_C_OK, title, subtitle);
-		BosHint h[] = {{"B", I18N_text("OK")}};
-		BOS_hintBar(screen, h, 1, NULL, 0);
-		GFX_flip(screen);
-		return;
-	}
-	GFX_clear(screen);
-	GFX_clearLayers(LAYER_SCROLLTEXT);
-
-	int padding_x = SCALE1(PADDING * 4);
-	int content_w = screen->w - padding_x * 2;
-
-	char sub_lines[RESULT_SUB_MAX_LINES][DESC_LINE_MAX];
-	int sub_line_count = 0;
-	int sub_line_h = TTF_FontHeight(font.small);
-	if (subtitle && subtitle[0])
-		sub_line_count = wrap_text(font.small, subtitle, content_w, sub_lines, RESULT_SUB_MAX_LINES);
-
-	int detail_h = (detail && detail[0]) ? TTF_FontHeight(font.tiny) : 0;
-	char detail_truncated[256];
-	if (detail_h) {
-		GFX_truncateText(font.tiny, detail, detail_truncated, sizeof(detail_truncated), content_w, 0);
-		detail = detail_truncated;
-	}
-
-	int title_h = TTF_FontHeight(font.large);
-	int btn_sz = SCALE1(BUTTON_SIZE); // the centred button row (UI_renderCenteredButtons)
-
-	int total_h = title_h;
-	if (sub_line_count)
-		total_h += SCALE1(BUTTON_MARGIN) + sub_line_count * sub_line_h;
-	if (detail_h)
-		total_h += SCALE1(BUTTON_MARGIN) + detail_h;
-	total_h += SCALE1(BUTTON_MARGIN) + btn_sz;
-
-	int y = (screen->h - total_h) / 2;
-
-	SDL_Rect title_rect = {padding_x, y, content_w, title_h};
-	GFX_blitMessage(font.large, (char*)title, screen, &title_rect);
-	y += title_h;
-
-	if (sub_line_count) {
-		y += SCALE1(BUTTON_MARGIN);
-		for (int i = 0; i < sub_line_count; i++) {
-			SDL_Surface* s = GFX_renderText(font.small, sub_lines[i], COLOR_WHITE);
-			if (s) {
-				SDL_BlitSurface(s, NULL, screen, &(SDL_Rect){(screen->w - s->w) / 2, y});
-				SDL_FreeSurface(s);
-			}
-			y += sub_line_h;
-		}
-	}
-
-	if (detail_h) {
-		y += SCALE1(BUTTON_MARGIN);
-		SDL_Surface* s = GFX_renderText(font.tiny, detail, COLOR_GRAY);
-		if (s) {
-			SDL_BlitSurface(s, NULL, screen, &(SDL_Rect){(screen->w - s->w) / 2, y});
-			SDL_FreeSurface(s);
-		}
-		y += detail_h;
-	}
-
-	y += SCALE1(BUTTON_MARGIN);
-	UI_renderCenteredButtons(screen, y, (char*[]){"B", "OK", NULL});
-
+	(void)detail; // the log's path stays in the log
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Xtras"));
+	bool bad = title && (strstr(title, "failed") || strstr(title, "rror"));
+	BOS_resultCard(screen, bad ? "warn" : "check", bad ? BOS_C_DANGER : BOS_C_OK, title, subtitle);
+	BosHint h[] = {{"B", I18N_text("OK")}};
+	BOS_hintBar(screen, h, 1, NULL, 0);
 	GFX_flip(screen);
 }
 
@@ -901,23 +725,11 @@ static void draw_result_dialog(const char* title, const char* subtitle, const ch
 // first called, per their own contract comment.
 static void draw_progress_screen(const char* menu_title, const char* status,
 								 const char* detail, int progress) {
-	if (UI_bos) {
-		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
-		BOS_statusBar(screen, I18N_text("Xtras"));
-		UI_renderDownloadProgress(screen, &(UIDownloadProgress){.status = status, .sub = menu_title, .detail = detail,
-																 .progress = progress, .show_bar = true, .icon = "download"});
-		BOS_hintBar(screen, NULL, 0, NULL, 0);
-		GFX_flip(screen);
-		return;
-	}
-	GFX_clear(screen);
-	UI_renderMenuBarPage(screen, "Xtras", menu_title); // "Xtras | <entry>" (LIST-LAYOUT §10.1)
-	UI_renderDownloadProgress(screen, &(UIDownloadProgress){
-										  .status = status,
-										  .detail = detail,
-										  .progress = progress,
-										  .show_bar = true,
-									  });
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Xtras"));
+	UI_renderDownloadProgress(screen, &(UIDownloadProgress){.status = status, .sub = menu_title, .detail = detail,
+															 .progress = progress, .show_bar = true, .icon = "download"});
+	BOS_hintBar(screen, NULL, 0, NULL, 0);
 	GFX_flip(screen);
 }
 

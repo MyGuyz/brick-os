@@ -346,6 +346,7 @@ SDL_Surface* GFX_getCachedText(TTF_Font* font, const char* text, SDL_Color color
 void GFX_forgetFontText(TTF_Font* font);
 // The TTF file the system fonts (font.*) were last loaded from: the user's selected UI font.
 const char* GFX_getSystemFontPath(void);
+int GFX_loadSystemFont(const char* fontPath); // reload the UI font (Settings › font)
 // Register a callback that closes a runtime font cache (one slot; common/ui/ui_font.c uses it). It runs
 // before every system-font reload (font change) and in GFX_quit, so the cache reopens on the
 // new font. It must GFX_forgetFontText each font it closes.

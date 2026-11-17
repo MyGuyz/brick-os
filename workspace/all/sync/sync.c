@@ -128,10 +128,6 @@ static volatile bool via_cable = true;
 // running before (someone else's).
 static bool usblink_owned = false;
 
-// Animation state
-static int dot_count = 0;
-static uint32_t last_dot_time = 0;
-
 static void log_clear(void) {
 	pthread_mutex_lock(&log_mutex);
 	log_count = 0;
@@ -1471,37 +1467,6 @@ static void cancel_sync(void) {
 	allow_power();
 }
 
-static void render_log(int top_y, int bottom_y) {
-	pthread_mutex_lock(&log_mutex);
-
-	int line_h = SCALE1(FONT_SMALL + 2);
-	int pad = SCALE1(PADDING * 2);
-	int x = pad;
-	int max_w = screen->w - pad * 2;
-	int avail_h = bottom_y - top_y;
-	int max_visible = avail_h / line_h;
-
-	// Clip to padded area so long lines are truncated
-	SDL_Rect clip = {x, top_y, max_w, avail_h};
-	SDL_SetClipRect(screen, &clip);
-
-	// Show the most recent lines that fit
-	int start_idx = 0;
-	if (log_count > max_visible)
-		start_idx = log_count - max_visible;
-
-	int y = top_y;
-	for (int i = start_idx; i < log_count; i++) {
-		GFX_blitText(font.small, log_lines[i], 0, COLOR_WHITE, screen,
-					 &(SDL_Rect){x, y, max_w, line_h});
-		y += line_h;
-	}
-
-	SDL_SetClipRect(screen, NULL);
-
-	pthread_mutex_unlock(&log_mutex);
-}
-
 // ---- the Brick OS pages (DESIGN 7.9, boards v2-ToolsSync, -SyncRun, -SyncDone, -SyncError) ----
 static int home_sel = 0; // 0 cable, 1 Wi-Fi, 2 the ROMs switch
 static BosGlide home_pill, home_scroll, roms_pill, roms_scroll, run_pill, run_scroll;
@@ -1615,166 +1580,7 @@ static void render_bos(void) {
 }
 
 static void render_screen(void) {
-	if (UI_bos) {
-		render_bos();
-		return;
-	}
-	GFX_clear(screen);
-	int menu_h = UI_renderMenuBar(screen, "Device Sync");
-
-	switch (state) {
-	case STATE_NO_WIFI:
-		UI_renderCenteredMessage(screen, "Wi-Fi not connected.\nTurn on Wi-Fi, or sync via cable.");
-		UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", NULL});
-		break;
-
-	case STATE_READY: {
-		UI_renderButtonHintBar(screen, (char*[]){"B", "EXIT", "X", sync_roms ? "ROMS: ON" : "ROMS: OFF", "A", "START", NULL});
-		int max_w = screen->w - SCALE1(PADDING * 2);
-		int ll = TTF_FontLineSkip(font.large);
-		int sl = TTF_FontLineSkip(font.small);
-		int gap = SCALE1(PADDING * 2);
-		int pill_h = SCALE1(PILL_SIZE);
-
-		// Calculate total content height
-		int total_h = ll * 2	   // title (2 lines)
-					  + gap		   // gap
-					  + pill_h * 2 // the two link options
-					  + gap		   // gap
-					  + sl * 2;	   // instructions (2 lines)
-
-		// Center vertically on the full screen
-		int y = (screen->h - total_h) / 2;
-
-		GFX_blitText(font.large, sync_roms ? "Sync saves, states and ROMs\nbetween two devices." : "Sync saves and states\nbetween two devices.",
-					 ll,
-					 COLOR_WHITE, screen,
-					 &(SDL_Rect){SCALE1(PADDING), y, max_w, ll * 2});
-		y += ll * 2 + gap;
-
-
-		// The two links, one pill each, the picked one highlighted.
-		const char* options[] = {"Sync via cable", "Sync via Wi-Fi"};
-		for (int i = 0; i < 2; i++) {
-			bool selected = (i == 0) == via_cable;
-			int tw = 0;
-			TTF_SizeUTF8(font.large, options[i], &tw, NULL);
-			int pw = tw + SCALE1(BUTTON_PADDING * 2);
-			SDL_Rect pill = {(screen->w - pw) / 2, y, pw, pill_h};
-			UI_drawListItemBg(screen, &pill, selected);
-			GFX_blitText(font.large, options[i], 0, UI_getListTextColor(selected), screen,
-						 &(SDL_Rect){pill.x, y + (pill_h - TTF_FontHeight(font.large)) / 2, pw, pill_h});
-			y += pill_h;
-		}
-		y += gap;
-
-		GFX_blitText(font.small, via_cable ? "Connect one device's top port to the\nother's bottom port, then pick cable on both." : "Put both devices on the same Wi-Fi,\nthen pick Wi-Fi on both.",
-					 sl, COLOR_WHITE, screen,
-					 &(SDL_Rect){SCALE1(PADDING), y, max_w, sl * 2});
-	} break;
-
-	case STATE_WAITING: {
-		uint32_t now = SDL_GetTicks();
-		if (now - last_dot_time > 500) {
-			dot_count = (dot_count + 1) % 4;
-			last_dot_time = now;
-		}
-		int large_leading = TTF_FontLineSkip(font.large);
-		char msg[160];
-		const char* link_error = via_cable ? cable_link_error() : NULL;
-		if (link_error)
-			snprintf(msg, sizeof(msg), "%s", link_error);
-		else if (via_cable && !own_ip[0])
-			snprintf(msg, sizeof(msg), "Waiting for the cable%.*s\n\nConnect one device's top port\nto the other's bottom port.",
-					 dot_count + 1, "...");
-		else
-			snprintf(msg, sizeof(msg), "Searching for device%.*s\n\nOpen Sync on the other device.\nIP: %s (%s)",
-					 dot_count + 1, "...", own_ip, via_cable ? "cable" : "Wi-Fi");
-
-		int y = screen->h / 2 - large_leading * 2;
-		GFX_blitText(font.large, msg, large_leading, COLOR_WHITE, screen,
-					 &(SDL_Rect){SCALE1(PADDING), y, screen->w - SCALE1(PADDING * 2), screen->h});
-	}
-		UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", NULL});
-		break;
-
-	case STATE_SYNCING: {
-		UI_renderButtonHintBar(screen, (char*[]){"B", "CANCEL", NULL});
-
-		int top_y = menu_h + SCALE1(PADDING);
-		int bottom_y = screen->h - SCALE1(PILL_SIZE + PADDING);
-
-		// Show phase progress header at top
-		{
-			int total_phases = sync_phase_count(sync_roms);
-			const char* phase_labels[] = {
-				"",
-				"Pushing states",
-				"Pushing saves",
-				"Pulling states",
-				"Pulling saves",
-				"Sending BIOS",
-				"Receiving BIOS",
-				"Syncing collections",
-				"Pushing ROMs",
-				"Pulling ROMs",
-			};
-			int p = sync_phase;
-			if (p >= 1 && p <= total_phases) {
-				char hdr[128];
-				int done = phase_files_done;
-				int total = phase_files_total;
-				int xfr = phase_files_transferred;
-				if (total > 0)
-					snprintf(hdr, sizeof(hdr), "[%d/%d] %s - %d/%d files (%d changed)",
-							 p, total_phases, phase_labels[p], done, total, xfr);
-				else
-					snprintf(hdr, sizeof(hdr), "[%d/%d] %s",
-							 p, total_phases, phase_labels[p]);
-				GFX_blitText(font.large, hdr, 0, COLOR_WHITE, screen,
-							 &(SDL_Rect){SCALE1(PADDING), top_y,
-										 screen->w - SCALE1(PADDING * 2), SCALE1(FONT_LARGE)});
-			} else if (is_server) {
-				GFX_blitText(font.large, "Waiting for client...", 0, COLOR_WHITE, screen,
-							 &(SDL_Rect){SCALE1(PADDING), top_y,
-										 screen->w - SCALE1(PADDING * 2), SCALE1(FONT_LARGE)});
-			}
-			top_y += TTF_FontLineSkip(font.large) + SCALE1(PADDING);
-		}
-
-		render_log(top_y, bottom_y);
-		break;
-	}
-
-	case STATE_ERROR: {
-		int top_y = menu_h + SCALE1(PADDING);
-		int bottom_y = screen->h - SCALE1(PILL_SIZE + PADDING * 3 + FONT_LARGE);
-
-		render_log(top_y, bottom_y);
-
-		// Error message below log
-		GFX_blitText(font.large, "Sync failed. Press A to retry.", 0, COLOR_WHITE, screen,
-					 &(SDL_Rect){SCALE1(PADDING), bottom_y + SCALE1(PADDING),
-								 screen->w - SCALE1(PADDING * 2), SCALE1(FONT_LARGE)});
-	}
-		UI_renderButtonHintBar(screen, (char*[]){"B", "EXIT", "A", "RETRY", NULL});
-		break;
-
-	case STATE_DONE: {
-		int top_y = menu_h + SCALE1(PADDING);
-		int bottom_y = screen->h - SCALE1(PILL_SIZE + PADDING * 3 + FONT_LARGE);
-
-		render_log(top_y, bottom_y);
-
-		GFX_blitText(font.large, "Sync complete!", 0, COLOR_WHITE, screen,
-					 &(SDL_Rect){SCALE1(PADDING), bottom_y + SCALE1(PADDING),
-								 screen->w - SCALE1(PADDING * 2), SCALE1(FONT_LARGE)});
-	}
-		UI_renderButtonHintBar(screen, (char*[]){"B", "EXIT", "A", "SYNC AGAIN", NULL});
-		break;
-	}
-
-	GFX_flip(screen);
+	render_bos();
 }
 
 int main(int argc, char* argv[]) {

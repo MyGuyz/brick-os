@@ -172,37 +172,9 @@ int UI_statusWidth(void) {
 int BOS_uiMenuBar(SDL_Surface* s, const char* title) __attribute__((weak));
 int UI_renderMenuBarAt(SDL_Surface* screen, const char* title, const char* suffix, int x, bool scrim,
 					   bool title_shadow) {
-	if (UI_bos && BOS_uiMenuBar) {
-		BOS_uiMenuBar(screen, title);
-		last_ow = screen->w / 3;
-		return last_ow;
-	}
-	int bar_h = UI_menuBarHeight();
-	if (scrim) {
-		// Semi-transparent bar background (cached between calls)
-		static SDL_Surface* menu_bar = NULL;
-		if (!UI_getScrim(&menu_bar, screen->w, bar_h))
-			return 0;
-		SDL_BlitSurface(menu_bar, NULL, screen, &(SDL_Rect){0, 0});
-	}
-
-	// Hardware group (right side)
-	int ow = GFX_blitHardwareGroup(screen, PWR_getShowSetting());
-	last_ow = ow;
-
-	// Page title (left side, no pill): at most 80% of the screen, and clear of the hardware group
-	if (title && title[0]) {
-		if (x < 0)
-			x = UI_pageTitleX();
-		int max_w = screen->w * 8 / 10;
-		int room = screen->w - ow - SCALE1(PADDING * 2) - x;
-		if (room < max_w)
-			max_w = room;
-		if (max_w > 0)
-			UI_renderPageTitleEx(screen, x, title, suffix, max_w, title_shadow);
-	}
-
-	return ow;
+	BOS_uiMenuBar(screen, title);
+	last_ow = screen->w / 3;
+	return last_ow;
 }
 
 const char* UI_pageTitle(char* out, size_t size, const char* parent, const char* page) {

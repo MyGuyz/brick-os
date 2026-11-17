@@ -155,46 +155,18 @@ static void el_row(void* ctx, int i, bool hot, ListViewRow* r) {
 
 static void render_list(const char* title, const char** labels, int count,
 						int selected, int* scroll, char** hints) {
-	if (UI_bos) {
-		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
-		const char* t = I18N_text(title);
-		BOS_statusBar(screen, t);
-		el_labels = labels;
-		el_picker = !strcmp(title, "Emulator Settings");
-		int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
-		int y = el_picker ? top + BOS_largeTitle(screen, top, t, I18N_text("Pick a console, then set what all its games use"))
-						  : top + BOS_px(8);
-		int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
-		BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), count, selected, true, scroll, &el_pill,
-					  &el_scroll, false, el_row, NULL);
-		BOS_uiHintBar(screen, hints);
-		GFX_flip(screen);
-		return;
-	}
-	GFX_clear(screen);
-	UI_renderMenuBar(screen, title);
-
-	ListLayout layout = UI_calcListLayout(screen);
-	UI_adjustListScroll(selected, scroll, layout.items_per_page);
-
-	int visible = count - *scroll;
-	if (visible > layout.items_per_page)
-		visible = layout.items_per_page;
-	if (visible < 0)
-		visible = 0;
-
-	char truncated[ROW_TEXT_MAX];
-	for (int i = 0; i < visible; i++) {
-		int idx = *scroll + i;
-		bool is_selected = (idx == selected);
-		MenuItemPos pos = UI_renderMenuItemPill(screen, &layout, labels[idx], truncated, i, is_selected, 0);
-		UI_renderListItemText(screen, NULL, truncated, font.large,
-							  pos.text_x, pos.text_y, layout.max_width, is_selected);
-	}
-
-	UI_renderScrollIndicatorsAt(screen, &layout, *scroll, layout.items_per_page, count);
-
-	UI_renderButtonHintBar(screen, hints);
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	const char* t = I18N_text(title);
+	BOS_statusBar(screen, t);
+	el_labels = labels;
+	el_picker = !strcmp(title, "Emulator Settings");
+	int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
+	int y = el_picker ? top + BOS_largeTitle(screen, top, t, I18N_text("Pick a console, then set what all its games use"))
+					  : top + BOS_px(8);
+	int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+	BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), count, selected, true, scroll, &el_pill,
+				  &el_scroll, false, el_row, NULL);
+	BOS_uiHintBar(screen, hints);
 	GFX_flip(screen);
 }
 

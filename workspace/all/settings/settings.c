@@ -5,6 +5,7 @@
  * Builds the full settings menu tree and runs the main loop.
  */
 
+#include "ui_draw.h"
 #include "msettings.h"
 #include "emu_shortcuts.h"
 #include "bos_keys.h"
@@ -192,8 +193,6 @@ const char* color_labels[COLOR_COUNT] = {
 
 /* Color opacity (percentage of the packed RGBA alpha byte) */
 #define OPACITY_COUNT 10
-static const char* opacity_labels[OPACITY_COUNT] = {"100%", "90%", "80%", "70%", "60%", "50%", "40%", "30%", "20%", "10%"};
-static const int opacity_values[OPACITY_COUNT] = {100, 90, 80, 70, 60, 50, 40, 30, 20, 10};
 
 // ============================================
 // Static label/value arrays
@@ -220,9 +219,6 @@ static int notify_duration_values[] = {1, 2, 3, 4, 5};
 static const char* notify_duration_labels[] = {"1s", "2s", "3s", "4s", "5s"};
 #define NOTIFY_DURATION_COUNT 5
 
-/* Progress notification duration */
-static int progress_duration_values[] = {0, 1, 2, 3, 4, 5};
-static const char* progress_duration_labels[] = {"Off", "1s", "2s", "3s", "4s", "5s"};
 #define PROGRESS_DURATION_COUNT 6
 
 /* Default view */
@@ -475,180 +471,8 @@ static void free_dynamic_labels(void) {
 // Appearance callbacks
 // ============================================
 
-/* Color 1 - Main Color (presets are 0xRRGGBB; opacity is kept separately) */
-static int get_color1(void) {
-	return (int)RGBA_toRGB(CFG_getColor(1));
-}
-static void set_color1(int val) {
-	CFG_setColor(1, RGBA_withAlpha(RGBA_fromRGB((uint32_t)val), RGBA_a(CFG_getColor(1))));
-}
-static void reset_color1(void) {
-	CFG_setColor(1, CFG_DEFAULT_COLOR1);
-}
-
-/* Color 2 - Primary Accent (presets are 0xRRGGBB; opacity is kept separately) */
-static int get_color2(void) {
-	return (int)RGBA_toRGB(CFG_getColor(2));
-}
-static void set_color2(int val) {
-	CFG_setColor(2, RGBA_withAlpha(RGBA_fromRGB((uint32_t)val), RGBA_a(CFG_getColor(2))));
-}
-static void reset_color2(void) {
-	CFG_setColor(2, CFG_DEFAULT_COLOR2);
-}
-
-/* Color 3 - Secondary Accent (presets are 0xRRGGBB; opacity is kept separately) */
-static int get_color3(void) {
-	return (int)RGBA_toRGB(CFG_getColor(3));
-}
-static void set_color3(int val) {
-	CFG_setColor(3, RGBA_withAlpha(RGBA_fromRGB((uint32_t)val), RGBA_a(CFG_getColor(3))));
-}
-static void reset_color3(void) {
-	CFG_setColor(3, CFG_DEFAULT_COLOR3);
-}
-
-/* Color 6 - Hint Info (presets are 0xRRGGBB; opacity is kept separately) */
-static int get_color6(void) {
-	return (int)RGBA_toRGB(CFG_getColor(6));
-}
-static void set_color6(int val) {
-	CFG_setColor(6, RGBA_withAlpha(RGBA_fromRGB((uint32_t)val), RGBA_a(CFG_getColor(6))));
-}
-static void reset_color6(void) {
-	CFG_setColor(6, CFG_DEFAULT_COLOR6);
-}
-
-/* Color 4 - List Text (presets are 0xRRGGBB; opacity is kept separately) */
-static int get_color4(void) {
-	return (int)RGBA_toRGB(CFG_getColor(4));
-}
-static void set_color4(int val) {
-	CFG_setColor(4, RGBA_withAlpha(RGBA_fromRGB((uint32_t)val), RGBA_a(CFG_getColor(4))));
-}
-static void reset_color4(void) {
-	CFG_setColor(4, CFG_DEFAULT_COLOR4);
-}
-
-/* Color 5 - List Text Selected (presets are 0xRRGGBB; opacity is kept separately) */
-static int get_color5(void) {
-	return (int)RGBA_toRGB(CFG_getColor(5));
-}
-static void set_color5(int val) {
-	CFG_setColor(5, RGBA_withAlpha(RGBA_fromRGB((uint32_t)val), RGBA_a(CFG_getColor(5))));
-}
-static void reset_color5(void) {
-	CFG_setColor(5, CFG_DEFAULT_COLOR5);
-}
-
 /* Color opacity accessors — the RGB preset and the alpha are edited by
    separate list items, so these touch only the packed alpha byte. */
-static int color_opacity_get(int id) {
-	int pct = RGBA_alphaToPercent(RGBA_a(CFG_getColor(id)));
-	pct = ((pct + 5) / 10) * 10; // snap to the 10% steps offered in the list
-	if (pct < 10)
-		pct = 10;
-	if (pct > 100)
-		pct = 100;
-	return pct;
-}
-static void color_opacity_set(int id, int pct) {
-	CFG_setColor(id, RGBA_withAlpha(CFG_getColor(id), RGBA_percentToAlpha(pct)));
-}
-
-static int get_color1_opacity(void) {
-	return color_opacity_get(1);
-}
-static void set_color1_opacity(int v) {
-	color_opacity_set(1, v);
-}
-static void reset_color1_opacity(void) {
-	color_opacity_set(1, 100);
-}
-static int get_color2_opacity(void) {
-	return color_opacity_get(2);
-}
-static void set_color2_opacity(int v) {
-	color_opacity_set(2, v);
-}
-static void reset_color2_opacity(void) {
-	color_opacity_set(2, 100);
-}
-static int get_color3_opacity(void) {
-	return color_opacity_get(3);
-}
-static void set_color3_opacity(int v) {
-	color_opacity_set(3, v);
-}
-static void reset_color3_opacity(void) {
-	color_opacity_set(3, 100);
-}
-
-/* Show battery percent */
-static int get_show_battery_percent(void) {
-	return CFG_getShowBatteryPercent() ? 1 : 0;
-}
-static void set_show_battery_percent(int v) {
-	CFG_setShowBatteryPercent(v != 0);
-}
-static void reset_show_battery_percent(void) {
-	CFG_setShowBatteryPercent(CFG_DEFAULT_SHOWBATTERYPERCENT);
-}
-
-/* Show search hint */
-static int get_show_search_hint(void) {
-	return CFG_getShowSearchHint() ? 1 : 0;
-}
-static void set_show_search_hint(int v) {
-	CFG_setShowSearchHint(v != 0);
-}
-static void reset_show_search_hint(void) {
-	CFG_setShowSearchHint(CFG_DEFAULT_SHOWSEARCHHINT);
-}
-
-/* Show recent hint */
-static int get_show_recent_hint(void) {
-	return CFG_getShowRecentHint() ? 1 : 0;
-}
-static void set_show_recent_hint(int v) {
-	CFG_setShowRecentHint(v != 0);
-}
-static void reset_show_recent_hint(void) {
-	CFG_setShowRecentHint(CFG_DEFAULT_SHOWRECENTHINT);
-}
-
-/* Show netplay hint */
-static int get_show_netplay_hint(void) {
-	return CFG_getShowNetplayHint() ? 1 : 0;
-}
-static void set_show_netplay_hint(int v) {
-	CFG_setShowNetplayHint(v != 0);
-}
-static void reset_show_netplay_hint(void) {
-	CFG_setShowNetplayHint(CFG_DEFAULT_SHOWNETPLAYHINT);
-}
-
-/* Show menu animations */
-static int get_menu_animations(void) {
-	return CFG_getMenuAnimations() ? 1 : 0;
-}
-static void set_menu_animations(int v) {
-	CFG_setMenuAnimations(v != 0);
-}
-static void reset_menu_animations(void) {
-	CFG_setMenuAnimations(CFG_DEFAULT_SHOWMENUANIMATIONS);
-}
-
-/* Show menu transitions */
-static int get_menu_transitions(void) {
-	return CFG_getMenuTransitions() ? 1 : 0;
-}
-static void set_menu_transitions(int v) {
-	CFG_setMenuTransitions(v != 0);
-}
-static void reset_menu_transitions(void) {
-	CFG_setMenuTransitions(CFG_DEFAULT_SHOWMENUTRANSITIONS);
-}
 
 /* Show each orientation row only while its style has an orientation (a main-menu Carousel; a game-list Carousel or
    Backdrop), the game lists' alignment row only while they draw Vertical, their List art row only while they draw
@@ -1078,16 +902,6 @@ static void reset_clock24h(void) {
 	CFG_setClock24H(CFG_DEFAULT_CLOCK24H);
 }
 
-static int get_show_clock(void) {
-	return CFG_getShowClock() ? 1 : 0;
-}
-static void set_show_clock(int v) {
-	CFG_setShowClock(v != 0);
-}
-static void reset_show_clock(void) {
-	CFG_setShowClock(CFG_DEFAULT_SHOWCLOCK);
-}
-
 // Brick OS: UI language (common/i18n.h). Written to SHARED_USERDATA_PATH/lang; apps pick it up on their next
 // launch, Settings right away.
 #define LANG_SETTING_PATH SHARED_USERDATA_PATH "/lang"
@@ -1482,7 +1296,7 @@ static SettingsPage appearance_page;
 static SettingsPage layouts_page;
 static SettingsPage display_page;
 static SettingsPage system_page;
-static SettingsPage fn_page;
+
 static SettingsPage fn_switch_page; /* wraps fn_items into "FN Switch" titled page */
 static SettingsPage fn_keys_page;
 static SettingsPage shortcuts_page;
@@ -2888,6 +2702,7 @@ static void build_menu_tree(const DeviceInfo* dev) {
 int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
+	UI_bos = true; // every shared piece (dialogs, toasts, lists, keyboard) in the Brick OS look (DESIGN 7.9)
 	SDL_Surface* screen = GFX_init(MODE_MAIN);
 	g_screen = screen;
 	UI_showSplashScreen(screen, "Settings");

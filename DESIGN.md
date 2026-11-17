@@ -739,7 +739,9 @@ User request: "like the theme colour page, with colour choice and a colour code"
 ## 7. Round 2
 **Rule (owner, 2026-11-14): no screen of the old NextUI/minarch UI may remain anywhere,** however rarely it is seen:
 every page, prompt, error and message box gets a v2 board and is redrawn. Round 2 is not finished until a sweep finds none.
-Still old: the apps of the next sweep (§7.4); YouTube (§7.5) and the keyboard (§7.6) are drawn. Music (§7.2) and Video (§7.3) are built. (The game menu's last old screens were redrawn on 2026-11-14, §7.1.)
+Sweep of 2026-11-17 (§7.9): every tool redrawn, Files is ours, PortMaster themed, and the old drawing code removed
+from the shared pieces and the tools; the launcher, Settings and the game menu set the kit up too. Not ours to redraw:
+DraStic's own menu, PortMaster's page layout.
 
 YouTube, the keyboard, Music and Video keep their v1 spec (`builds/DESIGN-v1.md` §6.4–6.5) until their v2 boards are drawn and approved. They will use §5 unchanged.
 
@@ -978,3 +980,46 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   - Seen on the device 2026-11-17: Settings, Game Tracker, Xtras, Artwork Manager, RA, Device Sync, Image
     viewer, Video, Music, the launcher's game list (L2 and R2). Netplay setup is built but not yet seen (it only
     opens when a game starts with netplay). Test keys: `l2` / `r2` in `scripts/device/make_keys.py`.
+
+### 7.9 เครื่องมือ, ไฟล์, PortMaster (boards `design/round2/v2-Tools*`, `v2-Files*`, `v2-PortMaster`, approved 2026-11-17)
+- **One look for every tool.** Every app with a screen sets the kit up (links `BOS_UI_SRCS`) and draws only the
+  Brick OS way; the old NextUI drawing is gone from the shared pieces and the tools (no `UI_bos` fallbacks left in
+  them). Shared pieces added: the **progress page** (`UI_renderDownloadProgress`: squircle 112 radius 30 with its
+  icon 64 in a colour, the status 44/700, a sub line 30 `text2`, the bar 720×16, the detail 28 `text2` left and the
+  percent 28/600 right; `.icon`, `.sub`, `.colour` optional), the **result card** (`BOS_resultCard`: done / failed
+  pages), a **switch in a row** (`ListViewRow.toggle`, 72×44, `ok` when on), **tab chips** (`BOS_chips`, 48 high,
+  the selected one white with black words) and icons cable, hotspot, copy, move, file, zip, sd, clip, books.
+- **Device Sync** (`v2-ToolsSync*`): large title and sub; a group of the two links (USB-C cable, Wi-Fi with
+  "เชื่อมต่อแล้ว") and a second group with the ROMs switch (A flips it; X still does). Waiting: the progress page
+  without a bar. Running: "กำลังซิงก์…" with who sends, then the phases as rows (done: green tick, now: sync icon
+  with "n / N ไฟล์" and a bar, later: grey clock "รอ"). Done / failed: the result card (A ซิงก์อีกครั้ง / ลองอีกครั้ง).
+- **RetroAchievements** (`v2-ToolsRA`, `-RALogin`): the account card 144 high (a 96 circle in `warn` with the
+  initial, the name 40/700, points 28 `text2`, "ซิงก์ล่าสุด" right) — or "ยังไม่ได้เข้าสู่ระบบ" with a user icon —
+  then the group: ความสำเร็จ (trophy), ซิงก์ตอนนี้ (sync, "รอส่ง n รางวัล"), คลังเกมที่รองรับ (books), ตั้งค่า.
+- **Xtras** (`v2-ToolsXtras`, `-XtrasDetail`): chips เกม / เครื่องมือ (◀▶ or L1 R1); rows with the name's letters
+  in a squircle, "เกม · 48 MB", a pill ติดตั้งแล้ว (`ok`) / มีอัปเดต (`warn`) or the words ยังไม่ติดตั้ง. Detail: a
+  360 squircle with the letters and the status / size pills left; the name 48/700, the description 28 `text2`, a
+  group of what can be done (ติดตั้ง / มีอัปเดต / ติดตั้งใหม่, ถอนการติดตั้ง in `danger`). Installing uses the
+  progress page; the end is the result card.
+- **Game Tracker** (`v2-ToolsGameTime`, `-GameTimeDetail`): the total as the large title ("7 ชม. 34 นาที"), rows with
+  the game's picture, "เฉลี่ย 17 นาที · 12 ครั้ง" and the total right. A opens a game: picture 300, name 48/700,
+  "เล่นล่าสุด", three stat cards (รวม h:mm, เฉลี่ย, เล่น), the last 7 days as bars (today in `primary`). X deletes.
+- **Emulator Settings** (`v2-ToolsEmu`): the consoles as rows with the name's letters, "คอร์ mgba", a chevron; the
+  sections as rows; the option pages are Settings' (§6.6).
+- **Image Viewer** (`v2-ToolsImages`): the group 470 wide (rows 84) left, the picture in a 352-high box right with its
+  name 32/600 and "1024×768 · 87 KB". ".." is "ย้อนขึ้นไป".
+- **Netplay setup** (`v2-ToolsNetplay`, `-NetplayRole`): เล่นด้วยกัน with the game as the sub; rows with an icon and a
+  line each (สร้างห้อง / เข้าห้องเพื่อน; สาย USB-C / ฮอตสปอต / Wi-Fi).
+- **Files** (`v2-Files*`, our own app, `workspace/all/files`, replaces NextCommander): where you are along the top
+  (SD icon, การ์ด SD › folder › **here**, the first folders give way to "…"), then the folder: folders first, a
+  squircle per kind (folder, zip, picture, music, video, text, save, game/other), the date under, the size right, a
+  green tick on picked rows and a "เลือก n รายการ" pill top right. A opens (a file: its details), B goes up (asks to
+  leave at the card's top), X picks, SELECT / MENU the sheet (คัดลอก, ย้าย, เปลี่ยนชื่อ, โฟลเดอร์ใหม่, รายละเอียด,
+  ลบ). Copy / move keep what was picked and show a card "คัดลอก n รายการมาที่นี่?" until START (SELECT cancels);
+  a name already there gets " (2)". The progress page while it works (B stops; nothing half-copied stays).
+  Delete asks first (trash sign).
+- **PortMaster** (`v2-PortMaster`): it draws its own pages (pugwash, Python), so it gets a theme instead
+  (`catalog/portmaster/pak/brick_os_theme`, made by `scripts/design/make_pm_theme.py`): the system font, black pages
+  and `surface` panels, the focus row filled (no arrow, no stripes), A/B/X/Y white circles and white key caps, no
+  menu music, the list 46 % wide. The installer refreshes it and moves a card off the stock theme.
+- **Not ours to redraw:** DraStic's own menu; PortMaster's page layout (only its look is ours).

@@ -146,14 +146,6 @@ int BOS_uiHintBar(SDL_Surface* s, char** pairs) {
 	return s->w;
 }
 
-// ---- a card in the middle: icon (optional), title, text ----
-static uint32_t mixc(uint32_t a, uint32_t b, int t) {
-	uint32_t o = 0;
-	for (int sh = 0; sh < 24; sh += 8)
-		o |= (uint32_t)(((((a >> sh) & 255) * (256 - t)) + (((b >> sh) & 255) * t)) >> 8) << sh;
-	return o;
-}
-
 static void card(SDL_Surface* s, const char* icon, uint32_t icon_bg, const char* title, const char* text, int max_lines) {
 	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
 	int w = BOS_px(660), pad = BOS_px(40), inner = w - 2 * pad, circ = BOS_px(88);
@@ -334,7 +326,9 @@ static const ActIcon acts[] = {
 	{"Background", "home", 0x30D158}, {"Playback Controls", "pad", 0x8E8E93}, {"Search", "info", 0x0A84FF},
 	{"Browse", "folder", 0x0A84FF}, {"Settings", "settings", 0x8E8E93},
 	{"Copy", "copy", 0x0A84FF}, {"Move", "move", 0xFF9F0A}, {"New folder", "plus", 0x30D158},
-	{"Details", "info", 0xB4B4BA}, {NULL, NULL, 0}};
+	{"Details", "info", 0xB4B4BA}, {"Unpin", "star", 0xFFD60A}, {"Pin", "star", 0xFFD60A},
+	{"Add to Collection", "plus", 0x30D158}, {"Emulator Options", "sliders", 0x8E8E93}, {"Open", "chev", 0xB4B4BA},
+	{NULL, NULL, 0}};
 
 static const ActIcon* actFor(const char* label) {
 	for (int i = 0; acts[i].word; i++)

@@ -504,251 +504,34 @@ void render_radio_add_stations(SDL_Surface* screen, IndicatorType show_setting,
 							   int add_station_selected, int* add_station_scroll,
 							   const int* sorted_indices, int sorted_count,
 							   const char* toast_message, uint32_t toast_time) {
-	if (UI_bos) {
-		(void)show_setting;
-		render_radio_columns(screen, country_code, add_station_selected, add_station_scroll, sorted_indices, sorted_count);
-		UI_renderToast(screen, toast_message, toast_time);
-		return;
-	}
-	GFX_clear(screen);
-
-	int hw = screen->w;
-	char truncated[256];
-
-	// Get country name for title
-	const char* country_name = "Stations";
-	const CuratedCountry* countries = Radio_getCuratedCountries();
-	int country_count = Radio_getCuratedCountryCount();
-	for (int i = 0; i < country_count; i++) {
-		if (strcmp(countries[i].code, country_code) == 0) {
-			country_name = countries[i].name;
-			break;
-		}
-	}
-
-	UI_renderMenuBarPage(screen, "Music Player", country_name);
-
-	// Get stations for selected country
-	int station_count = 0;
-	const CuratedStation* stations = Radio_getCuratedStations(country_code, &station_count);
-
-	// Use common list layout calculation
-	ListLayout layout = UI_calcListLayout(screen);
-	UI_adjustListScroll(add_station_selected, add_station_scroll, layout.items_per_page);
-
-	// Determine if the currently selected station is already added
-	bool selected_exists = false;
-	if (sorted_count > 0 && add_station_selected < sorted_count) {
-		int sel_actual = sorted_indices[add_station_selected];
-		if (sel_actual < station_count) {
-			selected_exists = Radio_stationExists(stations[sel_actual].url);
-		}
-	}
-
-	for (int i = 0; i < layout.items_per_page && *add_station_scroll + i < sorted_count; i++) {
-		int idx = *add_station_scroll + i;
-		int actual_idx = sorted_indices[idx];
-		if (actual_idx >= station_count)
-			continue;
-		const CuratedStation* station = &stations[actual_idx];
-		bool selected = (idx == add_station_selected);
-		bool added = Radio_stationExists(station->url);
-
-		int y = layout.list_y + i * layout.item_h;
-
-		// Calculate prefix width for added indicator
-		const char* prefix = added ? "[+] " : "";
-		int prefix_width = 0;
-		if (added) {
-			int pw, ph;
-			GFX_measureText(font.small, "[+]", &pw, &ph);
-			prefix_width = pw + SCALE1(6);
-		}
-
-		// Render pill background and get text position
-		int name_max_width = layout.max_width - prefix_width - SCALE1(60);
-		int text_width = GFX_truncateText(font.medium, station->name, truncated, sizeof(truncated), name_max_width, SCALE1(BUTTON_PADDING * 2));
-		int pill_width = MIN(layout.max_width, prefix_width + text_width + SCALE1(BUTTON_PADDING));
-
-		// Background pill
-		SDL_Rect pill_rect = {UI_listPillX(), y, pill_width, layout.item_h};
-		Fonts_drawListItemBg(screen, &pill_rect, selected);
-
-		int text_x = UI_listTextX();
-		int text_y = y + (layout.item_h - TTF_FontHeight(font.medium)) / 2;
-
-		// Added indicator prefix
-		if (added) {
-			SDL_Color prefix_color = Fonts_getListTextColor(selected);
-			SDL_Surface* prefix_text = GFX_renderText(font.small, "[+]", prefix_color);
-			if (prefix_text) {
-				SDL_BlitSurface(prefix_text, NULL, screen, &(SDL_Rect){text_x, y + (layout.item_h - prefix_text->h) / 2});
-				SDL_FreeSurface(prefix_text);
-			}
-		}
-
-		// Station name
-		UI_renderListItemText(screen, NULL, station->name, font.medium,
-							  text_x + prefix_width, text_y, name_max_width, selected);
-
-		// Genre on right
-		if (station->genre[0]) {
-			SDL_Color genre_color = selected ? COLOR_GRAY : COLOR_DARK_TEXT;
-			SDL_Surface* genre_text = GFX_renderText(font.tiny, station->genre, genre_color);
-			if (genre_text) {
-				SDL_BlitSurface(genre_text, NULL, screen, &(SDL_Rect){hw - genre_text->w - SCALE1(PADDING * 2), y + (layout.item_h - genre_text->h) / 2});
-				SDL_FreeSurface(genre_text);
-			}
-		}
-	}
-
-	UI_renderScrollIndicatorsAt(screen, &layout, *add_station_scroll, layout.items_per_page, sorted_count);
-
-	// Toast notification
+	(void)show_setting;
+	render_radio_columns(screen, country_code, add_station_selected, add_station_scroll, sorted_indices, sorted_count);
 	UI_renderToast(screen, toast_message, toast_time);
-
-	// Button hints - dynamic based on whether selected station is already added
-	UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", "A", selected_exists ? "REMOVE" : "ADD", NULL});
 }
 
 // Render help/instructions screen
 void render_radio_help(SDL_Surface* screen, IndicatorType show_setting, int* help_scroll) {
-	if (UI_bos) {
-		(void)show_setting, (void)help_scroll;
-		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
-		BOS_statusBar(screen, I18N_text("Add stations"));
-		int y = BOS_px(BOS_BAR_H) + BOS_largeTitle(screen, BOS_px(BOS_BAR_H), I18N_text("Add your own stations"), NULL);
-		int x = BOS_px(40), w = screen->w - 2 * x, pad = BOS_px(28);
-		static const char* para[] = {
-			"Edit this file on the SD card:", "/.userdata/shared/music-player/radio/stations.txt",
-			"One station per line: Name|URL|Genre|Slogan", "e.g. My Radio|http://example.com/stream|Music|Slogan",
-			"MP3, AAC and M3U8 streams · up to 32 stations · the slogan shows when there is no song name",
-			"More stations: fmstream.org"};
-		int h = BOS_px(560) - y + BOS_px(64);
-		BOS_rrect(screen, x, y, w, BOS_px(440), BOS_px(24), BOS_theme()->surface);
-		int ty = y + pad;
-		for (int i = 0; i < 6; i++) {
-			bool code = i == 1 || i == 3;
-			ty += BOS_textWrap(screen, code ? para[i] : I18N_text(para[i]), code ? 26 : 30, code ? 600 : 400,
-							   code ? BOS_C_TEXT : BOS_C_TEXT2, 1, x + pad, ty, w - 2 * pad, 2) + BOS_px(12);
-		}
-		(void)h;
-		BosHint hr[1] = {{"B", I18N_text("Back")}};
-		BOS_hintBar(screen, hr, 1, NULL, 0);
-		return;
+	(void)show_setting, (void)help_scroll;
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Add stations"));
+	int y = BOS_px(BOS_BAR_H) + BOS_largeTitle(screen, BOS_px(BOS_BAR_H), I18N_text("Add your own stations"), NULL);
+	int x = BOS_px(40), w = screen->w - 2 * x, pad = BOS_px(28);
+	static const char* para[] = {
+		"Edit this file on the SD card:", "/.userdata/shared/music-player/radio/stations.txt",
+		"One station per line: Name|URL|Genre|Slogan", "e.g. My Radio|http://example.com/stream|Music|Slogan",
+		"MP3, AAC and M3U8 streams · up to 32 stations · the slogan shows when there is no song name",
+		"More stations: fmstream.org"};
+	int h = BOS_px(560) - y + BOS_px(64);
+	BOS_rrect(screen, x, y, w, BOS_px(440), BOS_px(24), BOS_theme()->surface);
+	int ty = y + pad;
+	for (int i = 0; i < 6; i++) {
+		bool code = i == 1 || i == 3;
+		ty += BOS_textWrap(screen, code ? para[i] : I18N_text(para[i]), code ? 26 : 30, code ? 600 : 400,
+						   code ? BOS_C_TEXT : BOS_C_TEXT2, 1, x + pad, ty, w - 2 * pad, 2) + BOS_px(12);
 	}
-	GFX_clear(screen);
-
-	int hw = screen->w;
-	int hh = screen->h;
-
-	UI_renderMenuBar(screen, "Music Player | Add Stations");
-
-	// Content padding (aligned with the page title)
-	int left_padding = UI_listTextX();
-	int right_padding = SCALE1(PADDING);
-	int max_content_width = hw - left_padding - right_padding;
-
-	// Instructions text: a detail page (LIST-LAYOUT §10.2), so the text band has a 16 dp arrow strip above and
-	// below it, between the title's letters and the hint icons; lines scroll inside the band (clipped).
-	int strip = NX_DP(16);
-	int content_start_y = UI_pageTitleBandTop() + strip;
-	int content_end_y = UI_buttonHintIconTop(hh) - strip;
-	int line_h = SCALE1(18);
-	int visible_height = content_end_y - content_start_y;
-
-	const char* lines[] = {
-		"To add custom radio stations:",
-		"",
-		"1. Create or edit the file:",
-		"   /.userdata/shared/music-player/radio/stations.txt",
-		"",
-		"2. Add one station per line:",
-		"   Name|URL|Genre|Slogan",
-		"",
-		"Example:",
-		"   My Radio|http://example.com/stream|Music|Slogan",
-		"",
-		"Notes:",
-		"- MP3, AAC, and M3U8 formats supported",
-		"- Maximum 32 stations",
-		"- Slogan is optional (shown when no song info)",
-		"",
-		"Find more stations at: fmstream.org"};
-
-	int num_lines = sizeof(lines) / sizeof(lines[0]);
-
-	// Calculate total content height
-	int total_content_h = 0;
-	for (int i = 0; i < num_lines; i++) {
-		if (lines[i][0] == '\0') {
-			total_content_h += line_h / 2;
-		} else {
-			total_content_h += line_h;
-		}
-	}
-
-	// Calculate max scroll
-	int max_scroll = total_content_h - visible_height;
-	if (max_scroll < 0)
-		max_scroll = 0;
-	if (*help_scroll > max_scroll)
-		*help_scroll = max_scroll;
-	if (*help_scroll < 0)
-		*help_scroll = 0;
-
-	// Render lines with scroll offset
-	SDL_Rect old_clip;
-	SDL_GetClipRect(screen, &old_clip);
-	SDL_SetClipRect(screen, &(SDL_Rect){0, content_start_y, hw, visible_height});
-	int text_y = content_start_y - *help_scroll;
-	for (int i = 0; i < num_lines; i++) {
-		int current_line_h = (lines[i][0] == '\0') ? line_h / 2 : line_h;
-
-		// Skip lines that are above visible area
-		if (text_y + current_line_h < content_start_y) {
-			text_y += current_line_h;
-			continue;
-		}
-
-		// Stop if we're below visible area
-		if (text_y >= content_end_y) {
-			break;
-		}
-
-		if (lines[i][0] == '\0') {
-			text_y += line_h / 2;
-			continue;
-		}
-
-		SDL_Color color = COLOR_WHITE;
-		TTF_Font* use_font = font.small;
-
-		// Highlight special lines
-		if (strstr(lines[i], "Example:") || strstr(lines[i], "Notes:")) {
-			color = COLOR_GRAY;
-		} else if (lines[i][0] == '-') {
-			color = COLOR_GRAY;
-			use_font = font.tiny;
-		}
-
-		SDL_Surface* line_text = GFX_renderText(use_font, lines[i], color);
-		if (line_text) {
-			SDL_BlitSurface(line_text, NULL, screen, &(SDL_Rect){left_padding, text_y});
-			SDL_FreeSurface(line_text);
-		}
-		text_y += line_h;
-	}
-
-	SDL_SetClipRect(screen, &old_clip);
-
-	// Scroll indicators, centred in the strips
-	if (max_scroll > 0)
-		UI_renderScrollArrows(screen, content_start_y - strip / 2, content_end_y + strip / 2,
-							  *help_scroll > 0, *help_scroll < max_scroll);
-
-	// Button hints
-	UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", NULL});
+	(void)h;
+	BosHint hr[1] = {{"B", I18N_text("Back")}};
+	BOS_hintBar(screen, hr, 1, NULL, 0);
 }
 
 // === GPU STATUS AND BUFFER INDICATOR ===

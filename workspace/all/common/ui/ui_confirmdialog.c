@@ -10,94 +10,16 @@
 
 #define CONFIRM_MAX_SUB_LINES 4
 
-static int confirm_measure(void* font, const char* utf8) {
-	int w = 0;
-	GFX_measureText(font, utf8, &w, NULL);
-	return w;
-}
-
-// Greedy word-wrap `text` to `max_w` using `font`, into up to
-// CONFIRM_MAX_SUB_LINES lines (ConfirmWrap_lines). Returns the line count.
-// (SDL_ttf 2.0.13's wrapped rendering left-aligns lines, so callers render
-// each line centered.)
-static int confirm_wrap_lines(TTF_Font* font, const char* text, int max_w,
-							  char lines[CONFIRM_MAX_SUB_LINES][256]) {
-	return ConfirmWrap_lines(text, max_w, confirm_measure, font, lines, CONFIRM_MAX_SUB_LINES);
-}
-
 void UI_renderConfirmDialog(SDL_Surface* dst, const char* title,
 							const char* subtitle) {
 	UI_renderConfirmDialogHints(dst, title, subtitle, NULL);
 }
 
-// Default button hints (file scope: a compound literal inside the function
-// would not outlive the block it is declared in).
-static char* confirm_default_hints[] = {"B", "CANCEL", "A", "CONFIRM", NULL};
-
 void BOS_uiConfirm(SDL_Surface* s, const char* title, const char* subtitle, char** pairs) __attribute__((weak));
 void UI_renderConfirmDialogHints(SDL_Surface* dst, const char* title,
 								 const char* subtitle, char** hints) {
-	if (UI_bos && BOS_uiConfirm) {
-		GFX_clearLayers(LAYER_SCROLLTEXT);
-		BOS_uiConfirm(dst, title, subtitle, hints && !hints[0] ? hints : hints);
-		return;
-	}
-	if (!hints)
-		hints = confirm_default_hints;
-	bool has_buttons = hints[0] != NULL; // {NULL}: a notice with no buttons
-	int padding_x = SCALE1(PADDING * 4);
-	int content_w = dst->w - padding_x * 2;
-
 	GFX_clearLayers(LAYER_SCROLLTEXT);
-	SDL_FillRect(dst, NULL, SDL_MapRGB(dst->format, 0, 0, 0));
-
-	int btn_sz = SCALE1(BUTTON_SIZE); // the centred button row (UI_renderCenteredButtons)
-
-	// Wrap the subtitle ourselves into centered lines so a long subtitle
-	// (a) leaves room for the buttons below it and (b) stays horizontally
-	// centered - SDL_ttf's own wrapped rendering left-aligns.
-	char sub_lines[CONFIRM_MAX_SUB_LINES][256];
-	int sub_line_count = 0;
-	int sub_line_h = TTF_FontHeight(font.small);
-	if (subtitle && subtitle[0])
-		sub_line_count = confirm_wrap_lines(font.small, subtitle, content_w, sub_lines);
-
-	int title_h = TTF_FontHeight(font.large);
-	int total_h = title_h;
-	if (sub_line_count)
-		total_h += SCALE1(BUTTON_MARGIN) + sub_line_count * sub_line_h;
-	if (has_buttons)
-		total_h += SCALE1(BUTTON_MARGIN) + btn_sz;
-
-	int y = (dst->h - total_h) / 2;
-
-	// Title - single-line row (unlike the subtitle, which wraps): truncate
-	// with an ellipsis so a long title can't overflow into the subtitle/hint
-	// row below.
-	char title_buf[256];
-	GFX_truncateText(font.large, title, title_buf, sizeof(title_buf), content_w, 0);
-	SDL_Rect title_rect = {padding_x, y, content_w, title_h};
-	GFX_blitMessage(font.large, title_buf, dst, &title_rect);
-	y += title_h;
-
-	// Subtitle (optional) - each line rendered horizontally centered
-	if (sub_line_count) {
-		y += SCALE1(BUTTON_MARGIN);
-		for (int i = 0; i < sub_line_count; i++) {
-			SDL_Surface* s = GFX_renderText(font.small, sub_lines[i], COLOR_WHITE);
-			if (s) {
-				SDL_BlitSurface(s, NULL, dst, &(SDL_Rect){(dst->w - s->w) / 2, y});
-				SDL_FreeSurface(s);
-			}
-			y += sub_line_h;
-		}
-	}
-
-	// Buttons
-	if (has_buttons) {
-		y += SCALE1(BUTTON_MARGIN);
-		UI_renderCenteredButtons(dst, y, hints);
-	}
+	BOS_uiConfirm(dst, title, subtitle, hints && !hints[0] ? hints : hints);
 }
 
 int UI_modalLoop(const UI_ModalOpts* o) {

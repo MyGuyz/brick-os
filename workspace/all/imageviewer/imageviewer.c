@@ -41,7 +41,7 @@ static SDL_Surface* screen;
 static AppScreen app_screen = SCREEN_BROWSER;
 static ImageBrowserContext browser;
 static ListView browser_view;
-static char browser_row_buf[256];
+
 static char browser_toast[64];
 static uint32_t browser_toast_time;
 static SDL_Surface* icon_folder;
@@ -79,27 +79,6 @@ static void load_image_directory(const char* path) {
 	UI_listViewReset(&browser_view, browser.entry_count, browser.entries);
 }
 
-// Row provider: files show without extension; dirs show the folder icon
-// with no brackets, or fall back to [Name] with no icon if the asset failed
-// to load.
-static void browser_get_row(void* ctx, int i, bool selected, ListViewRow* out) {
-	ImageBrowserContext* b = ctx;
-	ImageEntry* e = &b->entries[i];
-	if (e->is_dir) {
-		if (icon_folder) {
-			snprintf(browser_row_buf, sizeof(browser_row_buf), "%s", e->name);
-			out->icon = selected ? icon_folder : icon_folder_inv;
-		} else {
-			snprintf(browser_row_buf, sizeof(browser_row_buf), "[%s]", e->name);
-		}
-	} else {
-		ImageBrowser_getDisplayName(e->name, browser_row_buf, sizeof(browser_row_buf));
-		if (icon_folder)
-			out->icon = icon_image ? (selected ? icon_image : icon_image_inv) : Icons_getEmpty(selected);
-	}
-	out->label = browser_row_buf;
-}
-
 // Format a file size for the preview metadata line: "245 KB" below 1 MB,
 // "1.2 MB" at or above.
 static void format_size(long bytes, char* out, size_t out_len) {
@@ -107,49 +86,6 @@ static void format_size(long bytes, char* out, size_t out_len) {
 		snprintf(out, out_len, "%.1f MB", bytes / (1024.0 * 1024.0));
 	else
 		snprintf(out, out_len, "%ld KB", bytes / 1024);
-}
-
-// Preview pane for the selected file: the async-loaded preview once it
-// matches the selection, a dimmed placeholder while it's loading, or
-// "Can't preview" on a load error. Draws nothing for a dir/empty selection.
-static void render_preview_pane(void) {
-	if (browser_view.selected < 0 || browser_view.selected >= browser.entry_count)
-		return;
-	ImageEntry* e = &browser.entries[browser_view.selected];
-	if (e->is_dir)
-		return;
-
-	int box_h = pane_h - SCALE1(24); // metadata line reserved below the image
-	if (preview_surf && preview_have[0] && strcmp(preview_have, e->path) == 0) {
-		int img_x = pane_x + (pane_w - preview_surf->w) / 2;
-		int img_y = pane_y + (box_h - preview_surf->h) / 2;
-		SDL_BlitSurface(preview_surf, NULL, screen, &(SDL_Rect){img_x, img_y});
-
-		char size_buf[32];
-		format_size(e->size_bytes, size_buf, sizeof(size_buf));
-		char meta[64];
-		snprintf(meta, sizeof(meta), "%dx%d · %s", preview_ow, preview_oh, size_buf);
-		SDL_Surface* meta_surf = GFX_renderText(font.small, meta, COLOR_GRAY);
-		if (meta_surf) {
-			SDL_Rect dst = {pane_x + (pane_w - meta_surf->w) / 2,
-							pane_y + box_h + (SCALE1(24) - meta_surf->h) / 2};
-			SDL_BlitSurface(meta_surf, NULL, screen, &dst);
-			SDL_FreeSurface(meta_surf);
-		}
-		return;
-	}
-
-	// Loading or errored: dimmed placeholder matching the unselected list
-	// pill background.
-	UI_fillRoundedRect(screen, pane_x, pane_y, pane_w, box_h, SCALE1(7), THEME_COLOR2);
-	if (preview_error[0] && strcmp(preview_error, e->path) == 0) {
-		SDL_Surface* err = GFX_renderText(font.small, "Can't preview", COLOR_WHITE);
-		if (err) {
-			SDL_Rect dst = {pane_x + (pane_w - err->w) / 2, pane_y + (box_h - err->h) / 2};
-			SDL_BlitSurface(err, NULL, screen, &dst);
-			SDL_FreeSurface(err);
-		}
-	}
 }
 
 // ---- Brick OS look (DESIGN 7.9) ----
@@ -224,48 +160,8 @@ static void render_browser_bos(void) {
 }
 
 static void render_browser(void) {
-	if (UI_bos) {
-		render_browser_bos();
-		UI_renderToast(screen, browser_toast, browser_toast_time);
-		if (ContextMenu_isOpen())
-			ContextMenu_render(screen);
-		return;
-	}
-	GFX_clear(screen);
-
-	// "Images" at the root, "Images | <folder>" deeper (LIST-LAYOUT §10.1)
-	const char* title = "Images";
-	char folder_title[300];
-	if (strcmp(browser.current_path, IMAGES_ROOT) != 0) {
-		const char* slash = strrchr(browser.current_path, '/');
-		if (slash && slash[1] != '\0')
-			title = UI_pageTitle(folder_title, sizeof(folder_title), "Images", slash + 1);
-	}
-	UI_renderMenuBar(screen, title);
-
-	ListView* v = &browser_view;
-	v->title = NULL;
-	v->font = font.medium;
-	v->count = browser.entry_count;
-	v->get_row = browser_get_row;
-	v->ctx = &browser;
-	v->list_id = (const void*)browser.entries;
-	v->empty_title = "No images found";
-	v->empty_subtitle = "Screenshots you take will appear here";
-	v->max_width_override = (int)(screen->w * 0.55); // leave room for the preview pane
-	// B leaves the tool at its top folder (a tool's first level says EXIT), else goes up a folder
-	static char* hints_root[] = {"B", "EXIT", "A", "OPEN", NULL};
-	static char* hints_sub[] = {"B", "BACK", "A", "OPEN", NULL};
-	v->hint_pairs = strcmp(browser.current_path, IMAGES_ROOT) == 0 ? hints_root : hints_sub;
-	UI_listViewRender(v, screen);
-
-	render_preview_pane();
-
-	// Unconditional: UI_renderToast clears its GPU layer itself when the
-	// message is empty or expired, which is what actually makes the toast
-	// disappear once UI_tickToast() clears the message on the expiry edge.
+	render_browser_bos();
 	UI_renderToast(screen, browser_toast, browser_toast_time);
-
 	if (ContextMenu_isOpen())
 		ContextMenu_render(screen);
 }

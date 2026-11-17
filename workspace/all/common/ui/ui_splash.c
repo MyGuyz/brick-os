@@ -6,24 +6,6 @@
 void BOS_uiSplash(SDL_Surface* s, const char* title) __attribute__((weak));
 
 void UI_showSplashScreen(SDL_Surface* screen, const char* title) {
-	if (UI_bos && BOS_uiSplash) {
-		BOS_uiSplash(screen, title);
-		GFX_flip(screen);
-		return;
-	}
-	GFX_clear(screen);
-
-	SDL_Surface* title_text = GFX_renderText(font.large, title, COLOR_WHITE);
-	if (title_text) {
-		SDL_BlitSurface(title_text, NULL, screen, &(SDL_Rect){(screen->w - title_text->w) / 2, screen->h / 2 - title_text->h});
-		SDL_FreeSurface(title_text);
-	}
-
-	SDL_Surface* loading = GFX_renderText(font.small, "Loading...", COLOR_GRAY);
-	if (loading) {
-		SDL_BlitSurface(loading, NULL, screen, &(SDL_Rect){(screen->w - loading->w) / 2, screen->h / 2 + SCALE1(4)});
-		SDL_FreeSurface(loading);
-	}
-
+	BOS_uiSplash(screen, title);
 	GFX_flip(screen);
 }

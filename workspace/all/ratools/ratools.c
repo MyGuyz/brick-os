@@ -102,14 +102,6 @@ static const char* get_user_display(void) {
 	return (u && u[0]) ? u : "(not set)";
 }
 
-static char pending_buf[64];
-static const char* get_pending_display(void) {
-	int n = RA_Offline_pendingCount();
-	snprintf(pending_buf, sizeof(pending_buf), "%d unlock%s waiting",
-			 n, n == 1 ? "" : "s");
-	return pending_buf;
-}
-
 static char lastsync_buf[64];
 static const char* get_lastsync_display(void) {
 	time_t t = RA_Offline_lastSyncTime();
@@ -353,80 +345,8 @@ static const char* main_item_labels[MAIN_ITEM_COUNT] = {
 
 static ListView main_view;
 
-static void main_list_get_row(void* ctx, int i, bool selected, ListViewRow* out) {
-	(void)ctx;
-	(void)selected;
-	out->label = main_item_labels[i];
-}
-
-static const SDL_Color col_header_title = {255, 255, 255, 255};
-static const SDL_Color col_header_gray = {180, 180, 180, 255};
-static const SDL_Color col_header_pending = {255, 200, 80, 255};
-
 static bool ra_is_authenticated(void) {
 	return CFG_getRAAuthenticated() && *CFG_getRAToken();
-}
-
-// One header line at x, y in the font just fetched (UIFont pointers are only valid until the next
-// UIFont_get). Returns the line's height.
-static int header_line(SDL_Surface* screen, TTF_Font* f, const char* text, SDL_Color color, int x, int y) {
-	if (!f)
-		return 0;
-	if (text && text[0]) {
-		SDL_Surface* s = GFX_renderText(f, text, color);
-		if (s) {
-			SDL_BlitSurface(s, NULL, screen, &(SDL_Rect){x, y});
-			SDL_FreeSurface(s);
-		}
-	}
-	return TTF_FontHeight(f);
-}
-
-// Non-selectable status header below the menu bar (LIST-LAYOUT §10.3): the headline (username) bold at
-// 1.15 x the list label, then the grey detail lines at 0.8 x (secondary), 2 dp apart, starting 8 dp under the
-// title strip. Recomputed every call so it always reflects the latest auth/sync/pending state. Returns the y
-// (screen px) where the list's area starts; the list's block (rows + arrow strips) centres itself below it.
-static int render_main_header(SDL_Surface* screen) {
-	int x = UI_listTextX(); // under the page title and the rows' text (the 14 dp inset)
-	int y = UI_menuBarHeight() + NX_DP(8);
-	int gap = NX_DP(2);
-	bool auth = ra_is_authenticated();
-
-	// Line 1: username, or "Not authenticated"
-	const char* line1 = auth ? get_user_display() : "Not authenticated";
-	y += header_line(screen, UI_textRole(UI_TEXT_HEADLINE, true), line1, col_header_title, x, y);
-
-	// Line 2: cached score, prompt to authenticate, or omitted (no cached
-	// login yet). Slot height is reserved either way so line 3 never shifts.
-	char line2_buf[64];
-	const char* line2 = NULL;
-	if (!auth) {
-		line2 = "Set credentials in Settings";
-	} else {
-		uint32_t score = 0, soft = 0;
-		if (RAT_getCachedScore(&score, &soft)) {
-			// nx-redux is softcore-only (hardcore removed), so the hardcore
-			// total would read 0 forever - show the real (softcore) points
-			snprintf(line2_buf, sizeof(line2_buf), "%u point%s", soft, soft == 1 ? "" : "s");
-			line2 = line2_buf;
-		}
-	}
-	y += gap;
-	y += header_line(screen, UI_textRole(UI_TEXT_SECONDARY, false), line2, col_header_gray, x, y);
-
-	// Line 3: pending unlocks, highlighted yellow when unlocks are waiting.
-	int n = RA_Offline_pendingCount();
-	y += gap;
-	y += header_line(screen, UI_textRole(UI_TEXT_SECONDARY, false), get_pending_display(),
-					 n > 0 ? col_header_pending : col_header_gray, x, y);
-
-	// Line 4: last sync time.
-	char line4_buf[96];
-	snprintf(line4_buf, sizeof(line4_buf), "Last sync: %s", get_lastsync_display());
-	y += gap;
-	y += header_line(screen, UI_textRole(UI_TEXT_SECONDARY, false), line4_buf, col_header_gray, x, y);
-
-	return y;
 }
 
 // Selectable list of the 4 main actions, drawn by the shared ListView widget
@@ -499,22 +419,7 @@ static void render_main_bos(SDL_Surface* s) {
 }
 
 static void render_main_screen(SDL_Surface* screen) {
-	if (UI_bos) {
-		render_main_bos(screen);
-		return;
-	}
-	GFX_clear(screen);
-	UI_renderMenuBar(screen, "RetroAchievements");
-
-	int list_top = render_main_header(screen);
-	main_view.title = NULL; // we drew our own chrome above
-	main_view.font = font.large;
-	main_view.count = MAIN_ITEM_COUNT;
-	main_view.get_row = main_list_get_row;
-	main_view.list_id = (const void*)main_item_labels;
-	main_view.list_y_override = list_top;
-	main_view.hint_pairs = (char*[]){"B", "EXIT", "A", "OPEN", NULL};
-	UI_listViewRender(&main_view, screen);
+	render_main_bos(screen);
 }
 
 // Run the settings_menu framework for ra_settings_page only, then return to
