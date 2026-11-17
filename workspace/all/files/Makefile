@@ -1,0 +1,49 @@
+###########################################################
+
+ifeq (,$(PLATFORM))
+PLATFORM=$(UNION_PLATFORM)
+endif
+
+ifeq (,$(PLATFORM))
+	$(error please specify PLATFORM, eg. PLATFORM=trimui make)
+endif
+
+ifeq (,$(CROSS_COMPILE))
+	$(error missing CROSS_COMPILE for this toolchain)
+endif
+
+###########################################################
+
+include ../../$(PLATFORM)/platform/Makefile.env
+
+SDL?=SDL
+
+###########################################################
+
+TARGET = files
+INCDIR = -I. -I../common/ -I../../$(PLATFORM)/platform/
+# image_load.c: libretro-common's WebP decoder (the minarch checkout)
+INCDIR += -I../minarch/libretro-common/include
+include ../common/ui/ui.mk
+# ui_fonts.c's Fonts_drawListItemBg/Fonts_getListTextColor now delegate to
+# ui_list.c (UI_drawListItemBg/UI_getListTextColor) -- not in UI_COMPONENT_SRCS,
+# so any app compiling ui_fonts.c must also compile ui_list.c (mirrors ratools).
+SOURCE = $(TARGET).c ../common/utils.c ../common/api.c ../common/text_shape.c ../common/audio_manager.c ../common/config.c ../common/scaler.c $(UI_COMPONENT_SRCS) $(BOS_UI_SRCS) $(UI_DIR)/ui_list.c $(UI_LISTVIEW_SRCS) $(UI_DIR)/ui_keyboard.c $(UI_DIR)/ui_toast.c $(UI_DIR)/ui_contextmenu.c ../common/image_load.c ../minarch/libretro-common/formats/webp/rwebp.c ../minarch/libretro-common/formats/vp8/rvp8.c ../../$(PLATFORM)/platform/platform.c
+
+CC = $(CROSS_COMPILE)gcc
+CFLAGS  += $(OPT)
+CFLAGS  += $(INCDIR) -I../../$(PLATFORM)/libmsettings -DPLATFORM=\"$(PLATFORM)\" -std=gnu99
+LDFLAGS	 += -L../../$(PLATFORM)/libmsettings -lmsettings
+
+PRODUCT= build/$(PLATFORM)/$(TARGET).elf
+
+all: ../minarch/libretro-common
+	mkdir -p build/$(PLATFORM)
+	$(CC) $(SOURCE) -o $(PRODUCT) $(CFLAGS) $(LDFLAGS)
+
+../minarch/libretro-common:
+	cd ../minarch && make libretro-common
+
+clean:
+	rm -f $(PRODUCT)
+

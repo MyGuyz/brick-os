@@ -181,7 +181,8 @@ static void card(SDL_Surface* s, const char* icon, uint32_t icon_bg, const char*
 
 // the sign a question gets from its words (English, before translation)
 static const char* signFor(const char* en, uint32_t* bg) {
-	if (en && (strstr(en, "Delete") || strstr(en, "Remove") || strstr(en, "Clear") || strstr(en, "Unsubscribe"))) {
+	if (en && (strstr(en, "Delete") || strstr(en, "Remove") || strstr(en, "Clear") || strstr(en, "Unsubscribe") ||
+			   !strncmp(en, "ลบ", strlen("ลบ")) || strstr(en, "ถอน"))) { // a question already in Thai
 		*bg = BOS_C_DANGER;
 		return "trash";
 	}
@@ -331,7 +332,9 @@ static const ActIcon acts[] = {
 	{"Mark", "check", 0x30D158}, {"Download", "upload", 0x30D158}, {"Cancel", "trash", BOS_C_DANGER},
 	{"Lyrics", "lyrics", 0x64D2FF}, {"Visualizer", "wave", 0xBF5AF2}, {"Screen Off", "moon", 0xFFD60A},
 	{"Background", "home", 0x30D158}, {"Playback Controls", "pad", 0x8E8E93}, {"Search", "info", 0x0A84FF},
-	{"Browse", "folder", 0x0A84FF}, {"Settings", "settings", 0x8E8E93}, {NULL, NULL, 0}};
+	{"Browse", "folder", 0x0A84FF}, {"Settings", "settings", 0x8E8E93},
+	{"Copy", "copy", 0x0A84FF}, {"Move", "move", 0xFF9F0A}, {"New folder", "plus", 0x30D158},
+	{"Details", "info", 0xB4B4BA}, {NULL, NULL, 0}};
 
 static const ActIcon* actFor(const char* label) {
 	for (int i = 0; acts[i].word; i++)

@@ -1272,3 +1272,44 @@ Progress	ความคืบหน้า
 Optimize images	ย่อขนาดภาพ
 Sync via cable	ซิงก์ผ่านสาย
 Sync via Wi-Fi	ซิงก์ผ่าน Wi-Fi
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+SD card	การ์ด SD
+Folder · %d items	โฟลเดอร์ · %d รายการ
+%d picked	เลือก %d รายการ
+Copy %d items here?	คัดลอก %d รายการมาที่นี่?
+Move %d items here?	ย้าย %d รายการมาที่นี่?
+Open the folder it goes to, then press START	เข้าโฟลเดอร์ที่ต้องการ แล้วกด START วาง
+This folder is empty	โฟลเดอร์นี้ว่าง
+Paste here	วางที่นี่
+Up	ขึ้น
+Pick	เลือก
+Copying	กำลังคัดลอก
+Moving	กำลังย้าย
+Deleting	กำลังลบ
+File %d / %d · %s	ไฟล์ %d / %d · %s
+A folder cannot go inside itself	ย้ายโฟลเดอร์เข้าไปในตัวเองไม่ได้
+Stopped	หยุดแล้ว
+Copy failed	คัดลอกไม่สำเร็จ
+Move failed	ย้ายไม่สำเร็จ
+Copied	คัดลอกแล้ว
+Moved	ย้ายแล้ว
+Delete "%s"?	ลบ "%s" ไหม?
+Delete %d items?	ลบ %d รายการไหม?
+They are removed from the SD card and cannot come back	จะถูกลบจากการ์ด SD และเอาคืนไม่ได้
+Deleted	ลบแล้ว
+Some could not be deleted	ลบบางรายการไม่ได้
+Rename "%s"	เปลี่ยนชื่อ "%s"
+That name is already used	มีชื่อนี้อยู่แล้ว
+New folder name	ชื่อโฟลเดอร์ใหม่
+Could not make the folder	สร้างโฟลเดอร์ไม่ได้
+%s · %d files
+Changed %s	%s · %d ไฟล์
+แก้ไขล่าสุด %s
+%s
+Changed %s	%s
+แก้ไขล่าสุด %s
+Copy	คัดลอก
+New folder	โฟลเดอร์ใหม่
+Exit Files?	ออกจากไฟล์ไหม?

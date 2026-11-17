@@ -139,6 +139,7 @@ system:
 	cp ./workspace/all/musicplayer/build/$(PLATFORM)/musicplayerctl.elf ./build/SYSTEM/$(PLATFORM)/bin/
 	cp ./workspace/all/mediaplayer/build/$(PLATFORM)/mediaplayer.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Media\ Player.pak/
 	cp ./workspace/all/imageviewer/build/$(PLATFORM)/imageviewer.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Image\ Viewer.pak/
+	cp ./workspace/all/files/build/$(PLATFORM)/files.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Files.pak/
 	cp ./workspace/all/sync/build/$(PLATFORM)/sync.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Device\ Sync.pak/
 	cp ./workspace/all/scraper/build/$(PLATFORM)/scraper.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Artwork\ Manager.pak/
 ifneq (,$(filter $(PLATFORM),tg5040 tg5050))

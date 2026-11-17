@@ -47,6 +47,7 @@ endif
 	cd ./all/musicplayer/ && make all
 	cd ./all/mediaplayer/ && make
 	cd ./all/imageviewer/ && make
+	cd ./all/files/ && make
 	# native PICO-8: bridge core + LD_PRELOAD shim + the child's SDL2 (after minarch: needs its libretro-common)
 	cd ./all/pico8native/ && make
 	cd ./all/sync/ && make
@@ -109,6 +110,7 @@ endif
 	cd ./all/musicplayer/ && make clean
 	cd ./all/mediaplayer/ && make clean
 	cd ./all/imageviewer/ && make clean
+	cd ./all/files/ && make clean
 	cd ./all/pico8native/ && make clean
 	cd ./all/sync/ && make clean
 	cd ./all/netplay-wizard/ && make clean
