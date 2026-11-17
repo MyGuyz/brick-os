@@ -288,26 +288,37 @@ TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube 
 
 ### 6.2 เกม — step 1, console wheel (full screen)
 - Status bar "เกม". **No large title on this screen.**
-- **The wheel** fills the space down to the dots. Pictures sit on an arc, cut by the screen edges. The centre picture's box starts 10 px below the status bar:
+- **The wheel** (board `v2-GamesMotion`, approved 2026-11-17) fills the space down to the dots. The selected console
+  is big in the middle; the others keep their size and sit beside it, cut by the screen edges, the centre one drawn
+  over their near edges. The centre box starts 18 px below the status bar; every box is centred on the centre box's
+  middle, the side ones lower by their drop:
 
-  | Slot | Box | Lower by | Opacity |
-  |---|---|---|---|
-  | Centre | 560×380 | — | 1 |
-  | Neighbours | 300×220 | 130 | .5 |
-  | Outer | 220×150 | 210 | .22 |
+  | Distance | Box | Lower by | Opacity | Centre from the middle |
+  |---|---|---|---|---|
+  | 0 (selected) | 640×440 | — | 1 | 0 |
+  | 1 | 300×270 | 40 | .85 | 420 |
+  | 2 | 220×198 | 60 | .6 | 420 + 180 |
+
+  - **In between, everything follows the distance** (size, drop, opacity, place): nothing jumps from one size to
+    the next half-way. The sizes go in steps of 1/6 of a place (copies made once per console and step, at most one
+    new copy a frame; until it is made the nearest step is drawn).
+  - **Motion (all carousels of เกม):** a critically damped spring like YouTube's carousel (SmoothDamp). A press
+    moves the target; the wheel follows keeping its speed, so a held direction glides on instead of starting over
+    at every step. Settles in about 0.2 s at ภาพเคลื่อนไหว ปกติ, quicker on น้อย, a cut on ปิด. 60 fps on the
+    Brick once the pictures are made (16.6 ms a frame).
 
   - A soft white floor glow (10 % → 0) sits under the centre.
   - No ring: the centre **is** the selection.
-  - **Name under the picture:** the centre console's name 56/700, centred, 18 px below the picture's box, with "<N> เกม" 30 `text2` right under it. It changes with the wheel; the side consoles have no names.
+  - **Name under the picture:** the centre console's name 56/700, centred, 20 px below the picture's box, with "<N> เกม" 30 `text2` right under it. It changes with the wheel; the side consoles have no names.
 - **Page dots**, centred above the hint bar: the current one 28×10 `text`, the others 10×10 `surface2`.
 - **Picture,** the first one found:
   1. `<Roms/console>/.media/console.png` (the user's)
   2. The OS's console picture `res/menu/menu_pad_<id>.png`, **brightened back to full colour** with `scripts/design/brighten_pads.py` (28 consoles)
   3. The console logo on a `surface` card (radius 28)
-- The bundled pictures are 420 px wide. Before release, the 560 centre box needs the 1000 px sources again (the input of `make_pads.py`).
+- The bundled pictures are 420 px wide. Before release, the 640 centre box needs the 1000 px sources again (the input of `make_pads.py`).
 - **First slot** (board v2-GamesWheelFav): ★ รายการโปรด. Then, only when the user has made one, one slot per **คอลเลกชัน** (folder icon in `primary`). Then the consoles A–Z; the wheel wraps.
   - No "recently played" slot: Home's เล่นต่อ already is that list (removed 2026-11-10).
-  - A slot is a `surface` card (radius 32) at 62 % × 90 % of the box, with a big line icon at half its height (star in `warn`).
+  - A slot is a `surface` card (radius 32 at the centre size) 90 % of the box high and 69 % of that wide, with a big line icon at half its height (star in `warn`).
   - Name under it as for consoles: "รายการโปรด" / the collection's name, with "<N> เกม".
   - A opens §6.3 with that list. Each game's caption adds its console name.
   - A slot with 0 games stays, with "ยังไม่มีเกม" under the name.
@@ -319,7 +330,11 @@ TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube 
 
 ### 6.3 เกม — step 2, cover mode (default, full screen)
 - Status bar "เกม". Large title = console, with "<N> เกม · เรียง A–Z" under it.
-- Carousel (full size) of the console's games.
+- Carousel (full size) of the console's games (board `v2-GamesMotion`):
+  - The centred cover 500×375 (radius 24) with the ring once it has settled; one step out 58 % at half opacity, two
+    steps 42 % at a quarter, their centres 360 and 360 + 230 from the middle, so they come in close and pass under
+    the centred one. Sizes and fades follow the distance in 1/6 steps (copies of the centre-size picture, made
+    once). Motion: the spring of §6.2.
   - Caption: name; "เล่นล่าสุด <when>" when played; `เล่นต่อ` pill.
   - **No file size.**
 - Hint bar: left **MENU** ตัวเลือก; right **A** เล่น · **B** กลับ · **X** โปรด · **Y** ค้นหา.
@@ -946,6 +961,24 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
 - **Whole OS:** L2/R2 page up / down in every long list (games, history, music, settings). B walks back to the app's
   first page, then one more B asks before leaving the app (§5.7 sheet: ออกจาก <app> ไหม · ออก (danger) · อยู่ต่อ).
   SELECT = options of the focused thing, START = the app's main menu, everywhere.
+
+### 7.5b YouTube โพสต์ (board `design/round2/v2-YouTubePost`, approved 2026-11-17)
+- **Post tiles** show the post's first picture (JPEG at the first size ≥ 640 px: the URLs ask for WebP, which the app
+  can't decode). A post with several pictures has a badge top right: image icon + "1/3" (`DZ_BADGE` on black 72 %).
+  Text-only posts keep the text tile. Likes read "ถูกใจ 368". A on a post (no clip) reads **อ่านโพสต์**.
+- **Post page** (full page, not the side panel), status bar "โพสต์":
+  - Left: the pictures in a 480 square (radius 24, fitted whole on `surface`), ←→ between them (a fresh press
+    wraps; the same spring as the carousels), "k / n" top right and dots under it. A post with a clip: its picture
+    480×270 with a play mark.
+  - Right (all the width without a picture): avatar 56, the author (30/700), "<age> · ถูกใจ <n>" (24 `text2`), then
+    the whole text (26, ↑↓ scrolls, a thin mark at the right edge).
+  - Along the bottom of the column, 72 high: [เล่นคลิป] (with a clip) and [ความคิดเห็น]; the focused one white.
+    ←→ moves between them when the post has no pictures.
+  - Hints: left ←→ รูป, ↑↓ เลื่อน (when the text scrolls); right **A** (the focused button) · **B** กลับ ·
+    **Y** เต็มจอ.
+  - A on ความคิดเห็น opens the comments panel (§7.5) over the page.
+- **Full screen** (Y): the picture fitted whole between the bars on black (a 1024 px copy, the smaller one until it
+  is in), "k / n" at the top, ←→ still change it; B back to the post.
 
 ### 7.8 Shorts และเล่นอัตโนมัติ (boards `design/round2/v3-Shorts`, approved 2026-11-16)
 - **Shorts mode:** A on any Short (Home shelf, a channel's Shorts tab, search) opens it. The clip fills the screen's

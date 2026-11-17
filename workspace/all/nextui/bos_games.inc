@@ -4,6 +4,12 @@
 #define FAV_PATH COLLECTIONS_PATH "/Favorites.txt"
 #define LISTVIEW_PATH USERDATA_PATH "/bos_games_list.txt" // consoles shown as a list (one folder path per line)
 #define LIST_ROWS 5
+#define WLEVEL_STEPS 6 // size steps per place of distance (the sizes and fades between the places)
+#define WLEVELS 17 // levels 0 .. 2.67 places out
+static void coverCacheClear(void); // the scaled covers belong to the list being replaced
+// At most one scaled copy is made per frame (a big one costs several ms): until a size is ready the nearest one
+// made is drawn, and another frame is asked for (pending).
+static int bg_made;
 
 typedef struct {
 	char path[MAX_PATH]; // console folder, or FAV_PATH
@@ -13,16 +19,16 @@ typedef struct {
 	bool fav;
 	SDL_Surface* pic;	 // the picture as loaded (NULL: none, see tried)
 	bool tried;
-	SDL_Surface* sized[3]; // pic fitted to the centre / neighbour / outer box, made once
+	SDL_Surface* sized[WLEVELS]; // pic fitted to the box of each distance step, faded, made once when first drawn
 } BgConsole;
 static BgConsole* bg_cons;
 static int bg_ncons, bg_sel;
-static float bg_pos, bg_from; // wheel position shown, tween start
-static uint32_t bg_start;
+static float bg_pos, bg_vel; // wheel position shown and its speed (springStep)
+static uint32_t bg_start, bg_last; // moving (non-zero) / the last step's time
 static Directory* bg_games; // the selected console's list (Directory_new)
 static int bg_games_for = -1, bg_gsel, bg_gtop;
-static float bg_gpos, bg_gfrom;
-static uint32_t bg_gstart;
+static float bg_gpos, bg_gvel;
+static uint32_t bg_gstart, bg_glast;
 static bool bg_step2; // showing the console's games
 static bool bg_listmode;
 static bool bg_built;
@@ -31,11 +37,14 @@ static uint32_t bg_menu_down;
 // page is reset and its list loaded again (Home_reset) after the restore.
 static char bg_want_rom[MAX_PATH];
 
-// the wheel's slots (§6.2): box w, h, how much lower than the centre, alpha
+// the wheel (§6.2, board v2-GamesMotion): the centred console fills the middle, the others keep their size; box
+// w, h, how much lower than the centre, alpha, one and two steps out. In between, everything follows the distance.
 static const struct {
 	int w, h, drop;
 	float a;
-} WSLOT[3] = {{560, 380, 0, 1.0f}, {300, 220, 100, 0.5f}, {220, 150, 160, 0.22f}};
+} WSLOT[3] = {{640, 440, 0, 1.0f}, {300, 270, 40, 0.85f}, {220, 198, 60, 0.6f}};
+#define WSTEP1 420 // the neighbour's centre from the middle
+#define WSTEP2 180 // and the next one's from the neighbour's
 
 int BosGames_page(void) {
 	return bg_step2 ? 11 : 10;
@@ -46,7 +55,7 @@ bool BosGames_active(void) {
 }
 
 static void freePics(BgConsole* c) {
-	for (int k3 = 0; k3 < 3; k3++)
+	for (int k3 = 0; k3 < WLEVELS; k3++)
 		if (c->sized[k3]) {
 			SDL_FreeSurface(c->sized[k3]);
 			c->sized[k3] = NULL;
@@ -118,7 +127,7 @@ static void bgBuild(void) {
 		Directory_free(root);
 	if (bg_sel >= bg_ncons)
 		bg_sel = bg_ncons > 0 ? bg_ncons - 1 : 0;
-	bg_pos = bg_from = (float)bg_sel;
+	bg_pos = (float)bg_sel;
 	bg_built = true;
 }
 
@@ -171,9 +180,11 @@ static void bgLoadGames(void) {
 		}
 		a->count = w;
 	}
+	coverCacheClear();
 	bg_games_for = bg_sel;
 	bg_gsel = bg_gtop = 0;
-	bg_gpos = bg_gfrom = 0;
+	bg_gpos = 0;
+	bg_gstart = 0;
 	bg_listmode = bg_ncons > 0 && listModeFor(bg_cons[bg_sel].path);
 	if (bg_want_rom[0] && bg_games && bg_games->entries) {
 		for (int i = 0; i < bg_games->entries->count; i++) {
@@ -181,7 +192,7 @@ static void bgLoadGames(void) {
 			size_t l = strlen(e->path); // the game itself, or the folder it is in
 			if (!strncmp(e->path, bg_want_rom, l) && (bg_want_rom[l] == '\0' || bg_want_rom[l] == '/')) {
 				bg_gsel = i;
-				bg_gpos = bg_gfrom = (float)i;
+				bg_gpos = (float)i;
 				break;
 			}
 		}
@@ -197,7 +208,7 @@ void BosGames_restore(const char* console_path, const char* rom_path) {
 		if (strcmp(bg_cons[i].path, console_path))
 			continue;
 		bg_sel = i;
-		bg_pos = bg_from = (float)i;
+		bg_pos = (float)i;
 		bg_start = 0;
 		snprintf(bg_want_rom, sizeof(bg_want_rom), "%s", rom_path ? rom_path : "");
 		bg_games_for = -1;
@@ -273,13 +284,30 @@ static SDL_Surface* consolePic(BgConsole* c) {
 	return c->pic;
 }
 
-static SDL_Surface* consoleSized(BgConsole* c, int slot) { // fitted (contain) into the slot's box, made once
-	if (c->sized[slot])
-		return c->sized[slot];
+// a value at distance ad from the middle: v[0] in the middle, v[1] one step out, v[2] two or more, straight between
+static float byDist(float ad, float v0, float v1, float v2) {
+	return ad <= 1 ? v0 + (v1 - v0) * ad : ad <= 2 ? v1 + (v2 - v1) * (ad - 1) : v2;
+}
+#define WBOX_W(ad) byDist(ad, WSLOT[0].w, WSLOT[1].w, WSLOT[2].w)
+#define WBOX_H(ad) byDist(ad, WSLOT[0].h, WSLOT[1].h, WSLOT[2].h)
+#define WALPHA(ad) byDist(ad, WSLOT[0].a, WSLOT[1].a, WSLOT[2].a)
+
+static SDL_Surface* consoleSized(BgConsole* c, int lv) { // fitted (contain) into level lv's box, faded, made once
+	if (c->sized[lv])
+		return c->sized[lv];
 	SDL_Surface* p = consolePic(c);
 	if (!p)
 		return NULL;
-	int bw = BOS_px(WSLOT[slot].w), bh = BOS_px(WSLOT[slot].h);
+	if (bg_made > 0)
+		for (int k = 1; k < WLEVELS; k++) {
+			if (lv - k >= 0 && c->sized[lv - k])
+				return pending = true, c->sized[lv - k];
+			if (lv + k < WLEVELS && c->sized[lv + k])
+				return pending = true, c->sized[lv + k];
+		}
+	bg_made++;
+	float ad = lv / (float)WLEVEL_STEPS;
+	int bw = BOS_px((int)WBOX_W(ad)), bh = BOS_px((int)WBOX_H(ad));
 	float k3 = fminf(bw / (float)p->w, bh / (float)p->h);
 	int w = (int)(p->w * k3), h = (int)(p->h * k3);
 	SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
@@ -288,7 +316,7 @@ static SDL_Surface* consoleSized(BgConsole* c, int slot) { // fitted (contain) i
 	SDL_SetSurfaceBlendMode(p, SDL_BLENDMODE_NONE);
 	SDL_BlitScaled(p, NULL, d, NULL);
 	SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_BLEND);
-	uint32_t m = (uint32_t)(256 * WSLOT[slot].a); // over the black page, alpha a = the colour scaled by a
+	uint32_t m = (uint32_t)(256 * WALPHA(ad)); // over the black page, alpha a = the colour scaled by a
 	if (m < 256)
 		for (int y = 0; y < h; y++) {
 			uint32_t* px = (uint32_t*)((uint8_t*)d->pixels + y * d->pitch);
@@ -296,22 +324,23 @@ static SDL_Surface* consoleSized(BgConsole* c, int slot) { // fitted (contain) i
 				px[x] = (px[x] & 0xFF000000u) | ((((px[x] & 0xFF00FF) * m) >> 8) & 0xFF00FF) |
 						((((px[x] & 0xFF00) * m) >> 8) & 0xFF00);
 		}
-	c->sized[slot] = d;
+	c->sized[lv] = d;
 	return d;
 }
 
-static void wheelItem(SDL_Surface* s, BgConsole* c, int slot, int cx, int top) {
-	int bw = BOS_px(WSLOT[slot].w), bh = BOS_px(WSLOT[slot].h);
-	float a = WSLOT[slot].a;
+static void wheelItem(SDL_Surface* s, BgConsole* c, int lv, int cx, int top) {
+	float ad = lv / (float)WLEVEL_STEPS;
+	int bw = BOS_px((int)WBOX_W(ad)), bh = BOS_px((int)WBOX_H(ad));
+	float a = WALPHA(ad);
 	int bx = cx - bw / 2;
 	if (c->fav) { // ★ card: surface, radius 32, 62 % x 90 % of the box, the star half its height in warn
-		int w = bw * 62 / 100, h = bh * 90 / 100, x = cx - w / 2, y = top + (bh - h) / 2;
-		BOS_rrect(s, x, y, w, h, BOS_px(32), over(BOS_theme()->surface, a));
+		int h = bh * 90 / 100, w = h * 69 / 100, x = cx - w / 2, y = top + (bh - h) / 2;
+		BOS_rrect(s, x, y, w, h, h * 32 / 311, over(BOS_theme()->surface, a));
 		int ic = h / 2;
 		BOS_icon(s, "star", BOS_C_WARN, a, cx - ic / 2, y + (h - ic) / 2, ic);
 		return;
 	}
-	SDL_Surface* p = consoleSized(c, slot);
+	SDL_Surface* p = consoleSized(c, lv);
 	if (p) {
 		BOS_blit(p, s, cx - p->w / 2, top + (bh - p->h) / 2, 1); // its slot's dimming is in the copy
 		return;
@@ -339,30 +368,45 @@ static int bg_title_h;
 
 static void wheelRender(SDL_Surface* s) {
 	barTitle(s, I18N_text("Games"));
-	int top = BOS_px(BOS_BAR_H) + BOS_px(10);
+	int top = BOS_px(BOS_BAR_H) + BOS_px(18);
 	bg_band_y[0] = 0;
-	bg_band_h[0] = top + BOS_px(WSLOT[0].h); // no slot hangs lower than the centre one
+	bg_band_h[0] = top + BOS_px(WSLOT[0].h); // no console hangs lower than the centre one
 	int n = bg_ncons;
-	// slot centres out from the middle: 328 / 498 px (the mockup's neighbour left 34, outer left -96)
-	float c1 = BOS_px(328), c2 = BOS_px(498);
-	for (int pass = 2; pass >= 0; pass--)
-		for (int i = 0; i < n; i++) {
-			float d = n > 4 ? wrapD(i - bg_pos, n) : i - bg_pos;
-			float ad = fabsf(d);
-			int slot = (int)(ad + 0.5f);
-			if (slot != pass || ad > 2.6f)
-				continue;
-			float off = ad <= 1 ? ad * c1 : ad <= 2 ? c1 + (ad - 1) * (c2 - c1) : c2;
-			float drop = ad <= 1 ? ad * WSLOT[1].drop : ad <= 2 ? WSLOT[1].drop + (ad - 1) * (WSLOT[2].drop - WSLOT[1].drop) : WSLOT[2].drop;
-			int cx = s->w / 2 + (int)(d < 0 ? -off : off);
-			wheelItem(s, &bg_cons[i], slot, cx, top + BOS_px(drop));
+	// farthest first, so the nearer ones (and last the centred one) are drawn over them
+	int order[64], no = 0;
+	for (int i = 0; i < n && no < 64; i++) {
+		float d = n > 4 ? wrapD(i - bg_pos, n) : i - bg_pos;
+		if (fabsf(d) <= 2.6f)
+			order[no++] = i;
+	}
+	for (int a1 = 0; a1 < no; a1++)
+		for (int b1 = a1 + 1; b1 < no; b1++) {
+			float da = fabsf(n > 4 ? wrapD(order[a1] - bg_pos, n) : order[a1] - bg_pos);
+			float db = fabsf(n > 4 ? wrapD(order[b1] - bg_pos, n) : order[b1] - bg_pos);
+			if (db > da) {
+				int t = order[a1];
+				order[a1] = order[b1];
+				order[b1] = t;
+			}
 		}
+	for (int k = 0; k < no; k++) {
+		int i = order[k];
+		float d = n > 4 ? wrapD(i - bg_pos, n) : i - bg_pos, ad = fabsf(d);
+		int lv = (int)(ad * WLEVEL_STEPS + 0.5f); // the size steps: the place itself follows the exact position
+		float lad = lv / (float)WLEVEL_STEPS;
+		float off = ad <= 1 ? ad * WSTEP1 : WSTEP1 + (ad - 1) * WSTEP2;
+		int cx = s->w / 2 + BOS_px((int)(d < 0 ? -off : off));
+		int bh = BOS_px((int)WBOX_H(lad));
+		// every box centred on the centre one's middle, the side ones lower by their drop
+		int y = top + (BOS_px(WSLOT[0].h) - bh) / 2 + BOS_px((int)byDist(lad, WSLOT[0].drop, WSLOT[1].drop, WSLOT[2].drop));
+		wheelItem(s, &bg_cons[i], lv, cx, y);
+	}
 	BOS_benchLap("wheel");
 	if (n == 0 || BOS_partialOn())
 		return;
 	// the centred console's name under its picture: 56/700, then "<N> เกม" 30 text2
 	BgConsole* c = &bg_cons[bg_sel];
-	int ny = top + BOS_px(WSLOT[0].h) + BOS_px(18);
+	int ny = top + BOS_px(WSLOT[0].h) + BOS_px(20);
 	char name[128];
 	centredName(s, c->name, BOS_FS_TITLE, 700, BOS_C_TEXT, 1, ny);
 	char cnt[64];
@@ -418,6 +462,99 @@ static void gamePic(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r,
 		BOS_focusRing(s, x, y, w, h, r);
 }
 
+// The covers away from the middle: copies of the centre-size picture, scaled to the level's size and faded, made
+// once (a small cache; the picture is pinned once, at the centre size, so the loader is not asked for every size).
+#define CV_CACHE 48
+static struct {
+	Entry* e;
+	SDL_Surface* src;
+	int lv, w, h;
+	uint32_t used;
+	SDL_Surface* out;
+} cv_cache[CV_CACHE];
+static uint32_t cv_tick;
+
+static void coverCacheClear(void) {
+	for (int i = 0; i < CV_CACHE; i++)
+		if (cv_cache[i].out) {
+			SDL_FreeSurface(cv_cache[i].out);
+			cv_cache[i].out = NULL;
+			cv_cache[i].e = NULL;
+		}
+}
+
+static SDL_Surface* coverAt(Entry* e, SDL_Surface* src, int lv, int w, int h, float a) {
+	int lru = 0;
+	for (int i = 0; i < CV_CACHE; i++) {
+		if (cv_cache[i].out && cv_cache[i].e == e && cv_cache[i].src == src && cv_cache[i].lv == lv &&
+			cv_cache[i].w == w && cv_cache[i].h == h) {
+			cv_cache[i].used = ++cv_tick;
+			return cv_cache[i].out;
+		}
+	}
+	for (int i = 0; i < CV_CACHE; i++) { // a free slot, else the one used longest ago
+		if (!cv_cache[i].out) {
+			lru = i;
+			break;
+		}
+		if (cv_cache[i].used < cv_cache[lru].used)
+			lru = i;
+	}
+	if (bg_made > 0) { // the nearest size made of this picture, for now
+		int best = -1;
+		for (int i = 0; i < CV_CACHE; i++)
+			if (cv_cache[i].out && cv_cache[i].e == e && cv_cache[i].src == src &&
+				(best < 0 || abs(cv_cache[i].lv - lv) < abs(cv_cache[best].lv - lv)))
+				best = i;
+		if (best >= 0) {
+			pending = true;
+			return cv_cache[best].out;
+		}
+	}
+	bg_made++;
+	SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+	if (!d)
+		return NULL;
+	SDL_BlendMode bm;
+	SDL_GetSurfaceBlendMode(src, &bm);
+	SDL_SetSurfaceBlendMode(src, SDL_BLENDMODE_NONE);
+	SDL_BlitScaled(src, NULL, d, NULL);
+	SDL_SetSurfaceBlendMode(src, bm);
+	SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_BLEND);
+	uint32_t m = (uint32_t)(256 * a); // faded over the black page: the colour scaled by a
+	if (m < 256)
+		for (int y = 0; y < h; y++) {
+			uint32_t* px = (uint32_t*)((uint8_t*)d->pixels + y * d->pitch);
+			for (int x = 0; x < w; x++)
+				px[x] = (px[x] & 0xFF000000u) | ((((px[x] & 0xFF00FF) * m) >> 8) & 0xFF00FF) |
+						((((px[x] & 0xFF00) * m) >> 8) & 0xFF00);
+		}
+	if (cv_cache[lru].out)
+		SDL_FreeSurface(cv_cache[lru].out);
+	cv_cache[lru].e = e, cv_cache[lru].src = src, cv_cache[lru].lv = lv, cv_cache[lru].w = w, cv_cache[lru].h = h;
+	cv_cache[lru].used = ++cv_tick;
+	cv_cache[lru].out = d;
+	return d;
+}
+
+static void gamePicLv(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r, int lv, float a, int cw, int ch) {
+	SDL_Surface* pic = NULL;
+	if (e->type == ENTRY_ROM) {
+		HomeArtState st = HomeArt_pin(e->path, cw, ch, BOS_px(24), &pic);
+		if (st == HOMEART_LOADING)
+			pending = true;
+	}
+	if (pic && lv > 0)
+		pic = coverAt(e, pic, lv, w, h, a);
+	if (pic) {
+		BOS_blit(pic, s, x, y, 1);
+	} else {
+		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
+		int ic = h / 3;
+		BOS_icon(s, e->type == ENTRY_DIR ? "folder" : "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
+	}
+}
+
 static void lastPlayed(Entry* e, char* out, size_t size) {
 	out[0] = '\0';
 	GameInfo gi;
@@ -455,24 +592,45 @@ static void heldLetter(SDL_Surface* s, Entry* e, int cx, int cy) {
 	bg_letter_shown = true;
 }
 
-static void coversRender(SDL_Surface* s, int top) { // §6.3: the full-size carousel and its caption
+// §6.3 (board v2-GamesMotion): the centred cover 500 x 375, one step out 58 % at half alpha, two steps 42 % at a
+// quarter; sizes and fades follow the distance, the neighbours come in close (360, then 230 more) and pass under it
+static void coversRender(SDL_Surface* s, int top) {
 	int ng = gamesCount();
-	int cw = BOS_px(500), ch = BOS_px(375), sw = BOS_px(300), sh = BOS_px(225);
-	int ow = sw * 3 / 4, oh = sh * 3 / 4, gap = BOS_px(28);
-	float c1 = cw / 2.0f + gap + sw / 2.0f, c2 = cw / 2.0f + gap + sw + gap + ow / 2.0f;
-	for (int pass = 2; pass >= 0; pass--)
-		for (int i = 0; i < ng; i++) {
+	int cw = BOS_px(500), ch = BOS_px(375);
+	int lo = (int)floorf(bg_gpos - 2.6f), hi = (int)ceilf(bg_gpos + 2.6f);
+	if (lo < 0)
+		lo = 0;
+	if (hi > ng - 1)
+		hi = ng - 1;
+	for (int pass = 0; pass < 2; pass++) // the left ones from the far end in, then the right ones: the nearest last
+		for (int k = 0; k <= hi - lo; k++) {
+			int i = pass == 0 ? lo + k : hi - k;
 			float d = i - bg_gpos, ad = fabsf(d);
-			int slot = (int)(ad + 0.5f);
-			if (slot != pass || ad > 2.6f)
+			if (ad > 2.6f || (pass == 0) != (d < 0) || i == (int)floorf(bg_gpos + 0.5f))
 				continue;
-			float off = ad <= 1 ? ad * c1 : ad <= 2 ? c1 + (ad - 1) * (c2 - c1) : c2;
-			int w = slot == 0 ? cw : slot == 1 ? sw : ow, h = slot == 0 ? ch : slot == 1 ? sh : oh;
-			float a = slot == 0 ? 1.0f : slot == 1 ? 0.5f : 0.25f;
-			int r = BOS_px(slot == 0 ? 24 : slot == 1 ? 20 : 18);
-			int cx = s->w / 2 + (int)(d < 0 ? -off : off) - BOS_bumpPx();
-			gamePic(s, bg_games->entries->items[i], cx - w / 2, top + (ch - h) / 2, w, h, r, a, slot == 0 && bg_gstart == 0);
+			int lv = (int)(ad * WLEVEL_STEPS + 0.5f);
+			float lad = lv / (float)WLEVEL_STEPS, sc = byDist(lad, 1, 0.58f, 0.42f);
+			float off = ad <= 1 ? ad * 360 : 360 + (ad - 1) * 230;
+			int w = (int)(cw * sc), h = (int)(ch * sc), r = (int)(BOS_px(24) * sc);
+			int cx = s->w / 2 + BOS_px((int)(d < 0 ? -off : off)) - BOS_bumpPx();
+			gamePicLv(s, bg_games->entries->items[i], cx - w / 2, top + (ch - h) / 2, w, h, r, lv,
+					  byDist(lad, 1, 0.5f, 0.25f), cw, ch);
 		}
+	{ // the centred one over them all, with its ring once it has settled
+		int i = (int)floorf(bg_gpos + 0.5f);
+		if (i >= 0 && i < ng) {
+			float d = i - bg_gpos, ad = fabsf(d);
+			int lv = (int)(ad * WLEVEL_STEPS + 0.5f);
+			float lad = lv / (float)WLEVEL_STEPS, sc = byDist(lad, 1, 0.58f, 0.42f);
+			float off = ad * 360;
+			int w = (int)(cw * sc), h = (int)(ch * sc), r = (int)(BOS_px(24) * sc);
+			int cx = s->w / 2 + BOS_px((int)(d < 0 ? -off : off)) - BOS_bumpPx();
+			gamePicLv(s, bg_games->entries->items[i], cx - w / 2, top + (ch - h) / 2, w, h, r, lv,
+					  byDist(lad, 1, 0.5f, 0.25f), cw, ch);
+			if (lv == 0 && bg_gstart == 0)
+				BOS_focusRing(s, cx - w / 2, top + (ch - h) / 2, w, h, r); // last, over the picture (DESIGN 1)
+		}
+	}
 	if (ng == 0)
 		return;
 	Entry* e = bg_games->entries->items[bg_gsel];
@@ -612,21 +770,38 @@ static void gamesRender(SDL_Surface* s) {
 	BOS_benchLap("hint");
 }
 
-static void tweenStep(float* pos, float* from, uint32_t* start, int target) {
-	if (!*start)
+// The carousels move like YouTube's (DESIGN 6.2): a critically damped spring (SmoothDamp). A press moves the
+// target; the position follows, keeping its speed, so a held direction glides on instead of starting over at every
+// step. It settles in about 0.2 s at the default motion (BOS_tweenMs 180), quicker on น้อย, a cut on ปิด.
+// *moving is non-zero until it has settled.
+static void springStep(float* pos, float* vel, uint32_t* last, uint32_t* moving, float target) {
+	if (!*moving)
 		return;
-	float t = (SDL_GetTicks() - *start) / (float)TWEEN_MS;
-	if (t >= 1) {
-		t = 1;
-		*start = 0;
+	uint32_t now = SDL_GetTicks();
+	float dt = *last ? (now - *last) / 1000.0f : 1 / 60.0f;
+	*last = now;
+	int ms = TWEEN_MS;
+	if (ms <= 0) {
+		*pos = target, *vel = 0, *moving = 0;
+		return;
 	}
-	*pos = *from + (target - *from) * easeOut(t);
+	if (dt > 0.05f) // after a hitch
+		dt = 0.05f;
+	if (dt <= 0)
+		return;
+	float om = 2.0f / (ms * (0.20f / 180)), x = om * dt, ex = 1 / (1 + x + 0.48f * x * x + 0.235f * x * x * x);
+	float chg = *pos - target, tmp = (*vel + om * chg) * dt;
+	*vel = (*vel - om * tmp) * ex;
+	*pos = target + (chg + tmp) * ex;
+	if (fabsf(*pos - target) < 0.002f && fabsf(*vel) < 0.02f)
+		*pos = target, *vel = 0, *moving = 0;
 }
 
 void BosGames_render(SDL_Surface* s) {
 	if (!bg_built)
 		bgBuild();
 	pending = false;
+	bg_made = 0;
 	launch_rect = (SDL_Rect){0, 0, 0, 0};
 	bg_letter_shown = false;
 	bg_list_was = bg_list_live;
@@ -658,17 +833,14 @@ void BosGames_render(SDL_Surface* s) {
 	}
 	if (bg_step2) {
 		bgLoadGames();
-		tweenStep(&bg_gpos, &bg_gfrom, &bg_gstart, bg_gsel);
+		springStep(&bg_gpos, &bg_gvel, &bg_glast, &bg_gstart, (float)bg_gsel);
 		gamesRender(s);
 	} else {
-		if (bg_start) { // the wheel tween, the short way round
-			float t = (SDL_GetTicks() - bg_start) / (float)TWEEN_MS;
-			if (t >= 1) {
-				t = 1;
-				bg_start = 0;
-			}
-			float d = bg_ncons > 4 ? wrapD(bg_sel - bg_from, bg_ncons) : bg_sel - bg_from;
-			bg_pos = bg_from + d * easeOut(t);
+		if (bg_start) { // the wheel's spring, the short way round
+			bool wrap = bg_ncons > 4;
+			springStep(&bg_pos, &bg_vel, &bg_last, &bg_start, wrap ? bg_pos + wrapD(bg_sel - bg_pos, bg_ncons) : bg_sel);
+			if (wrap)
+				bg_pos = fmodf(fmodf(bg_pos, bg_ncons) + bg_ncons, bg_ncons);
 			if (!bg_start)
 				bg_pos = (float)bg_sel;
 		}
@@ -689,13 +861,14 @@ Entry* BosGames_focusedGame(void) {
 static void wheelMove(int dir) {
 	if (bg_ncons < 2)
 		return;
-	bg_from = bg_pos;
 	bg_sel = (bg_sel + dir + bg_ncons) % bg_ncons;
 	bg_want_rom[0] = '\0';
-	bg_start = SDL_GetTicks() ? SDL_GetTicks() : 1;
-	// keep only the pictures near the selection (each console holds up to three fitted copies)
+	if (!bg_start) // from rest: no old speed, no old time
+		bg_vel = 0, bg_last = 0;
+	bg_start = 1;
+	// keep only the pictures near the selection (each console holds its fitted copies, one per size step)
 	for (int i = 0; i < bg_ncons; i++)
-		if (fabsf(wrapD(i - bg_sel, bg_ncons)) > 3.5f && bg_cons[i].tried)
+		if (fabsf(wrapD(i - bg_sel, bg_ncons)) > 5.5f && bg_cons[i].tried)
 			freePics(&bg_cons[i]);
 }
 
@@ -703,12 +876,13 @@ static void gameMove(int to) {
 	int ng = gamesCount();
 	if (to < 0 || to >= ng || to == bg_gsel)
 		return;
-	bg_gfrom = bg_gpos;
 	bg_gsel = to;
 	bg_want_rom[0] = '\0';
-	if (!bg_listmode)
-		bg_gstart = SDL_GetTicks() ? SDL_GetTicks() : 1;
-	else
+	if (!bg_listmode) {
+		if (!bg_gstart)
+			bg_gvel = 0, bg_glast = 0;
+		bg_gstart = 1;
+	} else
 		bg_gpos = (float)to;
 }
 
@@ -723,7 +897,7 @@ static void gameStep(int dir, int btn) {
 		to = to < 0 ? ng - 1 : 0;
 		gameMove(to);
 		if (!bg_listmode) // the covers come in from one place outside, not past every game on the way
-			bg_gfrom = bg_gpos = to == 0 ? -1.0f : (float)ng;
+			bg_gpos = to == 0 ? -1.0f : (float)ng, bg_gvel = 0;
 		return;
 	}
 	gameMove(to);
@@ -862,14 +1036,14 @@ BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu
 			for (int i = 0; i < bg_ncons; i++)
 				if (!strcmp(bg_cons[i].path, keep))
 					bg_sel = i;
-			bg_pos = bg_from = (float)bg_sel;
+			bg_pos = (float)bg_sel;
 			bg_games_for = -1;
 			bgLoadGames();
 			int n2 = gamesCount();
 			bg_gsel = in_favs ? (gsel < n2 ? gsel : n2 - 1) : gsel;
 			if (bg_gsel < 0)
 				bg_gsel = 0;
-			bg_gpos = bg_gfrom = (float)bg_gsel;
+			bg_gpos = (float)bg_gsel;
 		}
 	} else if (PAD_justPressed(BTN_A) && ng > 0) {
 		Entry* e = bg_games->entries->items[bg_gsel];

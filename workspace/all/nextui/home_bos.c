@@ -1029,7 +1029,7 @@ int BosAction_poll(bool* dirty) {
 		for (int i = 0; i < bg_ncons; i++)
 			if (!strcmp(bg_cons[i].path, v + 8)) {
 				bg_sel = i;
-				bg_pos = bg_from = (float)i;
+				bg_pos = (float)i;
 				bg_start = 0;
 				bg_games_for = -1;
 				bg_step2 = true;

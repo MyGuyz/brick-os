@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brick OS ภาพหมุนลื่น</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
+<style>
+:root{--bg:#000;--surface:#1C1C1F;--surface2:#2C2C30;--text:#fff;--text2:#B4B4BA;--focus:#F2F2F7}
+body{margin:0;background:#101012;color:#fff;font-family:Inter,'IBM Plex Sans Thai',sans-serif;line-height:1.3}
+#wrap{max-width:1024px;margin:0 auto;padding:12px 16px 40px;box-sizing:border-box}
+h1{font-size:22px;margin:4px 0 6px}
+p.note{margin:0 0 12px;color:#B4B4BA;font-size:15px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.ctl button{font:inherit;font-size:15px;padding:8px 14px;border-radius:18px;border:0;background:#2C2C30;color:#fff;cursor:pointer}
+.ctl button.on{background:#fff;color:#000;font-weight:600}
+.ctl .sep{width:12px}
+#fit{position:relative;width:100%;overflow:hidden;border-radius:10px;background:#000}
+canvas{display:block;width:100%;height:auto;background:#000}
+.pad{display:flex;gap:10px;justify-content:center;margin-top:12px}
+.pad button{font:inherit;font-size:22px;width:72px;height:56px;border-radius:14px;border:0;background:#2C2C30;color:#fff;cursor:pointer;user-select:none;touch-action:none}
+ul{color:#B4B4BA;font-size:15px;padding-left:20px}
+</style>
+</head>
+<body>
+<div id="wrap">
+<h1>ภาพหมุนลื่นแบบ YouTube: หน้าเลือกเครื่อง และหน้าเลือกเกม</h1>
+<p class="note">กด ◀ ▶ บนคีย์บอร์ดหรือปุ่มด้านล่าง (กดค้างได้) แล้วสลับ “แบบเดิม / แบบใหม่” เพื่อเทียบ</p>
+<div class="ctl">
+ <button id="mOld">แบบเดิม</button><button id="mNew" class="on">แบบใหม่</button><span class="sep"></span>
+ <button id="pWheel" class="on">เลือกเครื่อง</button><button id="pCovers">เลือกเกม</button>
+</div>
+<div id="fit"><canvas id="c" width="1024" height="768"></canvas></div>
+<div class="pad"><button id="bl">◀</button><button id="br">▶</button></div>
+<ul>
+ <li><b>แบบเดิม:</b> ภาพมี 3 ขนาด เปลี่ยนขนาดทันทีตอนเลื่อนไปได้ครึ่งทาง การเลื่อนเริ่มใหม่ทุกครั้งที่กด จึงกระตุกเมื่อกดค้าง</li>
+ <li><b>แบบใหม่ หน้าเลือกเกม:</b> ภาพตรงกลางใหญ่ ข้าง ๆ ราว 58% จางลงครึ่งหนึ่ง ชิดเข้ามาซ้อนใต้ภาพกลางเล็กน้อย</li>
+ <li><b>แบบใหม่ หน้าเลือกเครื่อง:</b> เครื่องที่เลือกอยู่ขยายเต็มกลางจอ (640 × 440) เครื่องข้าง ๆ ขนาดและความจางเท่าแบบเดิม ภาพกลางทับขอบเครื่องข้าง ๆ ได้ ระหว่างเลื่อนค่อย ๆ ขยายหรือหดต่อเนื่อง การเลื่อนเป็นแบบสปริงที่จำความเร็วไว้ กดค้างจึงไหลต่อเนื่อง (ใช้เวลาเข้าที่ราว 0.2 วินาที เท่า YouTube)</li>
+ <li>กรอบขาวขึ้นเมื่อภาพตรงกลางเข้าที่แล้ว ชื่อและรายละเอียดใต้ภาพเปลี่ยนตามเหมือนเดิม</li>
+ <li>บนเครื่องจริง ภาพจะย่อไว้ล่วงหน้าหลายขนาด จึงไม่ต้องย่อภาพใหม่ทุกเฟรม และยังได้ 60 fps</li>
+</ul>
+</div>
+<script>
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const W=1024,H=768;
+const cons=[{n:'รายการโปรด',k:'fav',c:0},{n:'Nintendo DS',k:'nds',c:12},{n:'Game Boy Advance',k:'gba',c:48},{n:'Game Boy',k:'gb',c:31},
+ {n:'Super Famicom',k:'sfc',c:64},{n:'Famicom',k:'fc',c:4},{n:'Mega Drive',k:'md',c:22},{n:'PlayStation',k:'ps',c:9},{n:'Nintendo 64',k:'n64',c:6},
+ {n:'PSP',k:'psp',c:7},{n:'Dreamcast',k:'dc',c:3}];
+const img={};cons.forEach(o=>{if(o.k!=='fav'){const i=new Image();i.src='pads/menu_pad_'+o.k+'.png';img[o.k]=i;}});
+const games=['Ice Climber','Konami Wai Wai World','Kirby’s Adventure','Mega Man 2','Metroid','Ninja Gaiden','Punch-Out!!','Super Mario Bros. 3','The Legend of Zelda','Tetris','Contra','Castlevania'];
+const hues=[200,12,280,145,30,330,95,250,50,175,0,220];
+let mode='new',page='wheel',sel=0,pos=0,vel=0,from=0,start=0,last=0;
+const N=()=>page==='wheel'?cons.length:games.length;
+// size/fade: 1 in the middle, n1 one step out, n2 two steps out, smooth in between
+const prof=(ad,n1,n2)=>ad<=1?1-(1-n1)*ad:ad<=2?n1-(n1-n2)*(ad-1):n2;
+// distance from the middle: s1 to the neighbour, then s2 more to the next (they overlap a little)
+const off=(d,s1,s2)=>{const ad=Math.abs(d),o=ad<=1?ad*s1:s1+(ad-1)*s2;return d<0?-o:o;};
+const wrapD=(d,n)=>{while(d>n/2)d-=n;while(d<-n/2)d+=n;return d;};
+function rr(x,y,w,h,r){g.beginPath();g.roundRect(x,y,w,h,r);}
+function bar(t){g.fillStyle='#fff';g.font='600 30px Inter,"IBM Plex Sans Thai"';g.textBaseline='middle';g.fillText(t,32,32);
+ g.textAlign='right';g.fillText('14:32   76%',W-32,32);g.textAlign='left';}
+function hints(list){g.font='30px Inter,"IBM Plex Sans Thai"';let x=W-32;g.textBaseline='middle';
+ for(const [k,t] of list.slice().reverse()){const tw=g.measureText(t).width;g.fillStyle='#B4B4BA';g.textAlign='right';g.fillText(t,x,H-32);x-=tw+12;
+  g.fillStyle='#fff';g.beginPath();g.arc(x-20,H-32,20,0,7);g.fill();g.fillStyle='#000';g.font='700 24px Inter';g.textAlign='center';g.fillText(k,x-20,H-31);
+  g.font='30px Inter,"IBM Plex Sans Thai"';x-=40+28;}g.textAlign='left';}
+function consoleCard(o,cx,cy,w,a,bh){g.globalAlpha=a;bh=bh||w*0.9;
+ if(o.k==='fav'){const ch=bh,cw=Math.min(w,ch*0.69);rr(cx-cw/2,cy-ch/2,cw,ch,32*ch/311);g.fillStyle='#1C1C1F';g.fill();
+  star(cx,cy,ch*0.25);}
+ else{const i=img[o.k];if(i&&i.complete&&i.naturalWidth){const s=Math.min(w/i.naturalWidth,bh/i.naturalHeight);
+  g.drawImage(i,cx-i.naturalWidth*s/2,cy-i.naturalHeight*s/2,i.naturalWidth*s,i.naturalHeight*s);}}
+ g.globalAlpha=1;}
+function star(cx,cy,r){g.beginPath();for(let k=0;k<10;k++){const ang=-Math.PI/2+k*Math.PI/5,rad=k%2?r*0.45:r;g.lineTo(cx+rad*Math.cos(ang),cy+rad*Math.sin(ang));}
+ g.closePath();g.strokeStyle='#FFD60A';g.lineWidth=r*0.16;g.lineJoin='round';g.stroke();}
+function cover(i,x,y,w,h,r,a){g.globalAlpha=a;const gr=g.createLinearGradient(x,y,x+w,y+h);gr.addColorStop(0,`hsl(${hues[i%12]},55%,22%)`);gr.addColorStop(1,`hsl(${(hues[i%12]+40)%360},65%,48%)`);
+ rr(x,y,w,h,r);g.fillStyle=gr;g.fill();g.fillStyle='rgba(255,255,255,.85)';g.font=`700 ${Math.round(h*0.12)}px Inter`;g.textAlign='center';g.textBaseline='middle';
+ g.fillText(games[i].split(' ')[0],x+w/2,y+h/2);g.textAlign='left';g.globalAlpha=1;}
+function ring(x,y,w,h,r){rr(x-4,y-4,w+8,h+8,r+4);g.strokeStyle='#0B0B0D';g.lineWidth=4;g.stroke();rr(x-8,y-8,w+16,h+16,r+8);g.strokeStyle='#F2F2F7';g.lineWidth=4;g.stroke();}
+function centred(t,y,px,wt,col){g.font=`${wt} ${px}px Inter,"IBM Plex Sans Thai"`;g.fillStyle=col;g.textAlign='center';g.textBaseline='top';g.fillText(t,W/2,y);g.textAlign='left';}
+// --- motion ---
+function step(now){const dt=Math.min(0.05,last?(now-last)/1000:0.016);last=now;const n=N(),wrap=page==='wheel'&&n>4;
+ if(mode==='new'){const st=0.20,om=2/st,x=om*dt,ex=1/(1+x+0.48*x*x+0.235*x*x*x);
+  let target=sel;if(wrap){target=pos+wrapD(sel-pos,n);}
+  const ch=pos-target,tmp=(vel+om*ch)*dt;vel=(vel-om*tmp)*ex;pos=target+(ch+tmp)*ex;
+  if(Math.abs(pos-target)<0.001&&Math.abs(vel)<0.02){pos=target;vel=0;}
+  if(wrap){pos=((pos%n)+n)%n;}}
+ else if(start){let t=(now-start)/180;if(t>=1){t=1;start=0;}const e=1-Math.pow(1-t,3);const d=wrap?wrapD(sel-from,n):sel-from;pos=from+d*e;if(!start)pos=sel;}
+}
+function settled(){return mode==='new'?Math.abs(vel)<0.05&&Math.abs((page==='wheel'&&cons.length>4?wrapD(sel-pos,cons.length):sel-pos))<0.05:!start;}
+function draw(now){step(now);g.clearRect(0,0,W,H);g.fillStyle='#000';g.fillRect(0,0,W,H);
+ if(page==='wheel'){bar('เกม');const n=cons.length,cy=mode==='new'?74+228:74+175;const items=[];
+  for(let i=0;i<n;i++){const d=n>4?wrapD(i-pos,n):i-pos,ad=Math.abs(d);if(ad>2.7)continue;items.push([i,d,ad]);}
+  items.sort((a,b)=>b[2]-a[2]);
+  for(const [i,d,ad] of items){let cx,w,a,y=cy,bh;
+   // the centred console fills the middle (640 x 440); the others keep the old sizes, fade and drop
+   if(mode==='new'){const L=(v0,v1,v2)=>ad<=1?v0+(v1-v0)*ad:ad<=2?v1+(v2-v1)*(ad-1):v2;w=L(640,300,220);bh=L(440,270,198);a=L(1,0.85,0.6);
+    y=cy+L(0,40,60);cx=W/2+off(d,420,180);}
+   else{const slot=Math.round(ad),SW=[346,300,220],SA=[1,0.85,0.6],DR=[0,40,60];w=SW[slot];a=SA[slot];
+    const c1=328,c2=498,off=ad<=1?ad*c1:ad<=2?c1+(ad-1)*(c2-c1):c2;cx=W/2+(d<0?-off:off);y=cy+DR[slot];}
+   consoleCard(cons[i],cx,y,w,a,bh);}
+  const o=cons[sel],ny=mode==='new'?74+228+220+20:74+350+18;centred(o.n,ny,56,700,'#fff');centred(o.c?o.c+' เกม':'ยังไม่มีเกม',ny+68,30,400,'#B4B4BA');
+  hints([['A','เปิด'],['B','กลับ'],['Y','ค้นหา']]);
+ }else{bar('Nintendo ES');const n=games.length,top=110,cw=500,ch=375;const items=[];
+  for(let i=0;i<n;i++){const d=i-pos,ad=Math.abs(d);if(ad>2.7)continue;items.push([i,d,ad]);}items.sort((a,b)=>b[2]-a[2]);
+  for(const [i,d,ad] of items){let w,h,a,cx,r;
+   if(mode==='new'){const sc=prof(ad,0.58,0.42);w=cw*sc;h=ch*sc;a=prof(ad,0.5,0.25);cx=W/2+off(d,360,230);r=24*Math.max(sc,0.75);}
+   else{const slot=Math.round(ad),sw=300,sh=225,ow=225,oh=169,gap=28;w=[cw,sw,ow][slot];h=[ch,sh,oh][slot];a=[1,0.5,0.25][slot];r=[24,20,18][slot];
+    const c1=cw/2+gap+sw/2,c2=cw/2+gap+sw+gap+ow/2,off=ad<=1?ad*c1:ad<=2?c1+(ad-1)*(c2-c1):c2;cx=W/2+(d<0?-off:off);}
+   const x=cx-w/2,y=top+(ch-h)/2;cover(i,x,y,w,h,r,a);if(i===sel&&ad<0.5&&settled())ring(x,y,w,h,r);}
+  centred(games[sel],top+ch+18,40,600,'#fff');centred(sel%3===0?'เล่นล่าสุด วันนี้':'เล่นล่าสุด 3 วันที่แล้ว',top+ch+18+54,30,400,'#B4B4BA');
+  hints([['A','เล่น'],['B','กลับ'],['X','โปรด'],['Y','ค้นหา']]);}
+ requestAnimationFrame(draw);}
+requestAnimationFrame(draw);
+function move(dir){const n=N();if(page==='wheel'){sel=(sel+dir+n)%n;}else{const t=sel+dir;if(t<0||t>=n)return;sel=t;}
+ if(mode==='old'){from=pos;start=performance.now();}}
+// key repeat like the device: 300 ms, then every 80 ms
+let held=0,rt=null;function press(d){move(d);held=d;clearTimeout(rt);rt=setTimeout(function rep(){if(held){move(held);rt=setTimeout(rep,80);}},300);}
+function release(){held=0;clearTimeout(rt);}
+addEventListener('keydown',e=>{if(e.repeat)return;if(e.key==='ArrowLeft'){press(-1);e.preventDefault();}if(e.key==='ArrowRight'){press(1);e.preventDefault();}});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight')release();});
+for(const [id,d] of [['bl',-1],['br',1]]){const b=document.getElementById(id);b.addEventListener('pointerdown',e=>{e.preventDefault();press(d);});
+ b.addEventListener('pointerup',release);b.addEventListener('pointerleave',release);}
+function setBtn(a,b,on){document.getElementById(a).classList.toggle('on',on);document.getElementById(b).classList.toggle('on',!on);}
+document.getElementById('mOld').onclick=()=>{mode='old';vel=0;start=0;pos=sel;setBtn('mOld','mNew',true);};
+document.getElementById('mNew').onclick=()=>{mode='new';start=0;pos=sel;setBtn('mOld','mNew',false);};
+document.getElementById('pWheel').onclick=()=>{page='wheel';sel=0;pos=0;vel=0;start=0;setBtn('pWheel','pCovers',true);};
+document.getElementById('pCovers').onclick=()=>{page='covers';sel=0;pos=0;vel=0;start=0;setBtn('pWheel','pCovers',false);};
+if(location.hash==='#covers')document.getElementById('pCovers').click();
+if(location.hash)setTimeout(()=>{sel=2;pos=2;},50);
+</script>
+</body>
+</html>
