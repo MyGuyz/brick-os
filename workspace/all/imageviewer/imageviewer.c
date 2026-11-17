@@ -9,6 +9,7 @@
 
 #include "api.h"
 #include "bos_ui.h"
+#include "i18n.h"
 #include "iv_defines.h"
 #include "iv_browser.h"
 #include "iv_fileops.h"
@@ -151,7 +152,85 @@ static void render_preview_pane(void) {
 	}
 }
 
+// ---- Brick OS look (DESIGN 7.9) ----
+#define IV_BOX_H 352 // mockup px: the picture's box; the name and its line go under it
+static BosGlide iv_pill, iv_scroll;
+static void iv_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)hot;
+	ImageBrowserContext* b = ctx;
+	ImageEntry* e = &b->entries[i];
+	static char name[256], sb[64];
+	if (e->is_dir) {
+		if (!strcmp(e->name, ".."))
+			*r = (ListViewRow){.label = I18N_text("Up a folder"), .sq_icon = "chevl", .sq_color = 0x48484A, .sq_raw = true};
+		else {
+			snprintf(name, sizeof(name), "%s", I18N_text(e->name));
+			*r = (ListViewRow){.label = name, .sq_icon = "folder", .sq_color = BOS_C_PRIMARY, .chevron = true};
+		}
+	} else {
+		ImageBrowser_getDisplayName(e->name, name, sizeof(name));
+		format_size(e->size_bytes, sb, sizeof(sb));
+		*r = (ListViewRow){.label = name, .sub = sb, .sq_icon = "image", .sq_color = 0xBF5AF2};
+	}
+}
+static void render_browser_bos(void) {
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	const char* title = I18N_text("Images");
+	if (strcmp(browser.current_path, IMAGES_ROOT) != 0) {
+		const char* slash = strrchr(browser.current_path, '/');
+		if (slash && slash[1])
+			title = I18N_text(slash + 1);
+	}
+	BOS_statusBar(screen, title);
+	int top = BOS_px(BOS_BAR_H), bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+	bool root = strcmp(browser.current_path, IMAGES_ROOT) == 0;
+	BosHint h[] = {{"A", I18N_text("Open")}, {"B", I18N_text(root ? "Exit" : "Back")}};
+	BosHint l[] = {{"MENU", I18N_text("Options")}};
+	if (browser.entry_count <= 0) {
+		BOS_resultCard(screen, "image", BOS_theme()->surface2, "No images found", "Screenshots you take will appear here");
+		BOS_hintBar(screen, h + 1, 1, NULL, 0);
+		return;
+	}
+	int lx = BOS_px(24), lw = BOS_px(470);
+	BOS_groupRows(screen, &(SDL_Rect){lx, top + BOS_px(8), lw, bottom - top - BOS_px(8)}, BOS_px(84), browser.entry_count,
+				  browser_view.selected, true, &browser_view.scroll, &iv_pill, &iv_scroll, false, iv_row, &browser);
+	browser_view.input_pending = false;
+	ImageEntry* e = browser_view.selected >= 0 && browser_view.selected < browser.entry_count ? &browser.entries[browser_view.selected] : NULL;
+	if (e && !e->is_dir) {
+		int bh = BOS_px(IV_BOX_H), r = BOS_px(24);
+		bool have = preview_surf && preview_have[0] && strcmp(preview_have, e->path) == 0;
+		BOS_rrect(screen, pane_x, pane_y, pane_w, bh, r, BOS_theme()->surface);
+		if (have) {
+			SDL_Surface* p = BOS_picRounded(preview_surf, preview_surf->w, preview_surf->h, r);
+			if (p)
+				BOS_blit(p, screen, pane_x + (pane_w - preview_surf->w) / 2, pane_y + (bh - preview_surf->h) / 2, 1);
+		} else if (preview_error[0] && strcmp(preview_error, e->path) == 0) {
+			const char* m = I18N_text("Can't preview");
+			BOS_textMid(screen, m, 28, 400, BOS_C_TEXT2, 1, pane_x + (pane_w - BOS_textW(m, 28, 400)) / 2, pane_y + bh / 2);
+		}
+		char n[256], t[256];
+		ImageBrowser_getDisplayName(e->name, n, sizeof(n));
+		BOS_fit(n, 32, 600, pane_w, t, sizeof(t));
+		BOS_text(screen, t, 32, 600, BOS_C_TEXT, 1, pane_x, pane_y + bh + BOS_px(14));
+		char sz[32], meta[96];
+		format_size(e->size_bytes, sz, sizeof(sz));
+		if (have)
+			snprintf(meta, sizeof(meta), "%d×%d · %s", preview_ow, preview_oh, sz);
+		else
+			snprintf(meta, sizeof(meta), "%s", sz);
+		BOS_text(screen, meta, 26, 400, BOS_C_TEXT2, 1, pane_x, pane_y + bh + BOS_px(14) + BOS_lineH(32));
+	}
+	BOS_hintBar(screen, h, 2, l, 1);
+}
+
 static void render_browser(void) {
+	if (UI_bos) {
+		render_browser_bos();
+		UI_renderToast(screen, browser_toast, browser_toast_time);
+		if (ContextMenu_isOpen())
+			ContextMenu_render(screen);
+		return;
+	}
 	GFX_clear(screen);
 
 	// "Images" at the root, "Images | <folder>" deeper (LIST-LAYOUT §10.1)
@@ -294,6 +373,12 @@ int main(int argc, char* argv[]) {
 	pane_w = screen->w - pane_x - SCALE1(BUTTON_MARGIN * 2);
 	pane_y = SCALE1(PILL_SIZE) + SCALE1(BUTTON_MARGIN);
 	pane_h = screen->h - pane_y - SCALE1(PILL_SIZE);
+	if (UI_bos) { // the list 470 at x 24, the picture's box from x 522 to 32 short of the edge
+		pane_x = BOS_px(24 + 470 + 28);
+		pane_w = screen->w - BOS_px(32) - pane_x;
+		pane_y = BOS_px(BOS_BAR_H + 8);
+		pane_h = BOS_px(IV_BOX_H) + SCALE1(24);
+	}
 	IvLoader_init(screen, pane_w, pane_h - SCALE1(24)); // 24: reserved for the metadata line
 
 	signal(SIGINT, sigHandler);
@@ -484,7 +569,7 @@ int main(int argc, char* argv[]) {
 		PWR_update(&dirty, &show_setting, NULL, NULL);
 
 		if (dirty || (app_screen == SCREEN_BROWSER
-						  ? (UI_listViewBusy(&browser_view) || ContextMenu_isOpen())
+						  ? (UI_listViewBusy(&browser_view) || BOS_glideMoving(&iv_pill) || BOS_glideMoving(&iv_scroll) || ContextMenu_isOpen())
 						  : IvViewer_busy())) {
 			if (app_screen == SCREEN_BROWSER)
 				render_browser();

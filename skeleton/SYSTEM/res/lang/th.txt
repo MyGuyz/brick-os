@@ -1235,3 +1235,16 @@ Show Audio Options	แสดงตัวเลือกเสียง
 Show Mapping Options	แสดงตัวเลือกปุ่ม
 Reset to Default	คืนค่าเริ่มต้น
 Changes apply the next time the game is launched.	มีผลตอนเปิดเกมครั้งถัดไป
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+No images found	ยังไม่มีรูปภาพ
+Screenshots you take will appear here	ภาพหน้าจอที่ถ่ายจะขึ้นที่นี่
+Can't preview	แสดงตัวอย่างไม่ได้
+Image too large	รูปใหญ่เกินไป
+Couldn't load image	เปิดรูปไม่ได้
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Up a folder	ย้อนขึ้นไป
+Wallpapers	วอลเปเปอร์
