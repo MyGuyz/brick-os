@@ -1218,3 +1218,20 @@ Fri	ศ
 Sat	ส
 Exit Game Tracker?	ออกจากเวลาเล่นเกมไหม?
 %d:%02d h	%d:%02d ชม.
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Pick a console, then set what all its games use	เลือกเครื่อง แล้วปรับค่าที่ใช้กับทุกเกมของเครื่องนั้น
+Core %.*s	คอร์ %.*s
+SELECT	เลือก
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+SAVE	บันทึก
+Media	สื่อ
+Input	ปุ่ม
+Show Video Options	แสดงตัวเลือกวิดีโอ
+Show Audio Options	แสดงตัวเลือกเสียง
+Show Mapping Options	แสดงตัวเลือกปุ่ม
+Reset to Default	คืนค่าเริ่มต้น
+Changes apply the next time the game is launched.	มีผลตอนเปิดเกมครั้งถัดไป

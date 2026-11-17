@@ -45,6 +45,9 @@
 #include <msettings.h>
 
 #include "ui_draw.h"
+#include "i18n.h"
+#include "bos_ui.h"
+#include "ui_listview.h"
 #include "defines.h"
 #include "api.h"
 #include "emu_overlay_cfg.h"
@@ -128,8 +131,46 @@ static SDL_Surface* screen = NULL;
  * UI_getScrim's 70%-opaque black twice and leave the first bar's labels
  * showing through). Everything else uses the same shared components.
  */
+int BOS_uiHintBar(SDL_Surface* s, char** pairs);
+bool BOS_uiSettingsMoving(void);
+static const char** el_labels;
+static bool el_picker;
+static BosGlide el_pill, el_scroll;
+// "Game Boy Advance (mgba)" -> the name, and "core mgba" under it; the squircle has the name's first letters
+static void el_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	static char name[ROW_TEXT_MAX], sb[ROW_TEXT_MAX];
+	const char* l = el_labels[i];
+	*r = (ListViewRow){.label = I18N_text(l), .chevron = true};
+	if (!el_picker)
+		return;
+	const char* p = strrchr(l, '(');
+	if (p && p > l + 1 && strchr(p, ')')) {
+		snprintf(name, sizeof(name), "%.*s", (int)(p - l - 1), l);
+		snprintf(sb, sizeof(sb), I18N_text("Core %.*s"), (int)(strchr(p, ')') - p - 1), p + 1);
+		r->label = name, r->sub = sb;
+	}
+	r->sq_text = r->label;
+}
+
 static void render_list(const char* title, const char** labels, int count,
 						int selected, int* scroll, char** hints) {
+	if (UI_bos) {
+		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+		const char* t = I18N_text(title);
+		BOS_statusBar(screen, t);
+		el_labels = labels;
+		el_picker = !strcmp(title, "Emulator Settings");
+		int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
+		int y = el_picker ? top + BOS_largeTitle(screen, top, t, I18N_text("Pick a console, then set what all its games use"))
+						  : top + BOS_px(8);
+		int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+		BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), count, selected, true, scroll, &el_pill,
+					  &el_scroll, false, el_row, NULL);
+		BOS_uiHintBar(screen, hints);
+		GFX_flip(screen);
+		return;
+	}
 	GFX_clear(screen);
 	UI_renderMenuBar(screen, title);
 
@@ -315,6 +356,8 @@ static int run_picker(int argc, char** argv, const char** out_path) {
 			return 1;
 		}
 
+		if (BOS_glideMoving(&el_pill) || BOS_glideMoving(&el_scroll))
+			dirty = true;
 		if (dirty) {
 			render_list("Emulator Settings", names, count, selected, &scroll,
 						(char*[]){"A", "SELECT", "B", "EXIT", NULL}); // the tool's first level
@@ -586,6 +629,8 @@ static void run_editor(const char* title, bool per_game) {
 			}
 		}
 
+		if (UI_bos && (BOS_glideMoving(&el_pill) || BOS_glideMoving(&el_scroll) || BOS_uiSettingsMoving()))
+			dirty = true;
 		if (dirty) {
 			if (state == ED_SECTIONS)
 				render_list(title, row_ptr, row_count, section_selected, &section_scroll,
@@ -715,6 +760,8 @@ static bool run_launch_page(const char* title) {
 			}
 		}
 
+		if (UI_bos && BOS_uiSettingsMoving())
+			dirty = true;
 		if (dirty) {
 			render_item_page(title, "Launch Options", row_item, row_count, selected, &scroll);
 			dirty = false;
