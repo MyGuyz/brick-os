@@ -122,7 +122,6 @@ int main(int argc, char* argv[]) {
 
 	bool settings_ready = false;
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.2)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_EFFICIENCY);
 	UI_showSplashScreen(screen, "Music Player");

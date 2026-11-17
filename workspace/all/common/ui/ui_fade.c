@@ -197,69 +197,6 @@ void UI_fillFade(SDL_Surface* fade, const SDL_Rect* src, SDL_Surface* dst, int x
 
 #define FADE_H_MAX 4096
 
-void UI_darkenColumns(SDL_Surface* dst, int x, int y, int w, int h, const Uint8* alpha) {
-	if (!dst || !alpha || w <= 0 || h <= 0 || w > FADE_H_MAX)
-		return;
-	SDL_Rect out = {x, y, w, h}, c;
-	if (!SDL_IntersectRect(&out, &dst->clip_rect, &c))
-		return;
-	const Uint8* al = alpha + (c.x - x);
-	// trim clear columns at both ends
-	int lo = 0, hi = c.w;
-	while (lo < hi && al[lo] == 0)
-		lo++;
-	while (hi > lo && al[hi - 1] == 0)
-		hi--;
-	if (lo >= hi)
-		return;
-	if (!isArgb(dst)) {
-		for (int i = lo; i < hi; i++)
-			UI_dimRect(dst, &(SDL_Rect){c.x + i, c.y, 1, c.h}, al[i]);
-		return;
-	}
-	// per column: k = 255 − a in every byte (the multiplier) and a on the alpha byte (the add)
-	static Uint32 kk[FADE_H_MAX], aa[FADE_H_MAX];
-	int n = hi - lo;
-	for (int i = 0; i < n; i++) {
-		Uint32 a = al[lo + i];
-		kk[i] = (255 - a) * 0x01010101u;
-		aa[i] = a << 24;
-	}
-	for (int dy = c.y; dy < c.y + c.h; dy++) {
-		Uint32* p = (Uint32*)((Uint8*)dst->pixels + dy * dst->pitch) + c.x + lo;
-		int i = 0;
-#ifdef __ARM_NEON
-		for (; i + 16 <= n; i += 16) { // 16 pixels a step: four independent chains for the in-order A53
-			uint8x16_t d[4], k[4];
-			uint16x8_t lo[4], hi[4];
-			for (int j = 0; j < 4; j++) {
-				d[j] = vld1q_u8((const uint8_t*)(p + i + 4 * j));
-				k[j] = vld1q_u8((const uint8_t*)(kk + i + 4 * j));
-			}
-			for (int j = 0; j < 4; j++) {
-				lo[j] = vmull_u8(vget_low_u8(d[j]), vget_low_u8(k[j]));
-				hi[j] = vmull_u8(vget_high_u8(d[j]), vget_high_u8(k[j]));
-			}
-			for (int j = 0; j < 4; j++)
-				vst1q_u8((uint8_t*)(p + i + 4 * j), vaddq_u8(div255(lo[j], hi[j]), vld1q_u8((const uint8_t*)(aa + i + 4 * j))));
-		}
-		for (; i + 4 <= n; i += 4) {
-			uint8x16_t dv = vld1q_u8((const uint8_t*)(p + i)), kv = vld1q_u8((const uint8_t*)(kk + i));
-			uint8x16_t o = div255(vmull_u8(vget_low_u8(dv), vget_low_u8(kv)), vmull_u8(vget_high_u8(dv), vget_high_u8(kv)));
-			vst1q_u8((uint8_t*)(p + i), vaddq_u8(o, vld1q_u8((const uint8_t*)(aa + i))));
-		}
-#endif
-		for (; i < n; i++) {
-			Uint32 k = kk[i] & 0xFF, d = p[i];
-			Uint32 rb = (d & 0x00FF00FFu) * k + 0x00800080u;
-			rb = ((rb + ((rb >> 8) & 0x00FF00FFu)) >> 8) & 0x00FF00FFu;
-			Uint32 ag = ((d >> 8) & 0x00FF00FFu) * k + 0x00800080u;
-			ag = ((ag + ((ag >> 8) & 0x00FF00FFu)) >> 8) & 0x00FF00FFu;
-			p[i] = (rb | (ag << 8)) + aa[i];
-		}
-	}
-}
-
 void UI_dimRect(SDL_Surface* dst, const SDL_Rect* r, Uint8 alpha) {
 	if (!dst || alpha == 0)
 		return;

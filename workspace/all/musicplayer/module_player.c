@@ -725,7 +725,7 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 					}
 				}
 				ContextMenu_addItem(ctx_items, &ctx_count, "Quit App", CTX_ID_QUIT);
-			} else if (UI_bos) {
+			} else {
 				ContextMenu_addItem(ctx_items, &ctx_count, Settings_getLyricsEnabled() ? "Hide Lyrics" : "Lyrics", PLAYER_CTX_LYRICS);
 				ContextMenu_addItem(ctx_items, &ctx_count, "Visualizer", PLAYER_CTX_VIS);
 				ContextMenu_addItem(ctx_items, &ctx_count, "Add to Playlist", PLAYER_CTX_ADD_NOW);

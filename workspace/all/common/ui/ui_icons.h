@@ -7,7 +7,6 @@
 // Empty icon (shared between apps)
 void UI_initEmptyIcon(void);
 void UI_quitEmptyIcon(void);
-SDL_Surface* Icons_getEmpty(bool selected);
 
 // Create a color-inverted copy of an icon surface (black <-> white, alpha preserved)
 SDL_Surface* UI_invertIconSurface(SDL_Surface* src);

@@ -206,7 +206,7 @@ ModuleExitReason PlayerModule_run(SDL_Surface* screen) {
 				} else {
 					// A: resume from the saved position when one exists,
 					// otherwise play from the start. Brick OS (board v2-VideoResume): a saved place asks first
-					if (UI_bos && Positions_get(entry->path) > 0) {
+					if (Positions_get(entry->path) > 0) {
 						ContextMenuItem ask[2];
 						int na = 0;
 						ContextMenu_addItem(ask, &na, "Watch on", PLAYER_CTX_RESUME);

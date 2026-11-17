@@ -6,10 +6,3 @@
 // because musicplayer/mediaplayer call them. (Fonts_calcListPillWidth was
 // unused and has been removed — use UI_calcListPillWidth.)
 
-SDL_Color Fonts_getListTextColor(bool selected) {
-	return UI_getListTextColor(selected);
-}
-
-void Fonts_drawListItemBg(SDL_Surface* screen, SDL_Rect* rect, bool selected) {
-	UI_drawListItemBg(screen, rect, selected);
-}

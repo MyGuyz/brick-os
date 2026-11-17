@@ -41,11 +41,6 @@ void ScrollText_render(ScrollTextState* state, TTF_Font* font,
 void ScrollText_update(ScrollTextState* state, const char* text, TTF_Font* font,
 					   int max_width, SDL_Color color, SDL_Surface* screen, int x, int y, bool use_gpu);
 
-// GPU scroll without background (for player title)
-// Uses PLAT_drawOnLayer to render to GPU layer without pill background
-void ScrollText_renderGPU_NoBg(ScrollTextState* state, TTF_Font* font,
-							   SDL_Color color, int x, int y);
-
 // ---- List Layout ----
 
 // LIST-LAYOUT §10.2: a list is a block of whole rows with an arrow strip of equal height (half a row) directly
@@ -71,7 +66,6 @@ typedef struct {
 // The apps' main lists (a ListView in the large font): their text and row count on this device (ui_text_sizes.h
 // TEXT_MENU_LIST, MENU_LIST_ROWS; 0 rows: as many as fit). The font is font.large where the sizes match.
 TTF_Font* UI_mainListFont(void);
-int UI_mainListRows(void);
 
 // The scroll arrows (ASSET_SCROLL_UP / _DOWN at the UI scale), white at UI_SCROLL_ARROW_ALPHA in their pixels' alpha:
 // every list's arrows, the main menu's band included.
@@ -153,33 +147,6 @@ void UI_renderListItemTextDimSuffix(SDL_Surface* screen,
 									TTF_Font* font, int text_x, int text_y,
 									int max_text_width, bool selected);
 
-// ---- Badged Pill Rendering ----
-
-// Position information returned by UI_renderListItemPillBadged
-typedef struct {
-	int pill_width;		// Width of the title (inner) pill
-	int text_x;			// X position for title text
-	int text_y;			// Y position for title text (row 1)
-	int subtitle_x;		// X position for subtitle text (row 2)
-	int subtitle_y;		// Y position for subtitle text (row 2)
-	int badge_x;		// X position for badge content start
-	int badge_y;		// Y position for badge content (centered)
-	int total_width;	// Total width of title pill + badge area
-	int text_max_width; // Max width for text content
-} ListItemBadgedPos;
-
-// Render a two-row list item pill with optional right-side badge area.
-// Item height is layout->item_h when taller than PILL_SIZE (fitted rows), else 1.5x PILL_SIZE.
-// Title (title_font) + subtitle (subtitle_font).
-// When badge_width > 0 and selected: THEME_COLOR2 outer capsule + THEME_COLOR1 inner.
-// When badge_width == 0: single THEME_COLOR1 capsule.
-// Caller renders badge content at badge_x, badge_y.
-ListItemBadgedPos UI_renderListItemPillBadged(
-	SDL_Surface* screen, ListLayout* layout,
-	TTF_Font* title_font, TTF_Font* subtitle_font, TTF_Font* badge_font,
-	const char* text, const char* subtitle, char* truncated,
-	int y, bool selected, int badge_width, int extra_subtitle_width);
-
 // ---- Settings Page Component ----
 
 typedef struct {
@@ -216,18 +183,6 @@ void UI_renderSettingsPageEx(SDL_Surface* screen, ListLayout* layout,
 							 int selected, int* scroll,
 							 const char* status_msg, int desc_rows);
 
-// ---- Settings Row Rendering ----
-
-// Render a settings-style row: label (left) + value (right)
-// - selected: 2-layer pill (THEME_COLOR2 full-width + THEME_COLOR1 label-width),
-//   value with "< >" arrows
-// - unselected: no background, label + value text only
-// - swatch_color: if non-negative, draws a color swatch square next to the value
-// Returns the x position where value rendering ended (left edge of value area)
-int UI_renderSettingsRow(SDL_Surface* screen, ListLayout* layout,
-						 const char* label, const char* value,
-						 int y, bool selected, int swatch_color);
-
 // ---- Scroll Helpers ----
 
 void UI_adjustListScroll(int selected, int* scroll, int items_per_page);
@@ -255,64 +210,6 @@ typedef struct {
 void UI_pillAnimSetTarget(PillAnimState* state, int target_y, int target_w, bool animate);
 int UI_pillAnimTick(PillAnimState* state);
 bool UI_pillAnimIsActive(PillAnimState* state);
-
-// ---- List Selection Glide ----
-// Core wiring for the animated selection pill (PILL_ANIM_MS smoothstep,
-// width morphs with y). Render-only: the caller keeps owning selection and
-// input. New list surfaces should use the ListView widget (ui_listview.h),
-// which drives this core; direct use remains for the game list until it
-// migrates. Per frame, BEFORE the row loop: call UI_listGlideDrawAtY with
-// the selected row's target y and the band, then render every row with
-// selected=false and tint its text with UI_listGlideRowSelected(&frame,
-// row_y, item_h). Dirty-flag main loops must keep redrawing while
-// UI_listGlideActive(&glide).
-
-typedef struct {
-	PillAnimState anim;	 // y + width glide state
-	const void* list_id; // content identity last drawn (NULL = never)
-	int prev_target_y;	 // last settled target (retarget detection)
-} ListGlide;			 // zero-init = valid initial state
-
-typedef struct {
-	int pill_y;		// interpolated pill top for this frame
-	bool animating; // true while mid-glide
-} ListGlideFrame;
-
-// Core (irregular row geometry, e.g. lists with header rows): glide toward
-// target_y, clipped to the band [band_y, band_y+band_h). Snaps when
-// list_id changes or allow_anim is false. pill_w <= 0 skips the draw.
-ListGlideFrame UI_listGlideDrawAtY(ListGlide* g, SDL_Surface* screen,
-								   const void* list_id, int target_y,
-								   int band_y, int band_h,
-								   int item_h, int pill_w, bool allow_anim);
-// True when the pill covers the majority of the row at row_y — draw that
-// row's text in the selected colour exactly then.
-bool UI_listGlideRowSelected(const ListGlideFrame* f, int row_y, int item_h);
-// For dirty-flag main loops: keep redrawing while true.
-bool UI_listGlideActive(ListGlide* g);
-
-// ---- Rich Pill Rendering ----
-
-// Position information returned by UI_renderListItemPillRich
-typedef struct {
-	int pill_width;				// Width of the rendered pill
-	int title_x, title_y;		// Row 1 position (medium font)
-	int subtitle_x, subtitle_y; // Row 2 position (small font)
-	int image_x, image_y;		// Image position (top-left corner)
-	int image_size;				// Image width & height (square)
-	int text_max_width;			// Max width for text (for scrolling)
-} ListItemRichPos;
-
-// Render a 2-row list item pill with image area on the left
-// Height is layout->item_h when taller than PILL_SIZE (fitted rows), else 1.5x PILL_SIZE. Image is square,
-// vertically centered (item_h - 2 x SCALE1(4)).
-// Row 1: title (medium font), Row 2: subtitle (small font)
-// Caller renders image at image_x/image_y and text via UI_renderListItemText()
-ListItemRichPos UI_renderListItemPillRich(SDL_Surface* screen, ListLayout* layout,
-										  const char* title, const char* subtitle,
-										  char* truncated,
-										  int y, bool selected, bool has_image,
-										  int extra_subtitle_width);
 
 // ---- Rich Row (LIST-LAYOUT §10.2 / §10.6) ----
 

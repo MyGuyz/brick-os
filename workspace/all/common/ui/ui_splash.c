@@ -3,7 +3,7 @@
 #include "defines.h"
 #include "ui_draw.h"
 
-void BOS_uiSplash(SDL_Surface* s, const char* title) __attribute__((weak));
+void BOS_uiSplash(SDL_Surface* s, const char* title);
 
 void UI_showSplashScreen(SDL_Surface* screen, const char* title) {
 	BOS_uiSplash(screen, title);

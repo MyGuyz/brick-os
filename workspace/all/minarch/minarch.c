@@ -212,7 +212,6 @@ int main(int argc, char* argv[]) {
 	if (resume_preview)
 		Video_skipFadeIn(); // the game goes on from the frame already on screen
 
-	UI_bos = true; // every shared piece (dialogs, toasts, lists, keyboard) in the Brick OS look (DESIGN 7.9)
 	screen = GFX_init(MODE_MENU);
 
 	// initialize default shaders

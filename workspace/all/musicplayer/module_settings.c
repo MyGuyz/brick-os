@@ -234,7 +234,7 @@ ModuleExitReason SettingsModule_run(SDL_Surface* screen) {
 
 		// Handle power management
 		ModuleCommon_PWR_update(&dirty, &show_setting);
-		if (UI_bos && BOS_uiSettingsMoving()) // the focus still glides
+		if (BOS_uiSettingsMoving()) // the focus still glides
 			dirty = 1;
 
 		// Render

@@ -53,12 +53,6 @@ static ScrollTextState podcast_playing_title_scroll = {0};
 static SDL_Surface* podcast_artwork = NULL;
 static char podcast_artwork_url[512] = {0};
 
-// Podcast progress GPU state
-static int progress_bar_x = 0, progress_bar_y = 0;
-static int progress_bar_w = 0, progress_bar_h = 0;
-static int progress_time_y = 0;
-static int progress_screen_w = 0;
-static int progress_duration_ms = 0;
 static int progress_last_position_sec = -1;
 static bool progress_position_set = false;
 
@@ -468,18 +462,6 @@ void Podcast_clearTitleScroll(void) {
 
 // === PODCAST PROGRESS GPU FUNCTIONS ===
 
-void PodcastProgress_setPosition(int bar_x, int bar_y, int bar_w, int bar_h,
-								 int time_y, int screen_w, int duration_ms) {
-	progress_bar_x = bar_x;
-	progress_bar_y = bar_y;
-	progress_bar_w = bar_w;
-	progress_bar_h = bar_h;
-	progress_time_y = time_y;
-	progress_screen_w = screen_w;
-	progress_duration_ms = duration_ms;
-	progress_position_set = true;
-}
-
 void PodcastProgress_clear(void) {
 	progress_position_set = false;
 	progress_last_position_sec = -1;
@@ -490,10 +472,6 @@ bool PodcastProgress_needsRefresh(void) {
  // the page shows the time: once a second, a redraw
 	const MusicSnapshotWire* snap = MusicClient_snapshot();
 	return snap->state == MUSIC_STATE_PLAYING && snap->position_ms / 1000 != bos_play_second;
-}
-
-void PodcastProgress_renderGPU(void) {
-	return;
 }
 
 // ======================= Brick OS (DESIGN.md 7.2; boards v2-MusicPodcasts, -PodcastShow, -PodcastTop, -Downloads,

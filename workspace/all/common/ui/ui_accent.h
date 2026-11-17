@@ -38,8 +38,6 @@ SDL_Color UI_onAccent(void);
 // The accent as a screen-mapped colour for SDL_FillRect and the GFX_*Color blits: THEME_COLOR1 itself without an
 // override (so those blits recover its packed RGBA), the override mapped for fmt otherwise.
 Uint32 UI_accentMapped(const SDL_PixelFormat* fmt);
-// The ink the same way: THEME_COLOR5 itself without an override, the WCAG ink mapped for fmt otherwise.
-Uint32 UI_onAccentMapped(const SDL_PixelFormat* fmt);
 #endif
 
 #endif // UI_ACCENT_H

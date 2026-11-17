@@ -21,11 +21,6 @@ void UI_blitFade(SDL_Surface* fade, const SDL_Rect* src, SDL_Surface* dst, int x
 // UI_blitFade onto pixels known to be clear (0,0,0,0): the same result, written instead of blended (a row fill).
 void UI_fillFade(SDL_Surface* fade, const SDL_Rect* src, SDL_Surface* dst, int x, int y);
 
-// Black at a per-column alpha (alpha[i] for column x + i, w ≤ 4096) over dst's rect (x, y, w, h), inside dst's clip
-// rect: exact /255, NEON, one pass; clear columns at the ends cost nothing. Several dark layers over the same pixels
-// (an edge fade and a shade) combine into one alpha first: 255 − (255 − a1)(255 − a2) / 255.
-void UI_darkenColumns(SDL_Surface* dst, int x, int y, int w, int h, const Uint8* alpha);
-
 // Black at `alpha` over dst's rect r (NULL = all of dst), inside dst's clip rect: SDL's BLEND result at a fraction
 // of its cost (a fill at 255).
 void UI_dimRect(SDL_Surface* dst, const SDL_Rect* r, Uint8 alpha);

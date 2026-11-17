@@ -6,8 +6,8 @@
 #include "defines.h"
 #include <string.h>
 
-void BOS_uiSheet(SDL_Surface* s, const char* const* labels, int n, int sel) __attribute__((weak));
-int BOS_uiSheetCols(int n) __attribute__((weak));
+void BOS_uiSheet(SDL_Surface* s, const char* const* labels, int n, int sel);
+int BOS_uiSheetCols(int n);
 
 static ContextMenuItem cm_items[CONTEXTMENU_MAX_ITEMS];
 static int cm_count;
@@ -60,7 +60,7 @@ ContextMenuResult ContextMenu_handleInput(void) {
 		return result;
 	}
 
-	if (UI_bos && BOS_uiSheetCols && BOS_uiSheetCols(cm_count) == 2) { // the sheet's two columns
+	if (BOS_uiSheetCols(cm_count) == 2) { // the sheet's two columns
 		PAD_gridNav(&cm_selected, cm_count, 2);
 	} else
 		PAD_navigateMenu(&cm_selected, cm_count);
@@ -86,60 +86,10 @@ void ContextMenu_render(SDL_Surface* screen) {
 			return;
 	}
 
-	if (UI_bos && BOS_uiSheet) {
-		const char* labels[CONTEXTMENU_MAX_ITEMS];
-		for (int i = 0; i < cm_count; i++)
-			labels[i] = cm_items[i].label;
-		BOS_uiSheet(surf, labels, cm_count, cm_selected);
-		GFX_clearLayers(LAYER_OVERLAY);
-		GFX_drawOnLayer(surf, 0, 0, sw, sh, 1.0f, false, LAYER_OVERLAY);
-		return;
-	}
-
-	// Semi-transparent backdrop
-	SDL_FillRect(surf, NULL, SDL_MapRGBA(surf->format, 0, 0, 0, 178));
-
-	// Layout calculations
-	int pad = SCALE1(PADDING);
-	int item_h = SCALE1(PILL_SIZE) * 3 / 4;
-	int panel_w = sw * 3 / 4;
-	int panel_h = item_h * cm_count + pad * 2;
-	int panel_x = (sw - panel_w) / 2;
-	int panel_y = (sh - panel_h) / 2;
-
-	// Panel background (dark rounded rect)
-	uint32_t panel_color = SDL_MapRGBA(surf->format, 30, 30, 30, 255);
-	UI_fillRoundedRect(surf, panel_x, panel_y, panel_w, panel_h, SCALE1(8), panel_color);
-
-	// Items
-	int items_y = panel_y + pad;
-	for (int i = 0; i < cm_count; i++) {
-		int y = items_y + i * item_h;
-		bool selected = (i == cm_selected);
-
-		// Selection highlight (themed rounded pill)
-		if (selected) {
-			// Convert the accent (mapped to screen format) to ARGB for our surface, carrying the alpha through
-			uint8_t cr, cg, cb, ca;
-			SDL_GetRGBA(UI_accentMapped(screen->format), screen->format, &cr, &cg, &cb, &ca);
-			uint32_t pill_color = SDL_MapRGBA(surf->format, cr, cg, cb, ca);
-			UI_fillRoundedRect(surf, panel_x + pad, y, panel_w - pad * 2, item_h,
-							   item_h / 3, pill_color);
-		}
-
-		// Item text (themed colors matching list items)
-		SDL_Color text_color = UI_getListTextColor(selected);
-		SDL_Surface* text_surf = GFX_renderText(font.small, cm_items[i].label, text_color);
-		if (text_surf) {
-			SDL_SetSurfaceBlendMode(text_surf, SDL_BLENDMODE_BLEND);
-			int text_x = panel_x + pad + SCALE1(BUTTON_PADDING);
-			int text_y = y + (item_h - text_surf->h) / 2;
-			SDL_BlitSurface(text_surf, NULL, surf, &(SDL_Rect){text_x, text_y, 0, 0});
-			SDL_FreeSurface(text_surf);
-		}
-	}
-
-	// Clear and draw on the topmost GPU layer
+	const char* labels[CONTEXTMENU_MAX_ITEMS];
+	for (int i = 0; i < cm_count; i++)
+		labels[i] = cm_items[i].label;
+	BOS_uiSheet(surf, labels, cm_count, cm_selected);
 	GFX_clearLayers(LAYER_OVERLAY);
 	GFX_drawOnLayer(surf, 0, 0, sw, sh, 1.0f, false, LAYER_OVERLAY);
 }

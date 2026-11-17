@@ -267,7 +267,6 @@ int main(int argc, char* argv[]) {
 	PLAT_setClearImage(held_frame);
 	GameSwitcher_setHeldFrame(held_frame != NULL);
 
-	UI_bos = true; // every shared piece (dialogs, toasts, lists, keyboard) in the Brick OS look (DESIGN 7.9)
 	screen = GFX_init(MODE_MAIN);
 	bootStamp("after gfx init");
 

@@ -327,13 +327,6 @@ const PodcastDownloadProgress* Podcast_getDownloadProgress(void);
 void Podcast_saveDownloadQueue(void);
 void Podcast_loadDownloadQueue(void);
 
-// Count how many episodes are downloaded for a feed
-int Podcast_countDownloadedEpisodes(int feed_index);
-
-// Get the index of an episode among downloaded episodes only
-// Returns -1 if episode is not downloaded
-int Podcast_getDownloadedEpisodeIndex(int feed_index, int episode_index);
-
 // ============================================================================
 // Episode Management (on-disk storage)
 // ============================================================================

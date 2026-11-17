@@ -226,7 +226,6 @@ int main(int argc, char* argv[]) {
 	(void)argv;
 	Cheatdb_initPaths(&P);
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_EFFICIENCY);
 	InitSettings();

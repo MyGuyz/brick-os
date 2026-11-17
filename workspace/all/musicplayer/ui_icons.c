@@ -105,13 +105,6 @@ SDL_Surface* Icons_getFolder(bool selected) {
 	return selected ? icons.folder : icons.folder_inv;
 }
 
-// Get play all icon
-SDL_Surface* Icons_getPlayAll(bool selected) {
-	if (!icons.loaded)
-		return NULL;
-	return selected ? icons.play_all : icons.play_all_inv;
-}
-
 // Get icon for specific audio format
 // Falls back to generic audio icon if format-specific icon not available
 SDL_Surface* Icons_getForFormat(AudioFormat format, bool selected) {
@@ -166,16 +159,3 @@ SDL_Surface* Icons_getForFormat(AudioFormat format, bool selected) {
 	return selected ? icon : icon_inv;
 }
 
-// Get complete/played badge icon
-SDL_Surface* Icons_getComplete(bool selected) {
-	if (!icons.loaded)
-		return NULL;
-	return selected ? icons.complete : icons.complete_inv;
-}
-
-// Get download badge icon
-SDL_Surface* Icons_getDownload(bool selected) {
-	if (!icons.loaded)
-		return NULL;
-	return selected ? icons.download : icons.download_inv;
-}

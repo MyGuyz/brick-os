@@ -82,8 +82,3 @@ void UI_quitEmptyIcon(void) {
 	empty_icon_loaded = false;
 }
 
-SDL_Surface* Icons_getEmpty(bool selected) {
-	if (!empty_icon_loaded)
-		UI_initEmptyIcon();
-	return selected ? empty_icon : empty_icon_inv;
-}

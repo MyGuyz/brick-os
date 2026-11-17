@@ -476,7 +476,6 @@ static void run_settings_menu(SDL_Surface** screen_ptr) {
 int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	SDL_Surface* screen = GFX_init(MODE_MAIN);
 	g_screen = screen;
 	UI_showSplashScreen(screen, "RetroAchievements");

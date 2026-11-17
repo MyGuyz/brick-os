@@ -2300,49 +2300,6 @@ void Podcast_loadDownloadQueue(void) {
 	json_value_free(root);
 }
 
-int Podcast_countDownloadedEpisodes(int feed_index) {
-	if (feed_index < 0 || feed_index >= subscription_count) {
-		return 0;
-	}
-
-	PodcastFeed* feed = &subscriptions[feed_index];
-	int downloaded_count = 0;
-
-	for (int i = 0; i < feed->episode_count; i++) {
-		if (Podcast_episodeFileExists(feed, i)) {
-			downloaded_count++;
-		}
-	}
-
-	return downloaded_count;
-}
-
-int Podcast_getDownloadedEpisodeIndex(int feed_index, int episode_index) {
-	if (feed_index < 0 || feed_index >= subscription_count) {
-		return -1;
-	}
-
-	PodcastFeed* feed = &subscriptions[feed_index];
-	if (episode_index < 0 || episode_index >= feed->episode_count) {
-		return -1;
-	}
-
-	// Check if the current episode is downloaded
-	if (!Podcast_episodeFileExists(feed, episode_index)) {
-		return -1;
-	}
-
-	// Count how many downloaded episodes come before this one
-	int index_among_downloaded = 0;
-	for (int i = 0; i < episode_index; i++) {
-		if (Podcast_episodeFileExists(feed, i)) {
-			index_among_downloaded++;
-		}
-	}
-
-	return index_among_downloaded;
-}
-
 // ============================================================================
 // Background Feed Refresh
 // ============================================================================

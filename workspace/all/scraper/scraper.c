@@ -1265,7 +1265,6 @@ int main(int argc, char* argv[]) {
 			return run_headless_scan();
 	}
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(screen, "Artwork Manager");
 

@@ -100,7 +100,6 @@ typedef struct {
 	// -- state (widget-owned; zero-init valid) --
 	int selected;
 	int scroll; // first visible row index
-	ListGlide glide;
 	ScrollTextState marquee;
 	// -- internal (widget-private; zero-init valid) --
 	bool input_pending;	  // selection changed since last render

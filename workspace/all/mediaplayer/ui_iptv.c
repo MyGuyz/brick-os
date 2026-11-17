@@ -31,19 +31,9 @@ static void iptv_user_get_row(void* ctx, int i, bool selected,
 							  ListViewRow* out) {
 	const IPTVChannel* channels = ctx;
 	out->label = channels[i].name;
-	if (UI_bos) { // board v2-VideoTV: the logo's letters, the group
-		out->sq_text = channels[i].name, out->sq_raw = true, out->art_wide = true;
-		out->sub = channels[i].group;
-	}
-	(void)selected;
-}
-
-static void iptv_countries_get_row(void* ctx, int i, bool selected,
-								   ListViewRow* out) {
-	// Channel counts are unknown until a country is fetched (lazy per-country
-	// loading), so country rows show just the name.
-	const CuratedTVCountry* countries = ctx;
-	out->label = countries[i].name;
+	// board v2-VideoTV: the logo's letters, the group
+	out->sq_text = channels[i].name, out->sq_raw = true, out->art_wide = true;
+	out->sub = channels[i].group;
 	(void)selected;
 }
 
@@ -74,20 +64,18 @@ void render_iptv_user_channels(SDL_Surface* screen, IndicatorType show_setting,
 	v->hint_pairs = (channel_count > 0)
 						? (char*[]){"B", "BACK", "A", "PLAY", NULL}
 						: NULL;
-	if (UI_bos) {
-		static char sub[64];
-		snprintf(sub, sizeof(sub), I18N_text("%d channels · needs WiFi"), channel_count);
-		v->bos_title = I18N_text("Online TV"), v->bos_sub = sub;
-		v->bos_empty_icon = "tv";
-		static BosHint hr[2], hl[1];
-		hr[0] = (BosHint){"A", I18N_text("Watch")};
-		hr[1] = (BosHint){"B", I18N_text("Back")};
-		hl[0] = (BosHint){"MENU", I18N_text("Options")};
-		if (channel_count > 0)
-			v->bos_hints = hr, v->bos_nhints = 2, v->bos_left = hl, v->bos_nleft = 1;
-		else
-			v->bos_hints = NULL, v->bos_nhints = 0, v->bos_left = NULL, v->bos_nleft = 0;
-	}
+	static char sub[64];
+	snprintf(sub, sizeof(sub), I18N_text("%d channels · needs WiFi"), channel_count);
+	v->bos_title = I18N_text("Online TV"), v->bos_sub = sub;
+	v->bos_empty_icon = "tv";
+	static BosHint hr[2], hl[1];
+	hr[0] = (BosHint){"A", I18N_text("Watch")};
+	hr[1] = (BosHint){"B", I18N_text("Back")};
+	hl[0] = (BosHint){"MENU", I18N_text("Options")};
+	if (channel_count > 0)
+		v->bos_hints = hr, v->bos_nhints = 2, v->bos_left = hl, v->bos_nleft = 1;
+	else
+		v->bos_hints = NULL, v->bos_nhints = 0, v->bos_left = NULL, v->bos_nleft = 0;
 	UI_listViewRender(v, screen);
 
 	// Playback failure / status feedback set by module_iptv.
@@ -149,7 +137,7 @@ static void render_tv_columns(SDL_Surface* screen, const char* code, int sel, in
 }
 
 bool IPTVAdd_bosMoving(void) {
-	return UI_bos && BOS_columnsMoving();
+	return BOS_columnsMoving();
 }
 
 // Render curated country list for browsing
@@ -158,31 +146,8 @@ void render_iptv_curated_countries(SDL_Surface* screen, IndicatorType show_setti
 	(void)show_setting;
 	GFX_clear(screen);
 
-	if (UI_bos) {
-		iptv_curated_countries_view.count = IPTV_curated_get_country_count();
-		render_tv_columns(screen, NULL, 0, NULL, NULL, 0);
-		UI_renderToast(screen, toast_message, toast_time);
-		return;
-	}
-	UI_renderMenuBar(screen, "Media Player | Browse Channels");
-
-	int country_count = IPTV_curated_get_country_count();
-	const CuratedTVCountry* countries = IPTV_curated_get_countries();
-
-	ListView* v = &iptv_curated_countries_view;
-	v->title = NULL; // menu bar drawn above (caller-owned chrome)
-	v->font = font.medium;
-	v->count = country_count;
-	v->get_row = iptv_countries_get_row;
-	v->ctx = (void*)countries;
-	v->list_id = (const void*)countries;
-	// Catalog is fetched from iptv-org; an empty list means the fetch failed.
-	v->empty_title = "Couldn't load channel list";
-	v->empty_subtitle = "Press MENU to refresh, or check Wi-Fi";
-	v->hint_pairs = (char*[]){"B", "BACK", "A", "SELECT", NULL};
-	UI_listViewRender(v, screen);
-
-	// Disclaimer / error feedback set by module_iptv.
+	iptv_curated_countries_view.count = IPTV_curated_get_country_count();
+	render_tv_columns(screen, NULL, 0, NULL, NULL, 0);
 	UI_renderToast(screen, toast_message, toast_time);
 }
 

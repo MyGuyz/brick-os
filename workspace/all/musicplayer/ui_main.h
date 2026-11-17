@@ -7,10 +7,6 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
-// Main menu ListView (full mode). MenuModule_run feeds it input and reads
-// actions; render_menu fills its per-frame config and renders it.
-ListView* MusicMainMenu_view(void);
-
 // Render the main menu (first_item_mode: 0=none, 1=Resume, 2=Now Playing)
 void render_menu(SDL_Surface* screen, IndicatorType show_setting,
 				 char* toast_message, uint32_t toast_time, int first_item_mode);

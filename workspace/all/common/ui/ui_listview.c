@@ -145,20 +145,16 @@ void UI_listViewReset(ListView* v, int count, const void* list_id) {
 	// handled by UI_listGlideDrawAtY on the next render.
 }
 
-// The Brick OS look lives in the kit (bos_list.c); apps without the kit never set bos
-void BOS_listViewRender(ListView* v, SDL_Surface* screen) __attribute__((weak));
-bool BOS_listViewBusy(ListView* v) __attribute__((weak));
+// The Brick OS look lives in the kit (bos_list.c)
+void BOS_listViewRender(ListView* v, SDL_Surface* screen);
+bool BOS_listViewBusy(ListView* v);
 
 bool UI_listViewBusy(ListView* v) {
 	return BOS_listViewBusy(v);
 }
 
 void UI_listViewTickIdle(ListView* v) {
-	if (v->bos || (UI_bos && BOS_listViewRender))
-		return;
-	ScrollText_activateAfterDelay(&v->marquee);
-	if (ScrollText_isScrolling(&v->marquee))
-		ScrollText_animateOnly(&v->marquee);
+	(void)v; // the kit's rows scroll their own long names
 }
 
 void UI_listViewRender(ListView* v, SDL_Surface* screen) {

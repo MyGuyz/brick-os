@@ -26,10 +26,6 @@ int UI_pageTitleX(void);
 // The page title's font: UI_PAGE_TITLE_SP at FIXED_SCALE.
 // NULL if the font fails to open.
 TTF_Font* UI_pageTitleFont(void);
-// Draw a page title at x in the top strip, fitted into max_w px (<= 0: no limit beyond the screen). suffix
-// may be NULL; shadow draws the dark shadow (black 60%, SCALE1(1) offset) under it, for a title over a
-// picture. Returns the drawn width.
-int UI_renderPageTitleEx(SDL_Surface* dst, int x, const char* title, const char* suffix, int max_w, bool shadow);
 
 // Render the top menu bar: semi-transparent background, page title (left),
 // hardware group (right). Returns the width of the hardware group (ow) for

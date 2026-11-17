@@ -41,11 +41,8 @@ void Podcast_clearTitleScroll(void);
 void Podcast_clearArtwork(void);
 
 #define LAYER_PODCAST_PROGRESS 3
-void PodcastProgress_setPosition(int bar_x, int bar_y, int bar_w, int bar_h,
-								 int time_y, int screen_w, int duration_ms);
 void PodcastProgress_clear(void);
 bool PodcastProgress_needsRefresh(void);
-void PodcastProgress_renderGPU(void);
 
 int UIPodcast_bosMainNav(int sel, int cl, int grid_n);
 int UIPodcast_bosGridNav(int sel, int n);

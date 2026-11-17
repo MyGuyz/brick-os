@@ -4,7 +4,7 @@
 #include "api.h"
 #include "defines.h"
 
-void BOS_uiEmpty(SDL_Surface* s, const char* message, const char* subtitle, char** pairs) __attribute__((weak));
+void BOS_uiEmpty(SDL_Surface* s, const char* message, const char* subtitle, char** pairs);
 void UI_renderEmptyStateButtons(SDL_Surface* screen, const char* message,
 								const char* subtitle, char** btn_pairs) {
 	BOS_uiEmpty(screen, message, subtitle, btn_pairs);

@@ -253,7 +253,6 @@ int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_EFFICIENCY);
 	UI_showSplashScreen(screen, "Image Viewer");
@@ -269,12 +268,11 @@ int main(int argc, char* argv[]) {
 	pane_w = screen->w - pane_x - SCALE1(BUTTON_MARGIN * 2);
 	pane_y = SCALE1(PILL_SIZE) + SCALE1(BUTTON_MARGIN);
 	pane_h = screen->h - pane_y - SCALE1(PILL_SIZE);
-	if (UI_bos) { // the list 470 at x 24, the picture's box from x 522 to 32 short of the edge
-		pane_x = BOS_px(24 + 470 + 28);
-		pane_w = screen->w - BOS_px(32) - pane_x;
-		pane_y = BOS_px(BOS_BAR_H + 8);
-		pane_h = BOS_px(IV_BOX_H) + SCALE1(24);
-	}
+	// the list 470 at x 24, the picture's box from x 522 to 32 short of the edge
+	pane_x = BOS_px(24 + 470 + 28);
+	pane_w = screen->w - BOS_px(32) - pane_x;
+	pane_y = BOS_px(BOS_BAR_H + 8);
+	pane_h = BOS_px(IV_BOX_H) + SCALE1(24);
 	IvLoader_init(screen, pane_w, pane_h - SCALE1(24)); // 24: reserved for the metadata line
 
 	signal(SIGINT, sigHandler);

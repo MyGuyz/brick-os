@@ -1,7 +1,7 @@
 #ifndef VID_BOS_H
 #define VID_BOS_H
 // The Video app's own Brick OS pages (DESIGN.md 7.3): the home; and a video's picture (a same-name .jpg / .png
-// beside it). Lists, sheets, boxes and toasts come from the shared pieces with UI_bos on.
+// beside it). Lists, sheets, boxes and toasts come from the shared pieces.
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 #include "bos_ui.h"

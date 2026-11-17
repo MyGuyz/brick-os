@@ -17,7 +17,7 @@
 
 #define KB_MAX_INPUT 128
 
-void BOS_uiKeyboard(SDL_Surface* s, const UIKeyboardView* v) __attribute__((weak));
+void BOS_uiKeyboard(SDL_Surface* s, const UIKeyboardView* v);
 
 #define BOTTOM_ROW {UIKB_LEFT, UIKB_RIGHT, UIKB_SPACE, UIKB_SYM, UIKB_LANG, UIKB_GO}
 static const char* kb_en[UIKB_ROWS][UIKB_COLS] = {
@@ -111,60 +111,6 @@ static void kb_view(UIKeyboardView* v, KbLayout* l) {
 			v->span[r][c] = kb_span(l, r, c);
 		}
 	v->units = kb_units(l);
-}
-
-// The plain grid for apps without the Brick OS kit: the prompt, the field, the keys as glyphs, the focused key on
-// the theme colour, the standard hint bar.
-static void kb_draw_plain(SDL_Surface* screen, const UIKeyboardView* v) {
-	SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
-	SDL_Color focused_color = uintToColour(THEME_COLOR5_255);
-	int y = SCALE1(PADDING);
-	if (v->prompt && v->prompt[0]) {
-		SDL_Surface* t = GFX_renderText(font.small, v->prompt, COLOR_GRAY);
-		if (t) {
-			SDL_BlitSurface(t, NULL, screen, &(SDL_Rect){SCALE1(PADDING), y});
-			y += t->h + SCALE1(4);
-			SDL_FreeSurface(t);
-		}
-	}
-	int input_h = TTF_FontHeight(font.large);
-	SDL_Surface* t = v->input[0] ? GFX_renderText(font.large, v->input, COLOR_WHITE) : NULL;
-	int caret_x = 0;
-	if (v->caret > 0) {
-		char head[KB_MAX_INPUT + 1];
-		snprintf(head, sizeof(head), "%.*s", v->caret, v->input);
-		GFX_measureText(font.large, head, &caret_x, NULL);
-	}
-	int max_w = screen->w - SCALE1(PADDING * 2), src_x = caret_x > max_w ? caret_x - max_w : 0;
-	if (t) {
-		SDL_BlitSurface(t, &(SDL_Rect){src_x, 0, max_w, t->h}, screen, &(SDL_Rect){SCALE1(PADDING), y});
-		SDL_FreeSurface(t);
-	}
-	SDL_FillRect(screen, &(SDL_Rect){SCALE1(PADDING) + caret_x - src_x, y, SCALE1(2), input_h},
-				 SDL_MapRGB(screen->format, 255, 255, 255));
-	int rows_top = y + input_h + SCALE1(8), avail = screen->h - BAR_HEIGHT - rows_top;
-	int cell_h = avail / UIKB_ROWS, cell_w = (screen->w - SCALE1(PADDING * 2)) / v->units;
-	for (int r = 0; r < UIKB_ROWS; r++) {
-		int x = SCALE1(PADDING), cy = rows_top + r * cell_h + cell_h / 2;
-		for (int c = 0; c < UIKB_COLS && v->keys[r][c]; c++) {
-			int w = cell_w * v->span[r][c];
-			bool focused = r == v->row && c == v->col;
-			if (focused)
-				UI_fillRoundedRect(screen, x + SCALE1(1), cy - cell_h / 2 + SCALE1(1), w - SCALE1(2), cell_h - SCALE1(2),
-								   SCALE1(6), THEME_COLOR1);
-			const char* k = v->keys[r][c];
-			const char* label = strcmp(k, UIKB_GO) == 0 ? (v->search ? "Search" : "OK")
-							  : strcmp(k, UIKB_SYM) == 0 && v->sym ? "abc" : k;
-			SDL_Surface* g = GFX_renderText(font.large, label, focused ? focused_color : COLOR_WHITE);
-			if (g) {
-				SDL_BlitSurface(g, NULL, screen, &(SDL_Rect){x + (w - g->w) / 2, cy - g->h / 2});
-				SDL_FreeSurface(g);
-			}
-			x += w;
-		}
-	}
-	UI_renderButtonHintBar(screen, (char*[]){"Y", "TH/EN", "X", "SPACE", "B", "DELETE", "A", "TYPE", NULL});
-	GFX_flip(screen);
 }
 
 char* UIKeyboard_open(const char* prompt) {
@@ -348,11 +294,8 @@ char* UIKeyboard_openWith(const char* prompt, const char* initial, int flags) {
 			v.shift = caps ? 2 : shift; // 2: caps lock
 			v.sym = sym;
 			v.search = kb_searchy(prompt);
-			if (BOS_uiKeyboard) {
-				BOS_uiKeyboard(screen, &v);
-				GFX_flip(screen);
-			} else
-				kb_draw_plain(screen, &v);
+			BOS_uiKeyboard(screen, &v);
+			GFX_flip(screen);
 			dirty = false;
 		} else {
 			GFX_sync();

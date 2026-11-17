@@ -14,10 +14,6 @@ static const char* base_menu_items[] = {"Library", "Online TV"};
 // MenuModule_run drives it through MediaMainMenu_view()).
 static ListView main_menu_view;
 
-ListView* MediaMainMenu_view(void) {
-	return &main_menu_view;
-}
-
 static void main_menu_get_row(void* ctx, int i, bool selected,
 							  ListViewRow* out) {
 	const char** items = ctx;

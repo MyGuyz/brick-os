@@ -134,7 +134,7 @@ GlobalInputResult ModuleCommon_handleGlobalInput(SDL_Surface* screen, IndicatorT
 	// globally by keymon); PAD_tappedMenu only fires on a short release, so
 	// the two don't collide.
 	if (PAD_tappedMenu(SDL_GetTicks())) {
-		if (show_controls_help || (app_state == APP_STATE_MUSIC_PLAYING && !(UI_bos && menu_count > 0))) {
+		if (show_controls_help || (app_state == APP_STATE_MUSIC_PLAYING && !(menu_count > 0))) {
 			show_controls_help = !show_controls_help;
 			GFX_clearLayers(LAYER_SCROLLTEXT);
 			PLAT_clearLayers(LAYER_SPECTRUM);

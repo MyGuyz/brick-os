@@ -1,6 +1,6 @@
 // Brick OS kit: lists drawn as §5.6 groups (DESIGN.md 5.5-5.6).
 //  - BOS_groupRows: a group of rows anywhere on a page, from ListViewRow data (pages that keep their own selection)
-//  - BOS_listViewRender: the shared ListView drawn that way (apps that set `bos`, or UI_bos), the ListView keeping
+//  - BOS_listViewRender: the shared ListView drawn that way, the ListView keeping
 //    its input and selection (ui_listview.c)
 //  - BOS_columns: two columns, a list left and a group right (Settings' layout; radio / TV "add" pages)
 #include "bos_ui.h"

@@ -32,16 +32,10 @@ bool player_title_scroll_needs_render(void);
 // Animate player title scroll (GPU mode, no screen redraw needed)
 void player_animate_scroll(void);
 
-// Playtime GPU rendering functions
-void PlayTime_setPosition(int x, int y, int duration_x);
 void PlayTime_renderGPU(void);
 bool PlayTime_needsRefresh(void);
 void PlayTime_clear(void);
 
-// Lyrics GPU rendering functions
-// Where the lyrics go: from (x, y), max_w wide (one truncated row a line) or,
-// on devices that wrap lyrics (MUSIC_LYRICS_WRAP_W), down to max_h tall.
-void Lyrics_setGPUPosition(int x, int y, int max_w, int max_h);
 void Lyrics_renderGPU(void);
 bool Lyrics_GPUneedsRefresh(void);
 void Lyrics_clearGPU(void);

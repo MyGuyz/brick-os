@@ -26,19 +26,6 @@ ListView* PlaylistDetail_view(void) {
 	return &playlist_detail_view;
 }
 
-// "%s (%d)" scratch: the widget consumes the label before the next get_row
-// call, so one static buffer per provider is enough.
-static char playlist_row_buf[256];
-
-static void playlist_list_get_row(void* ctx, int i, bool selected,
-								  ListViewRow* out) {
-	PlaylistInfo* pls = ctx;
-	snprintf(playlist_row_buf, sizeof(playlist_row_buf), "%s (%d)",
-			 pls[i].name, pls[i].track_count);
-	out->label = playlist_row_buf;
-	(void)selected;
-}
-
 // Row provider for the tracks list: icon variant follows the widget-supplied
 // `selected` flag (the glide-tracking row_sel), preserving the
 // pill-follows-icon behavior.
@@ -46,17 +33,14 @@ static void playlist_detail_get_row(void* ctx, int i, bool selected,
 									ListViewRow* out) {
 	PlaylistTrack* tracks = ctx;
 	out->label = tracks[i].name;
-	out->icon = Icons_isLoaded() ? Icons_getForFormat(tracks[i].format, selected) : NULL;
-	if (UI_bos) {
-		out->icon = NULL;
-		const char* slash = strrchr(tracks[i].path, '/');
-		char dir[512];
-		snprintf(dir, sizeof(dir), "%.*s", slash ? (int)(slash - tracks[i].path) : 0, tracks[i].path);
-		out->art = MusicBos_folderArt(dir);
-		if (!out->art)
-			out->sq_icon = "music", out->sq_color = 0x5E5CE6;
-		out->sub = get_format_name(tracks[i].format);
-	}
+	(void)selected;
+	const char* slash = strrchr(tracks[i].path, '/');
+	char dir[512];
+	snprintf(dir, sizeof(dir), "%.*s", slash ? (int)(slash - tracks[i].path) : 0, tracks[i].path);
+	out->art = MusicBos_folderArt(dir);
+	if (!out->art)
+		out->sq_icon = "music", out->sq_color = 0x5E5CE6;
+	out->sub = get_format_name(tracks[i].format);
 }
 
 // Brick OS (board v2-MusicPlaylists): two columns; the ListView still owns the input (count + the "new" row)
@@ -105,30 +89,7 @@ bool PlaylistList_bosMoving(void) {
 void render_playlist_list(SDL_Surface* screen, IndicatorType show_setting,
 						  PlaylistInfo* playlists, int count) {
 	(void)show_setting;
-	if (UI_bos) {
-		render_playlists_bos(screen, playlists, count);
-		return;
-	}
-	GFX_clear(screen);
-
-	UI_renderMenuBar(screen, "Music Player | Playlists");
-
-	ListView* v = &playlist_list_view;
-	v->title = NULL; // menu bar drawn above (caller-owned chrome)
-	v->font = font.medium;
-	v->count = count;
-	v->get_row = playlist_list_get_row;
-	v->ctx = playlists;
-	v->list_id = (const void*)playlists;
-	v->empty_title = "No playlists saved";
-	v->empty_subtitle = "Press A to create a playlist";
-	v->empty_y_label = NULL;
-	// Empty state carries all hints; the bottom bar only appears with content
-	v->empty_btn_pairs = (char*[]){"B", "BACK", "A", "NEW", NULL};
-	v->hint_pairs = (count > 0)
-						? (char*[]){"B", "BACK", "A", "SELECT", NULL}
-						: NULL;
-	UI_listViewRender(v, screen);
+	render_playlists_bos(screen, playlists, count);
 }
 
 void render_playlist_detail(SDL_Surface* screen, IndicatorType show_setting,
@@ -140,20 +101,19 @@ void render_playlist_detail(SDL_Surface* screen, IndicatorType show_setting,
 	UI_renderMenuBarPage(screen, "Music Player", playlist_name);
 
 	ListView* v = &playlist_detail_view;
-	if (UI_bos) { // board v2-MusicPlaylists, opened: the playlist's songs
-		static char sub[48];
-		snprintf(sub, sizeof(sub), I18N_text("%d songs"), count);
-		v->bos_status = I18N_text("Playlists");
-		v->bos_title = playlist_name, v->bos_sub = sub;
-		v->bos_empty_icon = "list";
-		static BosHint hr[2], hl[1];
-		hr[0] = (BosHint){"A", I18N_text("Play")};
-		hr[1] = (BosHint){"B", I18N_text("Back")};
-		hl[0] = (BosHint){"MENU", I18N_text("Options")};
-		v->bos_hints = hr, v->bos_nhints = count > 0 ? 2 : 1, v->bos_left = hl, v->bos_nleft = count > 0 ? 1 : 0;
-		if (count == 0)
-			v->bos_hints = hr + 1;
-	}
+	// board v2-MusicPlaylists, opened: the playlist's songs
+	static char sub[48];
+	snprintf(sub, sizeof(sub), I18N_text("%d songs"), count);
+	v->bos_status = I18N_text("Playlists");
+	v->bos_title = playlist_name, v->bos_sub = sub;
+	v->bos_empty_icon = "list";
+	static BosHint hr[2], hl[1];
+	hr[0] = (BosHint){"A", I18N_text("Play")};
+	hr[1] = (BosHint){"B", I18N_text("Back")};
+	hl[0] = (BosHint){"MENU", I18N_text("Options")};
+	v->bos_hints = hr, v->bos_nhints = count > 0 ? 2 : 1, v->bos_left = hl, v->bos_nleft = count > 0 ? 1 : 0;
+	if (count == 0)
+		v->bos_hints = hr + 1;
 	v->title = NULL; // menu bar drawn above (caller-owned chrome)
 	v->font = font.medium;
 	v->count = count;

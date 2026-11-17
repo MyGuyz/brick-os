@@ -1212,11 +1212,11 @@ static int run_detail(AddonEntry* e) {
 		if (PAD_justPressed(BTN_B))
 			break;
 		bool xd_un = false; // A on the uninstall row
-		if (UI_bos && xd_count(e) > 1 && (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN))) {
+		if (xd_count(e) > 1 && (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN))) {
 			xd_sel = !xd_sel;
 			dirty = true;
 		}
-		if (UI_bos && xd_sel == 1 && PAD_justPressed(BTN_A))
+		if (xd_sel == 1 && PAD_justPressed(BTN_A))
 			xd_un = true;
 		if (PAD_justPressed(BTN_A) && !xd_un) {
 			if (!e->compatible) {
@@ -1279,108 +1279,8 @@ static int run_detail(AddonEntry* e) {
 		PWR_update(&dirty, &show_setting, NULL, NULL);
 		if (BOS_glideMoving(&xd_pill))
 			dirty = true;
-		if (dirty && UI_bos) {
+		if (dirty) {
 			render_detail_bos(e);
-			GFX_flip(screen);
-			dirty = false;
-		} else if (dirty) {
-			GFX_clear(screen);
-			// Same menu bar as the list screen (status icons/battery/clock
-			// live there); layout.list_y below already reserves its band, the
-			// bar just wasn't drawn here (user-reported 2026-08-09).
-			UI_renderMenuBarPage(screen, "Xtras", e->name); // a page inside the tool names it (LIST-LAYOUT §10.1)
-			ListLayout layout = UI_calcListLayout(screen);
-			int x = UI_listTextX(); // under the title's first letter
-			int y = layout.list_y;
-
-			// Title: the same font a selectable list row uses, so the
-			// detail page reads as a continuation of the entry just picked
-			// rather than a smaller/different "settings row" treatment.
-			SDL_Surface* title = GFX_renderText(font.large, e->name, COLOR_WHITE);
-			if (title) {
-				SDL_BlitSurface(title, NULL, screen, &(SDL_Rect){x, y, 0, 0});
-				y += title->h;
-				SDL_FreeSurface(title);
-			} else {
-				y += TTF_FontHeight(font.large);
-			}
-			y += SCALE1(4);
-
-			// Metadata block, two compact dim lines (user layout 2026-08-10):
-			//   GAME  ·  ~40 MB
-			//   Installed v0.1.75  ·  Latest v0.1.76
-			// Release tags are shown verbatim - upstreams differ on the "v"
-			// prefix. The Latest segment appears only once the background
-			// check has cached a value.
-			char meta_lines[2][192];
-			snprintf(meta_lines[0], sizeof(meta_lines[0]), "%s  \xC2\xB7  ~%d MB",
-					 e->category, e->size_mb);
-			int voff;
-			if (!e->compatible)
-				voff = snprintf(meta_lines[1], sizeof(meta_lines[1]),
-								"Not available on %s", PLAT_getModel());
-			else if (e->installed[0])
-				voff = snprintf(meta_lines[1], sizeof(meta_lines[1]),
-								"Installed %s", e->installed);
-			else
-				voff = snprintf(meta_lines[1], sizeof(meta_lines[1]),
-								"Not installed");
-			if (e->compatible && e->latest[0] && voff < (int)sizeof(meta_lines[1]))
-				snprintf(meta_lines[1] + voff, sizeof(meta_lines[1]) - voff,
-						 "  \xC2\xB7  Latest %s", e->latest);
-			for (int i = 0; i < 2; i++) {
-				SDL_Surface* meta_surf = GFX_renderText(font.small, meta_lines[i], COLOR_GRAY);
-				if (meta_surf) {
-					SDL_BlitSurface(meta_surf, NULL, screen, &(SDL_Rect){x, y, 0, 0});
-					y += meta_surf->h;
-					SDL_FreeSurface(meta_surf);
-				} else {
-					y += TTF_FontHeight(font.small);
-				}
-				y += SCALE1(2);
-			}
-			y += SCALE1(6);
-
-			// Description: font.tiny - one size below the metadata line's
-			// font.small, per on-device feedback that the old settings-row
-			// description (which was font.small too) read too large.
-			// Pixel-wrapped to fill however much room is left above the
-			// hint bar (UI_calcListLayout already reserves that gap).
-			int desc_bottom = layout.list_y + layout.list_h;
-			int line_h = TTF_FontHeight(font.tiny) + SCALE1(2);
-			int max_lines = line_h > 0 ? (desc_bottom - y) / line_h : 0;
-			if (max_lines > DESC_MAX_LINES)
-				max_lines = DESC_MAX_LINES;
-			if (max_lines < 0)
-				max_lines = 0;
-
-			char desc_lines[DESC_MAX_LINES][DESC_LINE_MAX];
-			int n = wrap_text(font.tiny, e->desc, layout.max_width, desc_lines, max_lines);
-			for (int i = 0; i < n; i++) {
-				SDL_Surface* s = GFX_renderText(font.tiny, desc_lines[i], COLOR_GRAY);
-				if (s) {
-					SDL_BlitSurface(s, NULL, screen, &(SDL_Rect){x, y, 0, 0});
-					SDL_FreeSurface(s);
-				}
-				y += line_h;
-			}
-
-			// X/UNINSTALL only once an entry is installed; hint-bar order is
-			// the repo convention (B first, middle buttons next, A last -
-			// matches every other X-hint call site, e.g. minarch's
-			// ma_menu.c "B" "BACK" "X" "CLEAR" "A" "SET"). A's verb tracks
-			// the update state - UPDATE, REINSTALL and INSTALL all run the
-			// same install.sh (it always installs the latest release); only
-			// the wording differs.
-			if (!e->compatible)
-				UI_renderButtonHintBar(screen, (char*[]){"B", "BACK", NULL});
-			else if (e->installed[0])
-				UI_renderButtonHintBar(screen, (char*[]){"B", "BACK",
-														 "X", "UNINSTALL", "A",
-														 entry_update_available(e) ? "UPDATE" : "REINSTALL", NULL});
-			else
-				UI_renderButtonHintBar(screen, (char*[]){"B", "BACK",
-														 "A", "INSTALL", NULL});
 			GFX_flip(screen);
 			dirty = false;
 		} else {
@@ -1398,7 +1298,6 @@ int main(int argc, char* argv[]) {
 	} else
 		getcwd(pak_dir, sizeof(pak_dir));
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(screen, "Xtras");
 

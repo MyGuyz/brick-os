@@ -7,10 +7,6 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
-// Accessor for the main menu ListView (owned by ui_main.c, driven by
-// MenuModule_run).
-ListView* MediaMainMenu_view(void);
-
 // Render the main menu
 void render_menu(SDL_Surface* screen, IndicatorType show_setting,
 				 char* toast_message, uint32_t toast_time);

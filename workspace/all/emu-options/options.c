@@ -601,7 +601,7 @@ static void run_editor(const char* title, bool per_game) {
 			}
 		}
 
-		if (UI_bos && (BOS_glideMoving(&el_pill) || BOS_glideMoving(&el_scroll) || BOS_uiSettingsMoving()))
+		if ((BOS_glideMoving(&el_pill) || BOS_glideMoving(&el_scroll) || BOS_uiSettingsMoving()))
 			dirty = true;
 		if (dirty) {
 			if (state == ED_SECTIONS)
@@ -732,7 +732,7 @@ static bool run_launch_page(const char* title) {
 			}
 		}
 
-		if (UI_bos && BOS_uiSettingsMoving())
+		if (BOS_uiSettingsMoving())
 			dirty = true;
 		if (dirty) {
 			render_item_page(title, "Launch Options", row_item, row_count, selected, &scroll);
@@ -862,7 +862,6 @@ int main(int argc, char* argv[]) {
 
 	int saved_stdout = pick ? stdout_park() : -1;
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(screen, game_name ? game_name : "Emulator Settings");
 

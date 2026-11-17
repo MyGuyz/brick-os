@@ -2,7 +2,7 @@
 #include "api.h"
 #include "ui_draw.h"
 
-void BOS_uiMessage(SDL_Surface* s, const char* message) __attribute__((weak));
+void BOS_uiMessage(SDL_Surface* s, const char* message);
 
 void UI_showMessage(SDL_Surface* screen, const char* message, int hold_ms) {
 	GFX_clear(screen);

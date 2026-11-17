@@ -9,7 +9,7 @@
 #include <string.h>
 #include "ui_draw.h"
 
-void BOS_uiProgress(SDL_Surface* s, const UIDownloadProgress* info) __attribute__((weak));
+void BOS_uiProgress(SDL_Surface* s, const UIDownloadProgress* info);
 
 // A long-running tool page (LIST-LAYOUT §10.6 "Progress page"): the status line at the secondary size
 // (0.8 x the list label, bold for the semi-bold weight), the bar under it with a gap of 1.0 x the status

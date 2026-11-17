@@ -597,7 +597,6 @@ void initLayout() {
 int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(screen, "Game Time");
 
@@ -667,7 +666,7 @@ int main(int argc, char* argv[]) {
 				dirty = true;
 			}
 		} else if (count > 0) {
-			if (UI_bos && PAD_justPressed(BTN_A)) {
+			if (PAD_justPressed(BTN_A)) {
 				detail = true;
 				dirty = true;
 			} else if (PAD_justRepeated(BTN_UP)) {
@@ -719,7 +718,7 @@ int main(int argc, char* argv[]) {
 
 		if (BOS_glideMoving(&gt_pill) || BOS_glideMoving(&gt_scroll))
 			dirty = true;
-		if (dirty && UI_bos && count > 0) {
+		if (dirty && count > 0) {
 			if (detail)
 				render_detail_bos(selected, confirm_delete);
 			else

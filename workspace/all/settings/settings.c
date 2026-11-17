@@ -2702,7 +2702,6 @@ static void build_menu_tree(const DeviceInfo* dev) {
 int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
-	UI_bos = true; // every shared piece (dialogs, toasts, lists, keyboard) in the Brick OS look (DESIGN 7.9)
 	SDL_Surface* screen = GFX_init(MODE_MAIN);
 	g_screen = screen;
 	UI_showSplashScreen(screen, "Settings");

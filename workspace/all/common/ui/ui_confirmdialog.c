@@ -15,7 +15,7 @@ void UI_renderConfirmDialog(SDL_Surface* dst, const char* title,
 	UI_renderConfirmDialogHints(dst, title, subtitle, NULL);
 }
 
-void BOS_uiConfirm(SDL_Surface* s, const char* title, const char* subtitle, char** pairs) __attribute__((weak));
+void BOS_uiConfirm(SDL_Surface* s, const char* title, const char* subtitle, char** pairs);
 void UI_renderConfirmDialogHints(SDL_Surface* dst, const char* title,
 								 const char* subtitle, char** hints) {
 	GFX_clearLayers(LAYER_SCROLLTEXT);

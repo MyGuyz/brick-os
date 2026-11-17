@@ -809,8 +809,6 @@ static void wiz_menu_get_row(void* ctx, int i, bool selected, ListViewRow* out) 
 	const char** items = ctx;
 	out->label = items[i];
 	(void)selected;
-	if (!UI_bos)
-		return;
 	if (items == role_items) {
 		static const char* sb[2] = {"This device is player 1 and waits for a friend", "Find a friend's game"};
 		out->sub = sb[i], out->sq_icon = i == 0 ? "users" : "move", out->sq_color = i == 0 ? BOS_C_PRIMARY : BOS_C_OK;
@@ -827,12 +825,9 @@ static void wiz_menu_get_row(void* ctx, int i, bool selected, ListViewRow* out) 
 static void render_role_menu(const char* game) {
 	GFX_clear(wiz_screen);
 	ListView* v = &wiz_menu_view;
-	v->title = game;
-	if (UI_bos) {
-		v->title = "Play together";
-		v->bos_title = I18N_text("Play together");
-		v->bos_sub = game;
-	}
+	v->title = "Play together";
+	v->bos_title = I18N_text("Play together");
+	v->bos_sub = game;
 	v->font = font.large;
 	v->count = WIZ_ROLE_ITEMS;
 	v->get_row = wiz_menu_get_row;
@@ -846,12 +841,9 @@ static void render_role_menu(const char* game) {
 static void render_mode_menu(void) {
 	GFX_clear(wiz_screen);
 	ListView* v = &wiz_menu_view;
-	v->title = "Netplay | Connection"; // a page inside the tool names it (LIST-LAYOUT §10.1)
-	if (UI_bos) {
-		v->title = "Play together";
-		v->bos_title = I18N_text("How to connect");
-		v->bos_sub = I18N_text("Both devices pick the same way");
-	}
+	v->title = "Play together";
+	v->bos_title = I18N_text("How to connect");
+	v->bos_sub = I18N_text("Both devices pick the same way");
 	v->font = font.large;
 	v->count = shown_count;
 	v->get_row = wiz_menu_get_row;
@@ -919,7 +911,6 @@ int main(int argc, char* argv[]) {
 	for (int k = 0; k < shown_count; k++)
 		shown_items[k] = mode_items[shown_rows[k]];
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	wiz_screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(wiz_screen, "Netplay");
 

@@ -52,23 +52,9 @@ static void test_pill_snaps_when_disabled(void) {
 	CHECK(s.current_w == 240, "disabled: width must snap too (got %d)", s.current_w);
 }
 
-static void test_list_glide_snaps_when_disabled(void) {
-	g_menu_animations = false;
-	ListGlide g = {0};
-	int dummy_list = 0;
-	// First draw seeds the list identity (snap regardless of setting).
-	UI_listGlideDrawAtY(&g, NULL, &dummy_list, 100, 0, 600, 60, 0, true);
-	// Same list, selection moved one row: with animations off this must snap.
-	ListGlideFrame f = UI_listGlideDrawAtY(&g, NULL, &dummy_list, 160, 0, 600, 60, 0, true);
-	CHECK(!f.animating, "disabled: ListGlide must not report animating");
-	CHECK(f.pill_y == 160, "disabled: ListGlide pill must be on target (got %d)", f.pill_y);
-	CHECK(!UI_listGlideActive(&g), "disabled: ListGlide must not stay active");
-}
-
 int main(void) {
 	test_pill_glides_when_enabled();
 	test_pill_snaps_when_disabled();
-	test_list_glide_snaps_when_disabled();
 	if (failures) {
 		printf("%d check(s) failed\n", failures);
 		return 1;

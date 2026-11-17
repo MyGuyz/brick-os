@@ -62,10 +62,6 @@ static const char* main_menu_get_label(int index, const char* default_label,
 static ListView main_menu_view;
 static char main_menu_label_buf[256];
 
-ListView* MusicMainMenu_view(void) {
-	return &main_menu_view;
-}
-
 static void main_menu_get_row(void* ctx, int i, bool selected,
 							  ListViewRow* out) {
 	const char** items = ctx;

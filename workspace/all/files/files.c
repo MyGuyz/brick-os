@@ -717,7 +717,6 @@ static void go_up(void) {
 
 int main(int argc, char* argv[]) {
 	(void)argc, (void)argv;
-	UI_bos = true;
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_EFFICIENCY);
 	UI_showSplashScreen(screen, "Files");

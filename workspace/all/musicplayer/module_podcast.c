@@ -427,11 +427,11 @@ ModuleExitReason PodcastModule_run(SDL_Surface* screen) {
 			if (Podcast_loadPendingThumbnails())
 				dirty = 1;
 
-			int bos_nav = UI_bos && total > 0 ? UIPodcast_bosMainNav(podcast_menu_selected, cl_count, sub_count + has_downloads_item) : -1;
-			if (UI_bos && total > 0 && bos_nav != podcast_menu_selected) { // board v2-MusicPodcasts: cards, then a grid
+			int bos_nav = total > 0 ? UIPodcast_bosMainNav(podcast_menu_selected, cl_count, sub_count + has_downloads_item) : -1;
+			if (total > 0 && bos_nav != podcast_menu_selected) { // board v2-MusicPodcasts: cards, then a grid
 				podcast_menu_selected = bos_nav;
 				dirty = 1;
-			} else if (UI_bos && (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
+			} else if ((PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
 								  PAD_justRepeated(BTN_RIGHT))) {
 				// at an edge: nothing
 			} else if (PAD_justRepeated(BTN_UP) && total > 0) {
@@ -617,11 +617,11 @@ ModuleExitReason PodcastModule_run(SDL_Surface* screen) {
 				int count = 0;
 				Podcast_getTopShows(&count);
 
-				int bos_g = UI_bos && count > 0 ? UIPodcast_bosGridNav(podcast_top_shows_selected, count < 64 ? count : 64) : -1;
-				if (UI_bos && count > 0 && bos_g != podcast_top_shows_selected) { // board v2-MusicPodcastTop: a 5-across grid
+				int bos_g = count > 0 ? UIPodcast_bosGridNav(podcast_top_shows_selected, count < 64 ? count : 64) : -1;
+				if (count > 0 && bos_g != podcast_top_shows_selected) { // board v2-MusicPodcastTop: a 5-across grid
 					podcast_top_shows_selected = bos_g;
 					dirty = 1;
-				} else if (UI_bos && (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
+				} else if ((PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
 									  PAD_justRepeated(BTN_RIGHT))) {
 				} else if (PAD_justRepeated(BTN_UP) && count > 0) {
 					podcast_top_shows_selected = (podcast_top_shows_selected > 0) ? podcast_top_shows_selected - 1 : count - 1;
@@ -695,11 +695,11 @@ ModuleExitReason PodcastModule_run(SDL_Surface* screen) {
 				int count = 0;
 				Podcast_getSearchResults(&count);
 
-				int bos_g = UI_bos && count > 0 ? UIPodcast_bosGridNav(podcast_search_selected, count < 64 ? count : 64) : -1;
-				if (UI_bos && count > 0 && bos_g != podcast_search_selected) { // board v2-MusicPodcastTop: a 5-across grid
+				int bos_g = count > 0 ? UIPodcast_bosGridNav(podcast_search_selected, count < 64 ? count : 64) : -1;
+				if (count > 0 && bos_g != podcast_search_selected) { // board v2-MusicPodcastTop: a 5-across grid
 					podcast_search_selected = bos_g;
 					dirty = 1;
-				} else if (UI_bos && (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
+				} else if ((PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN) || PAD_justRepeated(BTN_LEFT) ||
 									  PAD_justRepeated(BTN_RIGHT))) {
 				} else if (PAD_justRepeated(BTN_UP) && count > 0) {
 					podcast_search_selected = (podcast_search_selected > 0) ? podcast_search_selected - 1 : count - 1;
@@ -1048,10 +1048,7 @@ ModuleExitReason PodcastModule_run(SDL_Surface* screen) {
 
 				// GPU progress bar update (updates every second without full redraw)
 				if (PodcastProgress_needsRefresh()) {
-					if (UI_bos)
-						dirty = 1; // the Brick OS page draws the time itself
-					else
-						PodcastProgress_renderGPU();
+					dirty = 1;
 				}
 
 				// Auto screen-off

@@ -115,7 +115,7 @@ static void rename_playlist(SDL_Surface** screen_p, int idx) {
 			show_toast("Playlist renamed");
 			refresh_playlists();
 			ListView* lv = PlaylistList_view();
-			UI_listViewReset(lv, playlist_count + (UI_bos ? 1 : 0), playlists);
+			UI_listViewReset(lv, playlist_count + 1, playlists);
 			// Follow the renamed playlist to its new (sorted) position
 			for (int i = 0; i < playlist_count; i++) {
 				if (strcmp(playlists[i].name, name) == 0) {
@@ -155,7 +155,7 @@ ModuleExitReason PlaylistModule_run(SDL_Surface* screen) {
 						refresh_playlists();
 						ListView* lv = PlaylistList_view();
 						int prev_selected = lv->selected;
-						UI_listViewReset(lv, playlist_count + (UI_bos ? 1 : 0), playlists);
+						UI_listViewReset(lv, playlist_count + 1, playlists);
 						if (playlist_count > 0)
 							lv->selected = (prev_selected < playlist_count)
 											   ? prev_selected
@@ -271,7 +271,7 @@ ModuleExitReason PlaylistModule_run(SDL_Surface* screen) {
 			ListViewAction act = UI_listViewHandleInput(v);
 			switch (act.type) {
 			case LISTVIEW_ACTIVATED:
-				if (UI_bos && act.index == playlist_count) { // the "new playlist" row
+				if (act.index == playlist_count) { // the "new playlist" row
 					create_playlist(&screen);
 					dirty = 1;
 					break;
@@ -291,7 +291,7 @@ ModuleExitReason PlaylistModule_run(SDL_Surface* screen) {
 				GFX_clearLayers(LAYER_SCROLLTEXT);
 				return MODULE_EXIT_TO_MENU;
 			case LISTVIEW_BUTTON:
-				if (UI_bos && act.btn == BTN_Y && act.index >= 0 && act.index < playlist_count) {
+				if (act.btn == BTN_Y && act.index >= 0 && act.index < playlist_count) {
 					// เล่นทั้งหมด: the focused playlist from its first song
 					current_playlist_index = act.index;
 					refresh_detail();
@@ -308,9 +308,8 @@ ModuleExitReason PlaylistModule_run(SDL_Surface* screen) {
 						refresh_playlists();
 					}
 					dirty = 1;
-				} else if ((!UI_bos && act.btn == BTN_Y) ||
-					(act.btn == BTN_A && playlist_count == 0)) {
-					// New Playlist: Y anywhere, or A from the empty state
+				} else if (act.btn == BTN_A && playlist_count == 0) {
+					// New Playlist: A from the empty state
 					// (its hint advertises A/NEW; act.index is -1 there).
 					create_playlist(&screen);
 					dirty = 1;
@@ -370,7 +369,7 @@ ModuleExitReason PlaylistModule_run(SDL_Surface* screen) {
 		// render.
 		if (dirty ||
 			(state == PLAYLIST_INTERNAL_LIST && UI_listViewBusy(PlaylistList_view())) ||
-			(state == PLAYLIST_INTERNAL_LIST && UI_bos && PlaylistList_bosMoving()) ||
+			(state == PLAYLIST_INTERNAL_LIST && PlaylistList_bosMoving()) ||
 			(state == PLAYLIST_INTERNAL_DETAIL && UI_listViewBusy(PlaylistDetail_view()))) {
 			// Bounds check: if current playlist was deleted externally, go back to list
 			if (state == PLAYLIST_INTERNAL_DETAIL &&

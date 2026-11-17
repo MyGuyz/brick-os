@@ -66,11 +66,4 @@ Uint32 UI_accentMapped(const SDL_PixelFormat* fmt) {
 	return SDL_MapRGBA(fmt, (Uint8)(rgb >> 16), (Uint8)(rgb >> 8), (Uint8)rgb, 255);
 }
 
-Uint32 UI_onAccentMapped(const SDL_PixelFormat* fmt) {
-	uint32_t rgb;
-	if (!UI_accentOverride(&rgb))
-		return THEME_COLOR5;
-	rgb = UI_onAccentFor(rgb);
-	return SDL_MapRGBA(fmt, (Uint8)(rgb >> 16), (Uint8)(rgb >> 8), (Uint8)rgb, 255);
-}
 #endif

@@ -1,6 +1,6 @@
-// Brick OS kit: the shared old UI pieces (menu bar, hint bar, confirm box, MENU popup, toast, empty page, loading,
-// message, splash, controls help) drawn the Brick OS way (DESIGN.md 5, 7.1-7.3). The old pieces call these when an
-// app has set UI_bos (ui_draw.h); everything here translates its text (the old pieces relied on GFX_renderText).
+// Brick OS kit: the shared UI pieces (menu bar, hint bar, confirm box, MENU popup, toast, empty page, loading,
+// message, splash, controls help) drawn the Brick OS way (DESIGN.md 5, 7.1-7.3). The shared pieces call these;
+// everything here translates its text.
 #include "bos_ui.h"
 #include "i18n.h"
 #include "ui_list.h"
@@ -485,9 +485,6 @@ void BOS_uiListDialog(SDL_Surface* s, const char* title, ListDialogItem* items, 
 		BOS_groupRows(s, &a, BOS_px(96), count, sel, true, scroll, &ld_pill, &ld_scroll, false, ldRow, &c);
 	}
 	BOS_hintBar(s, count > 0 ? hr : hr + 1, count > 0 ? 2 : 1, NULL, 0);
-}
-bool BOS_uiListDialogMoving(void) {
-	return BOS_glideMoving(&ld_pill) || BOS_glideMoving(&ld_scroll) || BOS_marqueeActive();
 }
 
 // ---- the keyboard (DESIGN.md 7.6, boards v2-KeyboardThai / -English) ----

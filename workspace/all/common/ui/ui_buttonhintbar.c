@@ -13,7 +13,7 @@ int UI_renderButtonHintBarEx(SDL_Surface* dst, char** pairs, Uint8 scrim_alpha) 
 	return UI_renderButtonHintBarAt(dst, pairs, scrim_alpha, -1);
 }
 
-int BOS_uiHintBar(SDL_Surface* s, char** pairs) __attribute__((weak));
+int BOS_uiHintBar(SDL_Surface* s, char** pairs);
 int UI_renderButtonHintBarAt(SDL_Surface* dst, char** pairs, Uint8 scrim_alpha, int left) {
 	return BOS_uiHintBar(dst, pairs);
 }

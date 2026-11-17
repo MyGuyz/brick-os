@@ -1,7 +1,7 @@
 #ifndef MUSIC_BOS_H
 #define MUSIC_BOS_H
 // The Music app's own Brick OS screens (DESIGN.md 7.2): the home and the playing pages. Lists, sheets, boxes and
-// toasts come from the shared pieces with UI_bos on.
+// toasts come from the shared pieces.
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 #include "bos_ui.h"

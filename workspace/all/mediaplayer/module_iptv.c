@@ -295,7 +295,7 @@ ModuleExitReason IPTVModule_run(SDL_Surface* screen) {
 				dirty = 1;
 
 			ModuleCommon_PWR_update(&dirty, &show_setting);
-			if (UI_bos && IPTVAdd_bosMoving()) // the columns still glide
+			if (IPTVAdd_bosMoving()) // the columns still glide
 				dirty = 1;
 			if (dirty) {
 				render_iptv_curated_countries(screen, show_setting,
@@ -411,7 +411,7 @@ ModuleExitReason IPTVModule_run(SDL_Surface* screen) {
 			}
 
 			ModuleCommon_PWR_update(&dirty, &show_setting);
-			if (UI_bos && IPTVAdd_bosMoving()) // the columns still glide
+			if (IPTVAdd_bosMoving()) // the columns still glide
 				dirty = 1;
 			if (dirty) {
 				render_iptv_curated_channels(screen, show_setting, curated_selected_country_code,

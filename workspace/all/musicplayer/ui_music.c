@@ -116,14 +116,10 @@ static void browser_get_row(void* ctx, int i, bool selected, ListViewRow* out) {
 	}
 }
 
-// Playtime GPU state
-static int playtime_x = 0, playtime_y = 0, playtime_dur_x = 0;
 static int last_rendered_position = -1;
 static int last_rendered_duration = -1;
 static bool playtime_position_set = false;
 
-// Lyrics GPU state
-static int lyrics_gpu_x = 0, lyrics_gpu_y = 0, lyrics_gpu_max_w = 0, lyrics_gpu_max_h = 0;
 static int last_lyric_index = -2;
 static bool lyrics_gpu_position_set = false;
 static char last_lyric_line[256] = "";
@@ -282,13 +278,6 @@ void player_animate_scroll(void) {
 
 // === PLAYTIME GPU FUNCTIONS ===
 
-void PlayTime_setPosition(int x, int y, int duration_x) {
-	playtime_x = x;
-	playtime_y = y;
-	playtime_dur_x = duration_x;
-	playtime_position_set = true;
-}
-
 void PlayTime_clear(void) {
 	playtime_position_set = false;
 	last_rendered_position = -1;
@@ -305,14 +294,6 @@ void PlayTime_renderGPU(void) {
 }
 
 // === LYRICS GPU FUNCTIONS ===
-
-void Lyrics_setGPUPosition(int x, int y, int max_w, int max_h) {
-	lyrics_gpu_x = x;
-	lyrics_gpu_y = y;
-	lyrics_gpu_max_w = max_w;
-	lyrics_gpu_max_h = max_h;
-	lyrics_gpu_position_set = true;
-}
 
 void Lyrics_clearGPU(void) {
 	lyrics_gpu_position_set = false;

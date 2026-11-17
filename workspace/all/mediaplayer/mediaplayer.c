@@ -45,26 +45,10 @@ int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
 
-	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.3)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_PERFORMANCE);
 	// Show splash screen immediately while subsystems initialize
-	if (UI_bos)
-		UI_showSplashScreen(screen, "Video");
-	else {
-		GFX_clear(screen);
-		SDL_Surface* title = GFX_renderText(font.title, "Media Player", COLOR_WHITE);
-		if (title) {
-			SDL_BlitSurface(title, NULL, screen, &(SDL_Rect){(screen->w - title->w) / 2, screen->h / 2 - title->h});
-			SDL_FreeSurface(title);
-		}
-		SDL_Surface* loading = GFX_renderText(font.small, "Loading...", COLOR_GRAY);
-		if (loading) {
-			SDL_BlitSurface(loading, NULL, screen, &(SDL_Rect){(screen->w - loading->w) / 2, screen->h / 2 + SCALE1(4)});
-			SDL_FreeSurface(loading);
-		}
-		GFX_flip(screen);
-	}
+	UI_showSplashScreen(screen, "Video");
 
 	InitSettings();
 

@@ -3,7 +3,7 @@
 #include "defines.h"
 #include "ui_draw.h"
 
-void BOS_uiControls(SDL_Surface* s, const char* title, const char* const* keys, const char* const* acts, int n) __attribute__((weak));
+void BOS_uiControls(SDL_Surface* s, const char* title, const char* const* keys, const char* const* acts, int n);
 
 void UI_renderControlsHelp(SDL_Surface* screen, const char* title,
 						   const ControlHelp* controls) {

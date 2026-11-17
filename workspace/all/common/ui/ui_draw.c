@@ -3,7 +3,6 @@
 #include "defines.h"
 #include <math.h>
 
-bool UI_bos = false;
 
 static uint32_t px_get(SDL_Surface* s, int x, int y) {
 	uint8_t* p = (uint8_t*)s->pixels + y * s->pitch + x * s->format->BytesPerPixel;
@@ -125,10 +124,6 @@ void UI_fillRoundedRect(SDL_Surface* dst, int x, int y, int w, int h,
 		SDL_UnlockSurface(dst);
 }
 
-SDL_Surface* UI_getScrim(SDL_Surface** cache, int w, int h) {
-	return UI_getScrimAlpha(cache, w, h, 178);
-}
-
 SDL_Surface* UI_getScrimAlpha(SDL_Surface** cache, int w, int h, Uint8 alpha) {
 	SDL_Surface* scrim = *cache;
 	if (!scrim || scrim->w != w || scrim->h != h) {
@@ -145,26 +140,3 @@ SDL_Surface* UI_getScrimAlpha(SDL_Surface** cache, int w, int h, Uint8 alpha) {
 	return scrim;
 }
 
-// The hint bar's size, so a dialog's buttons match the hint bar's.
-void UI_renderCenteredButtons(SDL_Surface* dst, int y, char** pairs) {
-	int btn_margin = SCALE1(BUTTON_MARGIN);
-
-	// Measure the row
-	int widths[8];
-	int count = 0;
-	int total_w = 0;
-	for (int i = 0; pairs[i * 2] && pairs[i * 2 + 1] && count < 8; i++) {
-		widths[count] = GFX_getButtonWidth(pairs[i * 2 + 1], pairs[i * 2]);
-		total_w += (count > 0 ? btn_margin : 0) + widths[count];
-		count++;
-	}
-	if (count == 0)
-		return;
-
-	// Render centered
-	int bx = (dst->w - total_w) / 2;
-	for (int i = 0; i < count; i++) {
-		GFX_blitButton(pairs[i * 2 + 1], pairs[i * 2], dst, &(SDL_Rect){bx, y, 0, 0});
-		bx += widths[i] + btn_margin;
-	}
-}
