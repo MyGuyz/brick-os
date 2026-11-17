@@ -301,10 +301,19 @@ if [ ! -f "$PM_DIR/config/config.json" ]; then
 {
     "disclaimer": true,
     "show_experimental": false,
-    "theme": "default_theme",
-    "theme-scheme": "Darkest Mode"
+    "theme": "brick_os",
+    "theme-scheme": "Brick OS"
 }
 EOF
+fi
+
+# The Brick OS theme (DESIGN 7.9): our colours, font and button caps over PortMaster's own pages. Refreshed on
+# every install; a card still on the stock theme moves to it, a theme the user picked stays.
+mkdir -p "$PM_DIR/themes/brick_os"
+cp -f "$CATALOG_DIR/pak/brick_os_theme/"* "$PM_DIR/themes/brick_os/" 2>/dev/null || true
+if grep -q '"theme": "default_theme"' "$PM_DIR/config/config.json" 2>/dev/null; then
+    sed -i -e 's/"theme": "default_theme"/"theme": "brick_os"/' \
+        -e 's/"theme-scheme": "[^"]*"/"theme-scheme": "Brick OS"/' "$PM_DIR/config/config.json"
 fi
 
 echo "@95 Installing launchers..."
