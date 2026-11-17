@@ -1195,3 +1195,26 @@ Saves and ROMs kept.	เซฟและไฟล์เกมยังอยู�
 The installer stopped unexpectedly.	ตัวติดตั้งหยุดกลางคัน
 The uninstaller stopped unexpectedly.	ตัวถอนการติดตั้งหยุดกลางคัน
 Exit Xtras?	ออกจากร้านเสริมไหม?
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+%d h %d min	%d ชม. %d นาที
+%d s	%d วิ
+Average %s · %d times	เฉลี่ย %s · %d ครั้ง
+Total play time · %d games	เวลาเล่นทั้งหมด · %d เกม
+Delete Record?	ลบประวัติการเล่นนี้ไหม?
+Last played %.10s	เล่นล่าสุด %.10s
+%d times	%d ครั้ง
+Total	รวม
+Average	เฉลี่ย
+Played	เล่น
+Last 7 days	7 วันที่ผ่านมา
+Sun	อา
+Mon	จ
+Tue	อ
+Wed	พ
+Thu	พฤ
+Fri	ศ
+Sat	ส
+Exit Game Tracker?	ออกจากเวลาเล่นเกมไหม?
+%d:%02d h	%d:%02d ชม.

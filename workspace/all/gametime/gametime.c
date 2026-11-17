@@ -9,6 +9,9 @@
 #include "config.h"
 #include "api.h"
 #include "bos_ui.h"
+#include "i18n.h"
+#include "ui_listview.h"
+#include <time.h>
 #include "image_load.h"
 #include "ui_buttonhintbar.h"
 #include "ui_confirmdialog.h"
@@ -377,6 +380,187 @@ void renderList(int count, int start, int end, int selected) {
 		UI_renderScrollArrows(screen, layout.up_y, layout.down_y, start > 0, end < count);
 }
 
+// ---- the Brick OS pages (DESIGN 7.9) ----
+static SDL_Surface** bosArt;	  // each game's picture, as it is (the kit rounds it)
+static bool* bosArtTried;
+static BosGlide gt_pill, gt_scroll;
+static int gt_scroll_i = 0;
+
+static void bosArtFree(void) {
+	for (int i = 0; bosArt && i < play_activities->count; i++)
+		if (bosArt[i]) {
+			BOS_picForget(bosArt[i]);
+			SDL_FreeSurface(bosArt[i]);
+		}
+	free(bosArt);
+	free(bosArtTried);
+	bosArt = NULL, bosArtTried = NULL;
+}
+static SDL_Surface* bosArtAt(int i) {
+	if (!bosArt) {
+		int n = play_activities->count > 0 ? play_activities->count : 1;
+		bosArt = calloc(n, sizeof(SDL_Surface*));
+		bosArtTried = calloc(n, sizeof(bool));
+	}
+	if (i < 0 || i >= play_activities->count)
+		return NULL;
+	if (!bosArtTried[i]) {
+		bosArtTried[i] = true;
+		const char* p = play_activities->play_activity[i]->rom->image_path;
+		bosArt[i] = p && exists((char*)p) ? Image_load(p) : NULL;
+	}
+	return bosArt[i];
+}
+
+// 3 h 28 min / 17 min / 45 s
+static const char* gt_dur(int sec, char* out, int n) {
+	int h = sec / 3600, m = (sec % 3600) / 60;
+	if (h > 0)
+		snprintf(out, n, I18N_text("%d h %d min"), h, m);
+	else if (m > 0)
+		snprintf(out, n, I18N_text("%d min"), m);
+	else
+		snprintf(out, n, I18N_text("%d s"), sec);
+	return out;
+}
+
+static void gt_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	static char name[255], sb[128], tot[48];
+	char av[48];
+	PlayActivity* e = play_activities->play_activity[i];
+	cleanName(name, e->rom->name);
+	snprintf(sb, sizeof(sb), I18N_text("Average %s · %d times"), gt_dur(e->play_time_average, av, sizeof(av)), e->play_count);
+	*r = (ListViewRow){.label = name, .sub = sb, .annotation = gt_dur(e->play_time_total, tot, sizeof(tot)), .art = bosArtAt(i)};
+	if (!r->art)
+		r->sq_icon = "game", r->sq_color = 0x48484A, r->sq_raw = true;
+}
+
+static void render_list_bos(int selected, bool confirm) {
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Game Time"));
+	int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
+	char t[64], sb[96];
+	snprintf(sb, sizeof(sb), I18N_text("Total play time · %d games"), play_activities->count);
+	int y = top + BOS_largeTitle(screen, top, gt_dur(play_activities->play_time_total, t, sizeof(t)), sb);
+	int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+	BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), play_activities->count, selected, true,
+				  &gt_scroll_i, &gt_pill, &gt_scroll, false, gt_row, NULL);
+	BosHint h[] = {{"A", I18N_text("Details")}, {"B", I18N_text("Exit")}, {"X", I18N_text("Delete")}};
+	BOS_hintBar(screen, h, 3, NULL, 0);
+	if (confirm) {
+		char rom_name[255];
+		cleanName(rom_name, play_activities->play_activity[selected]->rom->name);
+		UI_renderConfirmDialog(screen, "Delete Record?", rom_name);
+	}
+}
+
+// the last 7 days of one game, minutes per day (today last)
+static void gt_week(int rom_id, int mins[7]) {
+	memset(mins, 0, 7 * sizeof(int));
+	sqlite3* db = play_activity_db_open();
+	if (!db)
+		return;
+	time_t now = time(NULL);
+	struct tm lt;
+	localtime_r(&now, &lt);
+	lt.tm_hour = 0, lt.tm_min = 0, lt.tm_sec = 0;
+	time_t today = mktime(&lt), from = today - 6 * 86400;
+	sqlite3_stmt* st = NULL;
+	if (sqlite3_prepare_v2(db, "SELECT created_at, play_time FROM play_activity WHERE rom_id = ? AND created_at >= ?", -1, &st,
+						   NULL) == SQLITE_OK) {
+		sqlite3_bind_int(st, 1, rom_id);
+		sqlite3_bind_int64(st, 2, (sqlite3_int64)from);
+		while (sqlite3_step(st) == SQLITE_ROW) {
+			time_t at = (time_t)sqlite3_column_int64(st, 0);
+			int d = (int)((at - from) / 86400);
+			if (d >= 0 && d < 7)
+				mins[d] += sqlite3_column_int(st, 1) / 60;
+		}
+		sqlite3_finalize(st);
+	}
+	play_activity_db_close(db);
+}
+
+// board v2-ToolsGameTimeDetail: the picture 300 left; the name 48/700, the console and last play, three stat cards,
+// then the last 7 days as bars (today in primary)
+static void render_detail_bos(int i, bool confirm) {
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Game Time"));
+	PlayActivity* e = play_activities->play_activity[i];
+	int top = BOS_px(BOS_BAR_H), x = BOS_px(40), y = top + BOS_px(12), pw = BOS_px(300);
+	SDL_Surface* a = bosArtAt(i);
+	SDL_Surface* p = a ? BOS_picRounded(a, pw, pw, BOS_px(24)) : NULL;
+	if (p)
+		BOS_blit(p, screen, x, y, 1);
+	else {
+		BOS_rrect(screen, x, y, pw, pw, BOS_px(24), BOS_theme()->surface);
+		int ic = BOS_px(120);
+		BOS_icon(screen, "game", BOS_C_TEXT2, 1, x + (pw - ic) / 2, y + (pw - ic) / 2, ic);
+	}
+	int rx = x + pw + BOS_px(36), rw = screen->w - BOS_px(40) - rx, ry = y;
+	char name[255], t[192];
+	cleanName(name, e->rom->name);
+	BOS_fit(name, 48, 700, rw, t, sizeof(t));
+	BOS_text(screen, t, 48, 700, BOS_C_TEXT, 1, rx, ry);
+	ry += BOS_lineH(48);
+	if (e->last_played_at && e->last_played_at[0]) {
+		snprintf(t, sizeof(t), I18N_text("Last played %.10s"), e->last_played_at);
+		BOS_text(screen, t, 28, 400, BOS_C_TEXT2, 1, rx, ry);
+	}
+	ry += BOS_lineH(28) + BOS_px(22);
+	// three cards
+	char v[3][48];
+	if (e->play_time_total >= 3600) // a card is narrow: 3:28 h
+		snprintf(v[0], 48, I18N_text("%d:%02d h"), e->play_time_total / 3600, (e->play_time_total % 3600) / 60);
+	else
+		gt_dur(e->play_time_total, v[0], 48);
+	gt_dur(e->play_time_average, v[1], 48);
+	snprintf(v[2], 48, I18N_text("%d times"), e->play_count);
+	const char* k[3] = {I18N_text("Total"), I18N_text("Average"), I18N_text("Played")};
+	int cw = (rw - 2 * BOS_px(14)) / 3, ch = BOS_px(96);
+	for (int c = 0; c < 3; c++) {
+		int cx = rx + c * (cw + BOS_px(14));
+		BOS_rrect(screen, cx, ry, cw, ch, BOS_px(20), BOS_theme()->surface);
+		BOS_text(screen, k[c], 24, 400, BOS_C_TEXT2, 1, cx + BOS_px(18), ry + BOS_px(12));
+		BOS_fit(v[c], 32, 700, cw - BOS_px(30), t, sizeof(t));
+		BOS_text(screen, t, 32, 700, BOS_C_TEXT, 1, cx + BOS_px(18), ry + BOS_px(44));
+	}
+	ry += ch + BOS_px(26);
+	// the week
+	int mins[7];
+	gt_week(e->rom->id, mins);
+	int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12), bh = bottom - ry;
+	if (bh > BOS_px(300))
+		bh = BOS_px(300);
+	BOS_rrect(screen, rx, ry, rw, bh, BOS_px(24), BOS_theme()->surface);
+	BOS_text(screen, I18N_text("Last 7 days"), 26, 400, BOS_C_TEXT2, 1, rx + BOS_px(24), ry + BOS_px(18));
+	int mx = 1;
+	for (int d = 0; d < 7; d++)
+		if (mins[d] > mx)
+			mx = mins[d];
+	int gx = rx + BOS_px(24), gw = rw - BOS_px(48), colw = (gw - 6 * BOS_px(18)) / 7;
+	int base = ry + bh - BOS_px(16) - BOS_lineH(24) - BOS_px(8), tall = base - (ry + BOS_px(18) + BOS_lineH(26) + BOS_px(12));
+	time_t now = time(NULL);
+	static const char* wd[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+	for (int d = 0; d < 7; d++) {
+		int h = mins[d] * tall / mx;
+		if (h < BOS_px(6))
+			h = BOS_px(6);
+		int cx = gx + d * (colw + BOS_px(18));
+		BOS_rrect(screen, cx, base - h, colw, h, BOS_px(10), d == 6 ? BOS_theme()->primary : BOS_theme()->surface2);
+		time_t at = now - (6 - d) * 86400;
+		struct tm lt;
+		localtime_r(&at, &lt);
+		const char* l = I18N_text(wd[lt.tm_wday]);
+		BOS_text(screen, l, 24, 400, BOS_C_TEXT2, 1, cx + (colw - BOS_textW(l, 24, 400)) / 2, base + BOS_px(8));
+	}
+	BosHint h[] = {{"B", I18N_text("Back")}, {"X", I18N_text("Delete")}};
+	BOS_hintBar(screen, h, 2, NULL, 0);
+	if (confirm)
+		UI_renderConfirmDialog(screen, "Delete Record?", name);
+}
+
 void initLayout() {
 	// unscaled
 	int hw = screen->w;
@@ -435,6 +619,7 @@ int main(int argc, char* argv[]) {
 	int end = MIN(count, layout.items_per_page);
 
 	bool confirm_delete = false;
+	bool detail = false;
 	bool dirty = true;
 	IndicatorType show_setting = INDICATOR_NONE;
 	while (!app_quit) {
@@ -451,6 +636,8 @@ int main(int argc, char* argv[]) {
 				play_activity_delete(play_activities->play_activity[selected]->rom->id);
 
 				// reload the list; free images before the activities they index
+				bosArtFree();
+				detail = false;
 				freeRomImages();
 				free_play_activities(play_activities);
 				play_activities = play_activity_find_all();
@@ -471,8 +658,19 @@ int main(int argc, char* argv[]) {
 				confirm_delete = false;
 				dirty = true;
 			}
+		} else if (detail) {
+			if (PAD_justPressed(BTN_B)) {
+				detail = false;
+				dirty = true;
+			} else if (PAD_justPressed(BTN_X)) {
+				confirm_delete = true;
+				dirty = true;
+			}
 		} else if (count > 0) {
-			if (PAD_justRepeated(BTN_UP)) {
+			if (UI_bos && PAD_justPressed(BTN_A)) {
+				detail = true;
+				dirty = true;
+			} else if (PAD_justRepeated(BTN_UP)) {
 				selected -= 1;
 				if (selected < 0) {
 					selected = count - 1;
@@ -519,7 +717,16 @@ int main(int argc, char* argv[]) {
 		if (UI_statusBarChanged())
 			dirty = true;
 
-		if (dirty) {
+		if (BOS_glideMoving(&gt_pill) || BOS_glideMoving(&gt_scroll))
+			dirty = true;
+		if (dirty && UI_bos && count > 0) {
+			if (detail)
+				render_detail_bos(selected, confirm_delete);
+			else
+				render_list_bos(selected, confirm_delete);
+			GFX_flip(screen);
+			dirty = false;
+		} else if (dirty) {
 			GFX_clear(screen);
 
 			if (count == 0) {
@@ -550,6 +757,7 @@ int main(int argc, char* argv[]) {
 			GFX_sync();
 	}
 
+	bosArtFree();
 	freeRomImages();
 	free_play_activities(play_activities);
 
