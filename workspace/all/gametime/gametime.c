@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <msettings.h>
 
+#include "ui_draw.h"
 #include "defines.h"
 #include "config.h"
 #include "api.h"
@@ -412,6 +413,7 @@ void initLayout() {
 int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
+	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(screen, "Game Time");
 

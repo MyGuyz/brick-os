@@ -44,6 +44,7 @@
 
 #include <msettings.h>
 
+#include "ui_draw.h"
 #include "defines.h"
 #include "api.h"
 #include "emu_overlay_cfg.h"
@@ -842,6 +843,7 @@ int main(int argc, char* argv[]) {
 
 	int saved_stdout = pick ? stdout_park() : -1;
 
+	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(screen, game_name ? game_name : "Emulator Settings");
 

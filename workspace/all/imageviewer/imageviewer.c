@@ -278,6 +278,7 @@ int main(int argc, char* argv[]) {
 	(void)argc;
 	(void)argv;
 
+	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	screen = GFX_init(MODE_MAIN);
 	PWR_pinToCores(CPU_CORE_EFFICIENCY);
 	UI_showSplashScreen(screen, "Image Viewer");

@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <msettings.h>
 
+#include "ui_draw.h"
 #include "defines.h"
 #include "api.h"
 #include "bos_ui.h"
@@ -894,6 +895,7 @@ int main(int argc, char* argv[]) {
 	for (int k = 0; k < shown_count; k++)
 		shown_items[k] = mode_items[shown_rows[k]];
 
+	UI_bos = true; // Brick OS look for every shared piece (DESIGN.md 7.4)
 	wiz_screen = GFX_init(MODE_MAIN);
 	UI_showSplashScreen(wiz_screen, "Netplay");
 
