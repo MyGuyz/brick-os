@@ -34,7 +34,7 @@ static void render_progress(const char* status, int pct, const char* detail, int
 	GFX_clear(screen);
 	UI_renderMenuBar(screen, TITLE);
 	UI_renderDownloadProgress(screen, &(UIDownloadProgress){
-										  .status = status, .detail = detail, .progress = pct, .show_bar = (pct >= 0)});
+										  .status = status, .detail = detail, .progress = pct, .show_bar = (pct >= 0), .icon = "download"});
 	if (cancelable)
 		UI_renderButtonHintBar(screen, (char*[]){"B", "CANCEL", NULL});
 	GFX_flip(screen);

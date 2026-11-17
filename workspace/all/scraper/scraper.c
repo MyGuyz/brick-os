@@ -1096,6 +1096,8 @@ static void renderOptimizeProgress(void) {
 										  .detail = detail,
 										  .progress = total > 0 ? i * 100 / total : 0,
 										  .show_bar = true,
+										  .icon = "image",
+										  .colour = 0xBF5AF2,
 									  });
 	if (!job->cancel)
 		UI_renderButtonHintBar(screen, (char*[]){"B", "CANCEL", NULL});

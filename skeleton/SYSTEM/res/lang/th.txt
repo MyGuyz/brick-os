@@ -1248,3 +1248,27 @@ or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่
 หรือซิงก์ผ่านสาย USB-C แทน
 Up a folder	ย้อนขึ้นไป
 Wallpapers	วอลเปเปอร์
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Play together	เล่นด้วยกัน
+This device is player 1 and waits for a friend	เครื่องนี้เป็นผู้เล่น 1 · รอเพื่อนเข้า
+Find a friend's game	หาห้องของเพื่อน
+Connect both devices with a USB-C cable	ต่อสองเครื่องเข้าด้วยกันด้วยสาย USB-C
+The host makes a Wi-Fi for the other device	เครื่องที่สร้างห้องปล่อย Wi-Fi ให้อีกเครื่องต่อ
+How to connect	เลือกวิธีเชื่อมต่อ
+Both devices pick the same way	ทั้งสองเครื่องต้องเลือกวิธีเดียวกัน
+Cleaning up...	กำลังเก็บกวาด…
+Cleaning up previous session...	กำลังปิดห้องก่อนหน้า…
+Failed to write session file	บันทึกข้อมูลห้องไม่สำเร็จ
+Connected - starting game...	เชื่อมต่อแล้ว กำลังเปิดเกม…
+Optimizing images	กำลังย่อขนาดภาพ
+%d of %d	%d จาก %d
+Cheat Database	ฐานข้อมูลสูตรโกง
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Progress	ความคืบหน้า
+Optimize images	ย่อขนาดภาพ
+Sync via cable	ซิงก์ผ่านสาย
+Sync via Wi-Fi	ซิงก์ผ่าน Wi-Fi

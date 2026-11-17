@@ -25,6 +25,7 @@
 #include "defines.h"
 #include "api.h"
 #include "bos_ui.h"
+#include "i18n.h"
 #include "config.h"
 #include "ui_listview.h"
 #include "ui_menubar.h"
@@ -808,12 +809,30 @@ static void wiz_menu_get_row(void* ctx, int i, bool selected, ListViewRow* out) 
 	const char** items = ctx;
 	out->label = items[i];
 	(void)selected;
+	if (!UI_bos)
+		return;
+	if (items == role_items) {
+		static const char* sb[2] = {"This device is player 1 and waits for a friend", "Find a friend's game"};
+		out->sub = sb[i], out->sq_icon = i == 0 ? "users" : "move", out->sq_color = i == 0 ? BOS_C_PRIMARY : BOS_C_OK;
+	} else {
+		static const char* sb[3] = {"Connect both devices with a USB-C cable", "The host makes a Wi-Fi for the other device",
+									"Both on the same Wi-Fi"};
+		static const char* ic[3] = {"cable", "hotspot", "wifi"};
+		static const uint32_t co[3] = {BOS_C_PRIMARY, 0xFF9F0A, BOS_C_OK};
+		int k = shown_rows[i];
+		out->sub = sb[k], out->sq_icon = ic[k], out->sq_color = co[k];
+	}
 }
 
 static void render_role_menu(const char* game) {
 	GFX_clear(wiz_screen);
 	ListView* v = &wiz_menu_view;
 	v->title = game;
+	if (UI_bos) {
+		v->title = "Play together";
+		v->bos_title = I18N_text("Play together");
+		v->bos_sub = game;
+	}
 	v->font = font.large;
 	v->count = WIZ_ROLE_ITEMS;
 	v->get_row = wiz_menu_get_row;
@@ -828,6 +847,11 @@ static void render_mode_menu(void) {
 	GFX_clear(wiz_screen);
 	ListView* v = &wiz_menu_view;
 	v->title = "Netplay | Connection"; // a page inside the tool names it (LIST-LAYOUT §10.1)
+	if (UI_bos) {
+		v->title = "Play together";
+		v->bos_title = I18N_text("How to connect");
+		v->bos_sub = I18N_text("Both devices pick the same way");
+	}
 	v->font = font.large;
 	v->count = shown_count;
 	v->get_row = wiz_menu_get_row;
