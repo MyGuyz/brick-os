@@ -1124,3 +1124,42 @@ Leave %s?	ออกจาก %s ไหม
 Leave	ออก
 Stay	อยู่ต่อ
 RetroAchievements	RetroAchievements
+Move saves and states between two Bricks	ย้ายเซฟและเซฟสเตตระหว่าง Brick สองเครื่อง
+Via USB-C cable	ผ่านสาย USB-C
+Top port of one into the bottom port of the other	ต่อพอร์ตบนของเครื่องหนึ่งเข้าพอร์ตล่างของอีกเครื่อง
+Via Wi-Fi	ผ่าน Wi-Fi
+Both on the same Wi-Fi	ทั้งสองเครื่องต่อ Wi-Fi เดียวกัน
+Sync games (ROMs) too	ซิงก์เกม (ROM) ด้วย
+Takes longer with many games	ใช้เวลานานขึ้นถ้ามีเกมเยอะ
+Switch	สลับ
+Wi-Fi is not connected	ยังไม่ได้ต่อ Wi-Fi
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Plug the cable into both devices	เสียบสายเข้าทั้งสองเครื่อง
+Open Device Sync on the other one too	เปิด ซิงก์ระหว่างเครื่อง บนอีกเครื่องด้วย
+Waiting for the cable...	รอสาย USB-C…
+Looking for the other device...	กำลังหาอีกเครื่อง…
+This device sends	เครื่องนี้ส่ง
+This device receives	เครื่องนี้รับ
+via cable	ผ่านสาย
+via Wi-Fi	ผ่าน Wi-Fi
+Syncing...	กำลังซิงก์…
+Waiting for the other device...	รออีกเครื่อง…
+Sending states	ส่งเซฟสเตต
+Sending saves	ส่งเซฟ
+Receiving states	รับเซฟสเตต
+Receiving saves	รับเซฟ
+Sending BIOS	ส่ง BIOS
+Receiving BIOS	รับ BIOS
+Sending ROMs	ส่งเกม (ROM)
+Receiving ROMs	รับเกม (ROM)
+%d / %d files	%d / %d ไฟล์
+Working...	กำลังทำ…
+Waiting	รอ
+Sync did not finish	ซิงก์ไม่สำเร็จ
+Nothing was changed.	ยังไม่มีอะไรเปลี่ยน
+Sync finished	ซิงก์เสร็จแล้ว
+Both devices now have the same saves.	ทั้งสองเครื่องมีเซฟตรงกันแล้ว
+Sync again	ซิงก์อีกครั้ง
+Exit Device Sync?	ออกจากซิงก์ระหว่างเครื่องไหม?

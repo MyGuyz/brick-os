@@ -8,6 +8,7 @@
 #include "ui_listdialog.h"
 #include "ui_keyboard.h"
 #include "ui_confirmdialog.h"
+#include "ui_downloadprogress.h"
 #include "api.h"
 #include <stdio.h>
 #include <string.h>
@@ -191,6 +192,12 @@ static const char* signFor(const char* en, uint32_t* bg) {
 	return NULL;
 }
 
+void BOS_resultCard(SDL_Surface* s, const char* icon, uint32_t colour, const char* title, const char* text) {
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	SDL_FillRect(s, &(SDL_Rect){0, top, s->w, bottom - top}, BOS_map(s, BOS_theme()->bg));
+	card(s, icon, colour, title ? I18N_text(title) : NULL, text ? I18N_text(text) : NULL, 4);
+}
+
 void BOS_uiConfirm(SDL_Surface* s, const char* title, const char* subtitle, char** pairs) {
 	static char* dflt[] = {"B", "CANCEL", "A", "CONFIRM", NULL};
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
@@ -221,6 +228,54 @@ void BOS_uiSplash(SDL_Surface* s, const char* title) {
 	BOS_text(s, t, 44, 700, BOS_C_TEXT, 1, (s->w - BOS_textW(t, 44, 700)) / 2, s->h / 2 - BOS_lineH(44));
 	const char* l = I18N_text("Loading...");
 	BOS_text(s, l, 30, 400, BOS_C_TEXT2, 1, (s->w - BOS_textW(l, 30, 400)) / 2, s->h / 2 + BOS_px(8));
+}
+
+// ---- a long job (DESIGN 7.9, board v2-ToolsProgress): squircle 112 (radius 30) with its icon 64, the status 44/700,
+// the sub 30 text2, the bar 720x16, then the detail 28 text2 on the left and the percent 28/600 on the right ----
+void BOS_uiProgress(SDL_Surface* s, const UIDownloadProgress* info) {
+	int top = BOS_px(BOS_BAR_H), bottom = s->h - BOS_px(BOS_BAR_H);
+	SDL_FillRect(s, &(SDL_Rect){0, top, s->w, bottom - top}, BOS_map(s, BOS_theme()->bg));
+	const char* st = info->status && info->status[0] ? I18N_text(info->status) : NULL;
+	const char* sb = info->sub && info->sub[0] ? I18N_text(info->sub) : NULL;
+	int w = BOS_px(720), x = (s->w - w) / 2, sq = BOS_px(112), cx = s->w / 2;
+	int h = sq + (st ? BOS_px(26) + BOS_lineH(44) : 0) + (sb ? BOS_px(8) + BOS_lineH(30) : 0) +
+			(info->show_bar ? BOS_px(34) + BOS_px(16) + BOS_px(12) + BOS_lineH(28) : 0);
+	int y = top + (bottom - top) * 46 / 100 - h / 2;
+	uint32_t c = info->colour ? info->colour : BOS_theme()->primary;
+	BOS_rrect(s, cx - sq / 2, y, sq, sq, BOS_px(30), c);
+	int ic = BOS_px(64);
+	BOS_icon(s, info->icon ? info->icon : "download", BOS_textOn(c, 1), 1, cx - ic / 2, y + (sq - ic) / 2, ic);
+	y += sq;
+	char t[256];
+	if (st) {
+		y += BOS_px(26);
+		BOS_fit(st, 44, 700, w, t, sizeof(t));
+		BOS_text(s, t, 44, 700, BOS_C_TEXT, 1, cx - BOS_textW(t, 44, 700) / 2, y);
+		y += BOS_lineH(44);
+	}
+	if (sb) {
+		y += BOS_px(8);
+		BOS_fit(sb, 30, 400, w, t, sizeof(t));
+		BOS_text(s, t, 30, 400, BOS_C_TEXT2, 1, cx - BOS_textW(t, 30, 400) / 2, y);
+		y += BOS_lineH(30);
+	}
+	if (info->show_bar) {
+		int p = info->progress < 0 ? 0 : (info->progress > 100 ? 100 : info->progress), bh = BOS_px(16);
+		y += BOS_px(34);
+		BOS_rrect(s, x, y, w, bh, bh / 2, BOS_theme()->surface2);
+		int fw = w * p / 100;
+		if (fw > 0)
+			BOS_rrect(s, x, y, fw < bh ? bh : fw, bh, bh / 2, BOS_theme()->primary);
+		y += bh + BOS_px(12);
+		char pc[16];
+		snprintf(pc, sizeof(pc), "%d%%", p);
+		int pw = BOS_textW(pc, 28, 600);
+		BOS_text(s, pc, 28, 600, BOS_C_TEXT, 1, x + w - pw, y);
+		if (info->detail && info->detail[0]) {
+			BOS_fit(I18N_text(info->detail), 28, 400, w - pw - BOS_px(24), t, sizeof(t));
+			BOS_text(s, t, 28, 400, BOS_C_TEXT2, 1, x, y);
+		}
+	}
 }
 
 // ---- empty page: a big icon card, what is missing, what to do ----

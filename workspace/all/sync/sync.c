@@ -20,6 +20,9 @@
 #include "defines.h"
 #include "api.h"
 #include "bos_ui.h"
+#include "i18n.h"
+#include "ui_listview.h"
+#include "ui_downloadprogress.h"
 #include "ui_buttonhintbar.h"
 #include "ui_list.h"
 #include "ui_menubar.h"
@@ -1499,7 +1502,123 @@ static void render_log(int top_y, int bottom_y) {
 	pthread_mutex_unlock(&log_mutex);
 }
 
+// ---- the Brick OS pages (DESIGN 7.9, boards v2-ToolsSync, -SyncRun, -SyncDone, -SyncError) ----
+static int home_sel = 0; // 0 cable, 1 Wi-Fi, 2 the ROMs switch
+static BosGlide home_pill, home_scroll, roms_pill, roms_scroll, run_pill, run_scroll;
+static const char* phase_name(int p) {
+	static const char* n[] = {"", "Sending states", "Sending saves", "Receiving states", "Receiving saves", "Sending BIOS",
+							  "Receiving BIOS", "Collections", "Sending ROMs", "Receiving ROMs"};
+	return p >= 1 && p <= 9 ? I18N_text(n[p]) : "";
+}
+static void home_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	if (i == 0)
+		*r = (ListViewRow){.label = I18N_text("Via USB-C cable"), .sub = I18N_text("Top port of one into the bottom port of the other"),
+						   .sq_icon = "cable", .sq_color = BOS_C_PRIMARY};
+	else
+		*r = (ListViewRow){.label = I18N_text("Via Wi-Fi"), .sub = I18N_text("Both on the same Wi-Fi"), .sq_icon = "wifi",
+						   .sq_color = BOS_C_OK, .annotation = wifi_ready() ? I18N_text("Connected") : NULL};
+}
+static void roms_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)i, (void)hot;
+	*r = (ListViewRow){.label = I18N_text("Sync games (ROMs) too"), .sub = I18N_text("Takes longer with many games"),
+					   .sq_icon = "books", .sq_color = 0xFF9F0A, .toggle = sync_roms ? 2 : 1};
+}
+static void run_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	static char sb[64];
+	int p = i + 1;
+	*r = (ListViewRow){.label = phase_name(p)};
+	if (p < sync_phase) {
+		r->sq_icon = "check", r->sq_color = BOS_C_OK, r->sq_raw = true, r->sq_icon_colour = 0x000001;
+		r->sub = I18N_text("Done");
+	} else if (p == sync_phase) {
+		r->sq_icon = "sync", r->sq_color = BOS_C_PRIMARY;
+		if (phase_files_total > 0) {
+			snprintf(sb, sizeof(sb), I18N_text("%d / %d files"), phase_files_done, phase_files_total);
+			r->sub = sb;
+			r->progress = (float)phase_files_done / (float)phase_files_total + 0.001f;
+		} else
+			r->sub = I18N_text("Working...");
+	} else {
+		r->sq_icon = "clock", r->sq_color = 0x48484A, r->sq_raw = true;
+		r->sub = I18N_text("Waiting");
+	}
+}
+static void render_bos(void) {
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Device Sync"));
+	int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx, rh = BOS_px(BOS_ROW_H);
+	switch (state) {
+	case STATE_READY: {
+		int y = top + BOS_largeTitle(screen, top, I18N_text("Device Sync"), I18N_text("Move saves and states between two Bricks"));
+		BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, 2 * rh}, rh, 2, home_sel < 2 ? home_sel : -1, home_sel < 2, NULL,
+					  &home_pill, &home_scroll, false, home_row, NULL);
+		BOS_groupRows(screen, &(SDL_Rect){gx, y + 2 * rh + BOS_px(20), gw, rh}, rh, 1, home_sel == 2 ? 0 : -1, home_sel == 2,
+					  NULL, &roms_pill, &roms_scroll, false, roms_row, NULL);
+		BosHint h[] = {{"A", I18N_text(home_sel == 2 ? "Switch" : "Select")}, {"B", I18N_text("Exit")}};
+		BOS_hintBar(screen, h, 2, NULL, 0);
+	} break;
+	case STATE_NO_WIFI: {
+		BOS_resultCard(screen, "wifi", BOS_C_DANGER, "Wi-Fi is not connected",
+					   "Turn on Wi-Fi in Settings > Network,\nor sync with a USB-C cable instead.");
+		BosHint h[] = {{"B", I18N_text("Back")}};
+		BOS_hintBar(screen, h, 1, NULL, 0);
+	} break;
+	case STATE_WAITING: {
+		const char* link_error = via_cable ? cable_link_error() : NULL;
+		char sb[160];
+		if (link_error)
+			snprintf(sb, sizeof(sb), "%s", I18N_text(link_error));
+		else if (via_cable && !own_ip[0])
+			snprintf(sb, sizeof(sb), "%s", I18N_text("Plug the cable into both devices"));
+		else
+			snprintf(sb, sizeof(sb), "%s", I18N_text("Open Device Sync on the other one too"));
+		UI_renderDownloadProgress(screen, &(UIDownloadProgress){
+			.status = via_cable && !own_ip[0] ? "Waiting for the cable..." : "Looking for the other device...",
+			.sub = sb, .icon = via_cable ? "cable" : "wifi", .colour = via_cable ? 0 : BOS_C_OK});
+		BosHint h[] = {{"B", I18N_text("Cancel")}};
+		BOS_hintBar(screen, h, 1, NULL, 0);
+	} break;
+	case STATE_SYNCING: {
+		char sb[128];
+		snprintf(sb, sizeof(sb), "%s · %s", I18N_text(is_server ? "This device sends" : "This device receives"),
+				 I18N_text(via_cable ? "via cable" : "via Wi-Fi"));
+		int y = top + BOS_largeTitle(screen, top, I18N_text(sync_phase ? "Syncing..." : "Waiting for the other device..."), sb);
+		int n = sync_phase_count(sync_roms);
+		int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+		static int sc = 0;
+		BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(88), n, sync_phase > 0 ? sync_phase - 1 : 0, false,
+					  &sc, &run_pill, &run_scroll, false, run_row, NULL);
+		BosHint h[] = {{"B", I18N_text("Cancel")}};
+		BOS_hintBar(screen, h, 1, NULL, 0);
+	} break;
+	case STATE_ERROR: {
+		char last[192] = "";
+		pthread_mutex_lock(&log_mutex);
+		for (int i = log_count - 1; i >= 0 && !last[0]; i--)
+			if (strstr(log_lines[i], "ERROR") || strstr(log_lines[i], "rror"))
+				snprintf(last, sizeof(last), "%s", log_lines[i]);
+		pthread_mutex_unlock(&log_mutex);
+		char* m = strstr(last, "ERROR: ");
+		BOS_resultCard(screen, "warn", BOS_C_DANGER, "Sync did not finish", m ? m + 7 : last[0] ? last : "Nothing was changed.");
+		BosHint h[] = {{"A", I18N_text("Try again")}, {"B", I18N_text("Back")}};
+		BOS_hintBar(screen, h, 2, NULL, 0);
+	} break;
+	case STATE_DONE: {
+		BOS_resultCard(screen, "check", BOS_C_OK, "Sync finished", "Both devices now have the same saves.");
+		BosHint h[] = {{"A", I18N_text("Sync again")}, {"B", I18N_text("Exit")}};
+		BOS_hintBar(screen, h, 2, NULL, 0);
+	} break;
+	}
+	GFX_flip(screen);
+}
+
 static void render_screen(void) {
+	if (UI_bos) {
+		render_bos();
+		return;
+	}
 	GFX_clear(screen);
 	int menu_h = UI_renderMenuBar(screen, "Device Sync");
 
@@ -1696,11 +1815,16 @@ int main(int argc, char* argv[]) {
 			break;
 
 		case STATE_READY:
-			if (PAD_justPressed(BTN_UP) || PAD_justPressed(BTN_DOWN)) {
-				via_cable = !via_cable;
+			if (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN)) {
+				home_sel = (home_sel + (PAD_justRepeated(BTN_UP) ? 2 : 1)) % 3;
+				if (home_sel < 2)
+					via_cable = home_sel == 0;
 				dirty = true;
 			}
-			if (PAD_justPressed(BTN_A)) {
+			if (PAD_justPressed(BTN_A) && home_sel == 2) {
+				sync_roms = !sync_roms;
+				dirty = true;
+			} else if (PAD_justPressed(BTN_A)) {
 				if (via_cable) {
 					usblink_owned = access(USBLINK_PID_PATH, F_OK) != 0;
 					start_discovery();
@@ -1794,7 +1918,7 @@ int main(int argc, char* argv[]) {
 			break;
 		}
 
-		if (dirty) {
+		if (dirty || BOS_glideMoving(&home_pill) || BOS_glideMoving(&roms_pill)) {
 			render_screen();
 			dirty = false;
 		} else {

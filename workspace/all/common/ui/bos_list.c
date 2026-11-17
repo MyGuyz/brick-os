@@ -115,6 +115,12 @@ static void drawRow(SDL_Surface* s, const ListViewRow* r, int gx, int gw, int ry
 		BOS_textMid(s, r->pill, 24, 600, pf, 1, tx, cy);
 		x -= pw + BOS_px(14);
 	}
+	if (r->toggle) { // a switch: 72x44, the knob 38
+		int sw = BOS_px(72), sh = BOS_px(44), k = BOS_px(38), on = r->toggle == 2;
+		BOS_rrect(s, x - sw, cy - sh / 2, sw, sh, sh / 2, on ? BOS_C_OK : 0x48484A);
+		BOS_rrect(s, on ? x - k - BOS_px(3) : x - sw + BOS_px(3), cy - k / 2, k, k, k / 2, 0xFFFFFF);
+		x -= sw + BOS_px(14);
+	}
 	if (r->progress > 0) { // a bar for what is under way (a download)
 		int bw = BOS_px(160), bh = BOS_px(8), f = (int)(bw * (r->progress > 1 ? 1 : r->progress));
 		BOS_rrect(s, x - bw, cy - bh / 2, bw, bh, bh / 2, hot ? 0xC8C8CE : th->surface2);

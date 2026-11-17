@@ -74,6 +74,8 @@ void BOS_icon(SDL_Surface* dst, const char* name, uint32_t rgb, float alpha, int
 // B stays. Blocking (auto-sleep and the power key keep working). `app` is the English name (translated here).
 // True: leave. Either way the caller draws its page again (GPU sprites were dropped).
 bool BOS_askQuit(SDL_Surface* screen, const char* app);
+// a page's result between the bars: a circle 88 in colour with its icon, the title 40/700, the text 30 text2
+void BOS_resultCard(SDL_Surface* s, const char* icon, uint32_t colour, const char* title, const char* text);
 
 // ---- status bar (§5.1): title left; music · BT · mute · WiFi · clock · battery right ----
 void BOS_setMusicPlaying(bool playing); // the app that knows (nextui asks the music service) tells the kit

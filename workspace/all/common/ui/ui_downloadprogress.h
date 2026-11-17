@@ -12,6 +12,10 @@ typedef struct {
 	const char* detail; // Detail text below bar (e.g., "15.2MB / 56.8MB")
 	int progress;		// Progress percentage (0-100)
 	bool show_bar;		// Whether to show the progress bar
+	// Brick OS look (UI_bos): all optional
+	const char* icon; // the squircle's kit icon (NULL: download)
+	const char* sub;	 // a line under the status (what is being worked on)
+	uint32_t colour;	 // the squircle (0: primary)
 } UIDownloadProgress;
 
 void UI_renderDownloadProgress(SDL_Surface* screen, const UIDownloadProgress* info);

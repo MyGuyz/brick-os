@@ -39,6 +39,7 @@ typedef struct {
 	uint32_t right_icon_colour;
 	bool pill_dot;		  // a dot before the pill's text (สด)
 	float progress;		  // > 0: a small bar on the right (a download)
+	int toggle;			  // 1 a switch that is off, 2 on (DESIGN 5.6)
 } ListViewRow;
 
 typedef enum {
