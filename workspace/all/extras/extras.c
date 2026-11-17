@@ -32,6 +32,8 @@
 #include "ui_buttonhintbar.h"
 #include "ui_confirmdialog.h"
 #include "ui_downloadprogress.h"
+#include "i18n.h"
+#include "bos_ui.h"
 #include "ui_draw.h" // UI_renderCenteredButtons (draw_result_dialog)
 #include "ui_list.h"
 #include "ui_listview.h"
@@ -496,7 +498,65 @@ static void extras_get_row(void* ctx, int i, bool selected, ListViewRow* out) {
 // header pre-target (the widget's internal pre-target handles it, including
 // the index-distance-2 adjacency headers-as-rows creates, via its
 // adjacent_selectable walk).
+static uint32_t xt_colour(const char* t) { // one colour per name, the kit's palette
+	static const uint32_t pal[] = {0x0A84FF, 0x30D158, 0xBF5AF2, 0xFF453A, 0xFF9F0A, 0x5E5CE6, 0x30B0C7, 0xFF375F};
+	unsigned h = 5381;
+	for (const char* p = t ? t : ""; *p; p++)
+		h = h * 33 + (unsigned char)*p;
+	return pal[h % 8];
+}
+static void xt_row(void* ctx, int i, bool hot, ListViewRow* out) {
+	extras_get_row(ctx, i, hot, out);
+	if (out->is_header) {
+		out->label = I18N_text(out->label);
+		return;
+	}
+	const TabRows* r = ((ExtrasListCtx*)ctx)->rows;
+	AddonEntry* e = &entries[r->indices[extras_widget_to_entry(r, i)]];
+	static char sb[96];
+	snprintf(sb, sizeof(sb), "%s · %d MB", I18N_text(strcmp(e->category, "TOOL") ? "Game" : "Tool"), e->size_mb);
+	out->sub = sb;
+	out->sq_text = e->name;
+	out->sq_color = xt_colour(e->name);
+	out->annotation = NULL;
+	if (!e->compatible)
+		out->annotation = I18N_text("Not available");
+	else if (entry_update_available(e))
+		out->pill = I18N_text("Update"), out->pill_bg = BOS_C_WARN, out->pill_fg = 0x000000;
+	else if (e->installed[0])
+		out->pill = I18N_text("Installed"), out->pill_bg = BOS_C_OK, out->pill_fg = 0x000000;
+	else
+		out->annotation = I18N_text("Not installed");
+}
+
 static void render_extras_list(SDL_Surface* screen, AddonTab active_tab, const TabRows* rows) {
+	if (UI_bos) {
+		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+		BOS_statusBar(screen, I18N_text("Xtras"));
+		int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = screen->w - 2 * gx;
+		static const char* tabs[] = {"Games", "Tools"};
+		int y = top + BOS_px(8);
+		y += BOS_chips(screen, gx, y, tabs, 2, (int)active_tab);
+		extras_ctx.rows = rows;
+		extras_view.count = extras_widget_count(rows);
+		extras_view.get_row = extras_get_row;
+		extras_view.ctx = &extras_ctx;
+		int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+		if (rows->count) {
+			BOS_groupRows(screen, &(SDL_Rect){gx, y, gw, bottom - y}, BOS_px(BOS_ROW_H), extras_view.count, extras_view.selected,
+						  true, &extras_view.scroll, &extras_view.bos_pill, &extras_view.bos_scroll, false, xt_row, &extras_ctx);
+			extras_view.last_visible = (bottom - y) / BOS_px(BOS_ROW_H);
+		} else
+			BOS_resultCard(screen, "store", BOS_theme()->surface2, "Nothing here yet", NULL);
+		extras_view.input_pending = false;
+		BosHint h[] = {{"A", I18N_text("Details")}, {"B", I18N_text("Exit")}};
+		BosHint l[] = {{"L1", ""}, {"R1", I18N_text("Tab")}};
+		if (rows->count)
+			BOS_hintBar(screen, h, 2, l, 2);
+		else
+			BOS_hintBar(screen, h + 1, 1, l, 2);
+		return;
+	}
 	UI_renderMenuBar(screen, "Xtras");
 	ListLayout layout = UI_calcListLayout(screen);
 	// Function-scope arrays: hint_pairs must outlive the UI_listViewRender
@@ -580,7 +640,7 @@ static void run_list(void) {
 	while (1) {
 		GFX_startFrame();
 		PAD_poll();
-		if (PAD_justPressed(BTN_LEFT) || PAD_justPressed(BTN_RIGHT)) {
+		if (PAD_justPressed(BTN_LEFT) || PAD_justPressed(BTN_RIGHT) || PAD_justPressed(BTN_L1) || PAD_justPressed(BTN_R1)) {
 			active_tab = (active_tab == TAB_GAMES) ? TAB_TOOLS : TAB_GAMES;
 			build_tab_rows(active_tab, &rows);
 			UI_listViewReset(&extras_view, extras_widget_count(&rows), TAB_LABEL[active_tab]);
@@ -760,6 +820,17 @@ static int wrap_text(TTF_Font* f, const char* text, int max_width,
 // NULL/empty to omit) renders as a second, dimmer, smaller single-line
 // block below it - used for the "full log is at ..." pointer on failure.
 static void draw_result_dialog(const char* title, const char* subtitle, const char* detail) {
+	if (UI_bos) {
+		(void)detail; // the log's path stays in the log
+		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+		BOS_statusBar(screen, I18N_text("Xtras"));
+		bool bad = title && (strstr(title, "failed") || strstr(title, "rror"));
+		BOS_resultCard(screen, bad ? "warn" : "check", bad ? BOS_C_DANGER : BOS_C_OK, title, subtitle);
+		BosHint h[] = {{"B", I18N_text("OK")}};
+		BOS_hintBar(screen, h, 1, NULL, 0);
+		GFX_flip(screen);
+		return;
+	}
 	GFX_clear(screen);
 	GFX_clearLayers(LAYER_SCROLLTEXT);
 
@@ -830,6 +901,15 @@ static void draw_result_dialog(const char* title, const char* subtitle, const ch
 // first called, per their own contract comment.
 static void draw_progress_screen(const char* menu_title, const char* status,
 								 const char* detail, int progress) {
+	if (UI_bos) {
+		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+		BOS_statusBar(screen, I18N_text("Xtras"));
+		UI_renderDownloadProgress(screen, &(UIDownloadProgress){.status = status, .sub = menu_title, .detail = detail,
+																 .progress = progress, .show_bar = true, .icon = "download"});
+		BOS_hintBar(screen, NULL, 0, NULL, 0);
+		GFX_flip(screen);
+		return;
+	}
 	GFX_clear(screen);
 	UI_renderMenuBarPage(screen, "Xtras", menu_title); // "Xtras | <entry>" (LIST-LAYOUT §10.1)
 	UI_renderDownloadProgress(screen, &(UIDownloadProgress){
@@ -1236,8 +1316,82 @@ static int wrap_text(TTF_Font* f, const char* text, int max_width,
 // persisted show_setting/UI_statusBarChanged/GFX_flip|GFX_sync) rather than a
 // bare PAD_poll spin, so the brightness/volume indicator and status bar keep
 // working on this screen too.
+// board v2-ToolsXtrasDetail: a 360 squircle with the letters left (status and size pills under it); right the name
+// 48/700, the description 28 text2, then a group of the actions (install / update / reinstall, uninstall)
+static int xd_sel = 0;
+static BosGlide xd_pill, xd_scroll;
+static AddonEntry* xd_e;
+static int xd_count(const AddonEntry* e) {
+	return !e->compatible ? 0 : e->installed[0] ? 2 : 1;
+}
+static void xd_row(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	AddonEntry* e = xd_e;
+	if (i == 0)
+		*r = (ListViewRow){.label = I18N_text(!e->installed[0] ? "Install" : entry_update_available(e) ? "Update" : "Reinstall"),
+						   .sq_icon = "download", .sq_color = BOS_C_PRIMARY,
+						   .sub = e->installed[0] ? NULL : I18N_text("Downloads from the internet")};
+	else
+		*r = (ListViewRow){.label = I18N_text("Uninstall"), .sub = I18N_text("Saves and game files stay"), .sq_icon = "trash",
+						   .sq_color = BOS_C_DANGER, .danger = true};
+}
+static void render_detail_bos(AddonEntry* e) {
+	SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
+	BOS_statusBar(screen, I18N_text("Xtras"));
+	int top = BOS_px(BOS_BAR_H), x = BOS_px(40), y = top + BOS_px(12), pw = BOS_px(360);
+	uint32_t c = xt_colour(e->name);
+	BOS_rrect(screen, x, y, pw, pw, BOS_px(28), c);
+	char ini[8];
+	snprintf(ini, sizeof(ini), "%.2s", e->name);
+	for (char* p = ini; *p; p++)
+		if (*p >= 'a' && *p <= 'z')
+			*p -= 32;
+	BOS_textMid(screen, ini, 120, 700, 0xFFFFFF, 0.9f, x + (pw - BOS_textW(ini, 120, 700)) / 2, y + pw / 2);
+	// the pills under the picture
+	int py = y + pw + BOS_px(18), px = x, ph = BOS_px(40);
+	char sz[32];
+	snprintf(sz, sizeof(sz), "%d MB", e->size_mb);
+	const char* st = !e->compatible ? I18N_text("Not available") : entry_update_available(e) ? I18N_text("Update")
+					 : e->installed[0] ? I18N_text("Installed") : NULL;
+	uint32_t sb = !e->compatible ? BOS_theme()->surface2 : entry_update_available(e) ? BOS_C_WARN : BOS_C_OK;
+	const char* pills[2] = {st, sz};
+	for (int i = 0; i < 2; i++) {
+		if (!pills[i])
+			continue;
+		int w = BOS_textW(pills[i], 24, 600) + BOS_px(32);
+		bool coloured = i == 0 && e->compatible;
+		BOS_rrect(screen, px, py, w, ph, ph / 2, i == 0 ? sb : BOS_theme()->surface2);
+		BOS_textMid(screen, pills[i], 24, 600, coloured ? 0x000000 : BOS_C_TEXT, 1, px + BOS_px(16), py + ph / 2);
+		px += w + BOS_px(10);
+	}
+	// right column
+	int rx = x + pw + BOS_px(36), rw = screen->w - BOS_px(40) - rx, ry = y;
+	ry += BOS_textWrap(screen, e->name, 48, 700, BOS_C_TEXT, 1, rx, ry, rw, 2) + BOS_px(10);
+	int n = xd_count(e), rh = BOS_px(BOS_ROW_H);
+	int bottom = screen->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+	int desc_lines = (bottom - ry - n * rh - BOS_px(22)) / BOS_lineH(28);
+	if (desc_lines > 8)
+		desc_lines = 8;
+	if (desc_lines > 0 && e->desc[0])
+		ry += BOS_textWrap(screen, I18N_text(e->desc), 28, 400, BOS_C_TEXT2, 1, rx, ry, rw, desc_lines);
+	ry += BOS_px(22);
+	if (!e->compatible) {
+		char m[128];
+		snprintf(m, sizeof(m), I18N_text("Not available on %s"), PLAT_getModel());
+		BOS_textWrap(screen, m, 30, 600, BOS_C_WARN, 1, rx, ry, rw, 2);
+	} else {
+		if (xd_sel >= n)
+			xd_sel = n - 1;
+		xd_e = e;
+		BOS_groupRows(screen, &(SDL_Rect){rx, ry, rw, n * rh}, rh, n, xd_sel, true, NULL, &xd_pill, &xd_scroll, false, xd_row, NULL);
+	}
+	BosHint h[] = {{"A", I18N_text("Select")}, {"B", I18N_text("Back")}};
+	BOS_hintBar(screen, e->compatible ? h : h + 1, e->compatible ? 2 : 1, NULL, 0);
+}
+
 static int run_detail(AddonEntry* e) {
 	bool dirty = true;
+	xd_sel = 0;
 	bool changed = false;
 	IndicatorType show_setting = INDICATOR_NONE;
 	while (1) {
@@ -1245,7 +1399,14 @@ static int run_detail(AddonEntry* e) {
 		PAD_poll();
 		if (PAD_justPressed(BTN_B))
 			break;
-		if (PAD_justPressed(BTN_A)) {
+		bool xd_un = false; // A on the uninstall row
+		if (UI_bos && xd_count(e) > 1 && (PAD_justRepeated(BTN_UP) || PAD_justRepeated(BTN_DOWN))) {
+			xd_sel = !xd_sel;
+			dirty = true;
+		}
+		if (UI_bos && xd_sel == 1 && PAD_justPressed(BTN_A))
+			xd_un = true;
+		if (PAD_justPressed(BTN_A) && !xd_un) {
 			if (!e->compatible) {
 				char msg[128];
 				snprintf(msg, sizeof(msg), "Not available on %s", PLAT_getModel());
@@ -1286,7 +1447,7 @@ static int run_detail(AddonEntry* e) {
 		// tag flip to incompatible while installed must decide whether to keep
 		// uninstall available, or block it to match the hidden hint, before
 		// this assumption is relied on.
-		if (PAD_justPressed(BTN_X) && e->installed[0]) {
+		if ((PAD_justPressed(BTN_X) || xd_un) && e->installed[0]) {
 			if (run_confirm_dialog("Uninstall?",
 								   "Saves and ROMs are kept - reinstall to play again.")) {
 				if (run_uninstall(e) == 0) {
@@ -1304,7 +1465,13 @@ static int run_detail(AddonEntry* e) {
 		if (UI_statusBarChanged())
 			dirty = true;
 		PWR_update(&dirty, &show_setting, NULL, NULL);
-		if (dirty) {
+		if (BOS_glideMoving(&xd_pill))
+			dirty = true;
+		if (dirty && UI_bos) {
+			render_detail_bos(e);
+			GFX_flip(screen);
+			dirty = false;
+		} else if (dirty) {
 			GFX_clear(screen);
 			// Same menu bar as the list screen (status icons/battery/clock
 			// live there); layout.list_y below already reserves its band, the

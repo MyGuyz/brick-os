@@ -1177,3 +1177,21 @@ Last sync	ซิงก์ล่าสุด
 Not signed in	ยังไม่ได้เข้าสู่ระบบ
 Enter your username and password in Settings	ใส่ชื่อผู้ใช้และรหัสผ่านที่ ตั้งค่า
 Exit RetroAchievements?	ออกจาก RetroAchievements ไหม?
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Game	เกม
+Tool	เครื่องมือ
+Details	รายละเอียด
+Tab	แท็บ
+Reinstall	ติดตั้งใหม่
+Downloads from the internet	ดาวน์โหลดจากอินเทอร์เน็ต
+Saves and game files stay	เซฟและไฟล์เกมยังอยู่
+Not available on %s	ใช้ไม่ได้บน %s
+Uninstalling...	กำลังถอนการติดตั้ง…
+Uninstall?	ถอนการติดตั้งไหม?
+Saves and ROMs are kept - reinstall to play again.	เซฟและไฟล์เกมยังอยู่ ติดตั้งใหม่เมื่อไหร่ก็เล่นต่อได้
+Saves and ROMs kept.	เซฟและไฟล์เกมยังอยู่
+The installer stopped unexpectedly.	ตัวติดตั้งหยุดกลางคัน
+The uninstaller stopped unexpectedly.	ตัวถอนการติดตั้งหยุดกลางคัน
+Exit Xtras?	ออกจากร้านเสริมไหม?

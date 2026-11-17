@@ -90,6 +90,8 @@ void BOS_hintBar(SDL_Surface* dst, const BosHint* right, int nright, const BosHi
 
 // ---- large title (§5.5): title 56/700 at x 40, sub 30 text2 under it; returns the block's height ----
 int BOS_largeTitle(SDL_Surface* dst, int y, const char* title, const char* sub);
+// tab chips (DESIGN 7.9): 48 high, 28/600, the selected one white with black words; returns the band's height
+int BOS_chips(SDL_Surface* s, int x, int y, const char* const* labels, int n, int sel);
 
 int BOS_tweenMs(void); // the focus/carousel tween's length, from ตั้งค่า › หน้าตา › ภาพเคลื่อนไหว
 void BOS_quit(void); // frees fonts and icons

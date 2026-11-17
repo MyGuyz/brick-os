@@ -227,6 +227,18 @@ int BOS_groupRows(SDL_Surface* s, const SDL_Rect* area, int rh, int count, int s
 	return visible;
 }
 
+int BOS_chips(SDL_Surface* s, int x, int y, const char* const* labels, int n, int sel) {
+	int h = BOS_px(48), pad = BOS_px(24), gap = BOS_px(12);
+	for (int i = 0; i < n; i++) {
+		const char* t = tr(labels[i]);
+		int w = BOS_textW(t, 28, 600) + 2 * pad;
+		BOS_rrect(s, x, y, w, h, h / 2, i == sel ? BOS_C_TEXT : BOS_theme()->surface2);
+		BOS_textMid(s, t, 28, 600, i == sel ? 0x000000 : BOS_C_TEXT, 1, x + pad, y + h / 2);
+		x += w + gap;
+	}
+	return h + BOS_px(16);
+}
+
 // ---- the shared ListView ----
 static void rowFromView(void* ctx, int i, bool hot, ListViewRow* r) {
 	ListView* v = ctx;
