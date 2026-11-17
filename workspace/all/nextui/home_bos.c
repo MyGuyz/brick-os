@@ -777,13 +777,17 @@ static void openApp(int i, bool* dirty) {
 	}
 	if (!a->path[0] || !exists((char*)a->path))
 		return;
-	bool dir = a->kind == APP_PORTS;
-	Entry* e = Entry_new((char*)a->path, dir ? ENTRY_DIR : ENTRY_PAK);
+	if (a->kind == APP_PORTS) { // เกม's page of the Ports folder (§5.3b), not the old list
+		GameList_openTab(MENU_TAB_CONSOLES, dirty);
+		BosGames_openConsole(a->path);
+		*dirty = true;
+		return;
+	}
+	Entry* e = Entry_new((char*)a->path, ENTRY_PAK);
 	if (!e)
 		return;
-	if (dir || GameList_settingsPinAllows(e)) {
-		if (!dir)
-			MenuTabs_markHomeLaunch();
+	if (GameList_settingsPinAllows(e)) {
+		MenuTabs_markHomeLaunch();
 		Entry_open(e);
 	}
 	Entry_free(e);

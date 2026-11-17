@@ -47,6 +47,7 @@ bool BosSwitcher_animating(void);
 typedef enum { BOSGAMES_UNHANDLED, BOSGAMES_HANDLED, BOSGAMES_SEARCH, BOSGAMES_HOME, BOSGAMES_OPTIONS, BOSGAMES_SWITCHER } BosGamesInput;
 bool BosGames_active(void);
 void BosGames_reset(void);
+void BosGames_openConsole(const char* console_path); // Home's Ports: เกม on that console's games, B back to Home
 void BosGames_restore(const char* console_path, const char* rom_path); // เกม on this console's games, on this game
 void BosGames_render(SDL_Surface* screen);
 bool BosGames_animating(void);

@@ -151,6 +151,9 @@ Nothing on screen is smaller than 22.
     darkens it (a sprite), the way the old Ports list did. The page under the row stays as it was, so a frame of
     motion costs the CPU about 4 ms and nothing is uploaded again. The focus ring (and the held letter, §5.7) are
     sprites too, so they stay over the pictures.
+  - A page move (push, back, fade) moves the sprites with their page: the old page's grab includes its pictures, and
+    the new page's pictures slide with it, cut to its edges (user report 2026-11-18: รายการโปรด slid in while the
+    consoles stood still).
   - Under a context menu (drawn into the page) the pictures are scaled into the page instead, and for the one frame
     a picture's texture is made (one a frame).
   - Measured 2026-11-18 on the Brick: Home, the wheel, the covers and สลับเกม 16.6 ms a frame, 0–3 frames in 200 over
@@ -160,6 +163,10 @@ Nothing on screen is smaller than 22.
 - Caption under the centre (padding-top 14, gap 4, centred): name 40/600, then meta 30 `text2` + a pill.
 - 1 item: only the centre. 2 items: centre + one side.
 - Missing cover: a `surface` card with the name 30/600 centred.
+
+### 5.3b Ports from Home
+- Home's Ports opens เกม's page of the Ports folder (§6.3 covers or §6.4 list, its own SELECT choice), status bar
+  "Ports"; B goes straight back to Home. The old NX Redux list page is no longer used for it.
 
 ### 5.4 Pills
 - `เล่นต่อ`: `surface2`, a 12 px `ok` dot, 26/600 — the game has a resume state.

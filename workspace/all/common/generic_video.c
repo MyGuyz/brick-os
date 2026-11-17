@@ -1976,6 +1976,15 @@ static bool spriteInFade(const SDL_Rect* d, const SDL_Rect* c, float sy) {
 
 // screen px to output px (the window is the screen's size on our devices: 1, but kept exact if it is not). faded: the
 // over-screen list, whose scroll fade's range applies.
+// A page move (drawPageMove) or a page grab draws the sprites with the page: moved dx (screen px), darkened to light,
+// at alpha times k, inside clip (output px) when has_clip.
+static struct {
+	int dx, dy;
+	Uint8 light, k;
+	bool has_clip;
+	SDL_Rect clip;
+} sprite_xf = {0, 0, 255, 255, false};
+
 static void drawSpriteList(const Sprite* list, int count, bool faded) {
 	if (count == 0 || !vid.screen)
 		return;
@@ -1987,20 +1996,31 @@ static void drawSpriteList(const Sprite* list, int count, bool faded) {
 	for (int i = 0; i < count; i++) {
 		const Sprite* s = &list[i];
 		SDL_Rect d = s->dst, c = s->clip;
+		d.x += sprite_xf.dx, d.y += sprite_xf.dy, c.x += sprite_xf.dx, c.y += sprite_xf.dy;
 		if (!unit) {
 			d = (SDL_Rect){(int)(d.x * sx), (int)(d.y * sy), (int)(d.w * sx + 0.5f), (int)(d.h * sy + 0.5f)};
 			c = (SDL_Rect){(int)(c.x * sx), (int)(c.y * sy), (int)(c.w * sx + 0.5f), (int)(c.h * sy + 0.5f)};
 		}
-		SDL_RenderSetClipRect(vid.renderer, s->has_clip ? &c : NULL);
-		SDL_SetTextureAlphaMod(s->tex, s->alpha);
+		if (sprite_xf.has_clip) {
+			SDL_Rect in;
+			if (s->has_clip && !SDL_IntersectRect(&c, &sprite_xf.clip, &in))
+				continue;
+			SDL_RenderSetClipRect(vid.renderer, s->has_clip ? &in : &sprite_xf.clip);
+		} else
+			SDL_RenderSetClipRect(vid.renderer, s->has_clip ? &c : NULL);
+		SDL_SetTextureAlphaMod(s->tex, (Uint8)(s->alpha * sprite_xf.k / 255));
 		SDL_BlendMode bm = SDL_BLENDMODE_BLEND;
 		if (s->opaque) {
 			SDL_GetTextureBlendMode(s->tex, &bm);
 			SDL_SetTextureBlendMode(s->tex, SDL_BLENDMODE_NONE);
 		}
-		bool tinted = s->tint.r != 255 || s->tint.g != 255 || s->tint.b != 255;
+		SDL_Color tint = s->tint;
+		if (sprite_xf.light != 255)
+			tint.r = tint.r * sprite_xf.light / 255, tint.g = tint.g * sprite_xf.light / 255,
+			tint.b = tint.b * sprite_xf.light / 255;
+		bool tinted = tint.r != 255 || tint.g != 255 || tint.b != 255;
 		if (tinted)
-			SDL_SetTextureColorMod(s->tex, s->tint.r, s->tint.g, s->tint.b);
+			SDL_SetTextureColorMod(s->tex, tint.r, tint.g, tint.b);
 		SDL_Rect whole = {0, 0, ow, oh};
 		if (faded && i >= sprite_fade.from && i < sprite_fade.to &&
 			spriteInFade(&d, s->has_clip ? &c : &whole, sy))
@@ -2186,6 +2206,11 @@ bool PLAT_pageGrab(const SDL_Rect* area) {
 	int bad = SDL_SetRenderTarget(vid.renderer, page_tex);
 	if (!bad)
 		bad = SDL_RenderCopy(vid.renderer, vid.stream_layer1, area, NULL);
+	if (!bad) { // the page's GPU pictures (a carousel's) are part of it
+		sprite_xf.dx = -area->x, sprite_xf.dy = -area->y;
+		drawSpriteList(sprites, sprite_count, false);
+		sprite_xf.dx = sprite_xf.dy = 0;
+	}
 	SDL_SetRenderTarget(vid.renderer, NULL);
 	SDL_SetTextureBlendMode(vid.stream_layer1, was);
 	return !bad;
@@ -2211,13 +2236,15 @@ static Uint8 lightByte(float v) {
 	return v <= 0 ? 0 : v >= 1 ? 255 : (Uint8)(v * 255);
 }
 
-// over the screen's texture, under the sprites and the upper layers
-static void drawPageMove(void) {
+// over the screen's texture, under the upper layers; the sprites (the new page's pictures) move with the new page.
+// True: they were drawn here.
+static bool drawPageMove(void) {
 	if (!page_q.on)
-		return;
+		return false;
 	page_q.on = false;
 	if (!vid.screen || !vid.stream_layer1)
-		return;
+		return false;
+	bool moved = !page_q.zoom; // a launch's zoom leaves them where they are
 	int ow = 0, oh = 0;
 	SDL_GetRendererOutputSize(vid.renderer, &ow, &oh);
 	float kx = (float)ow / vid.screen->w, ky = (float)oh / vid.screen->h;
@@ -2246,6 +2273,16 @@ static void drawPageMove(void) {
 			SDL_SetTextureBlendMode(vid.stream_layer1, a < 255 ? SDL_BLENDMODE_BLEND : SDL_BLENDMODE_NONE);
 			SDL_Rect dst = PAGE_SC(page_q.area, page_q.to_dx);
 			SDL_RenderCopy(vid.renderer, vid.stream_layer1, &page_q.area, &dst);
+			if (!page_q.zoom) {
+				sprite_xf.dx = page_q.to_dx, sprite_xf.light = c, sprite_xf.k = a;
+				SDL_Rect pc = PAGE_SC(page_q.area, page_q.to_dx); // what was off the page stays off it
+				sprite_xf.has_clip = SDL_IntersectRect(&pc, &clip, &sprite_xf.clip);
+				if (!sprite_xf.has_clip)
+					sprite_xf.k = 0;
+				drawSpriteList(sprites, sprite_count, true);
+				sprite_xf = (typeof(sprite_xf)){0, 0, 255, 255, false};
+				SDL_RenderSetClipRect(vid.renderer, &clip);
+			}
 		}
 	}
 	if (page_q.zoom) {
@@ -2261,6 +2298,7 @@ static void drawPageMove(void) {
 	SDL_SetTextureAlphaMod(vid.stream_layer1, 255);
 	SDL_SetTextureBlendMode(vid.stream_layer1, was);
 	SDL_RenderSetClipRect(vid.renderer, NULL);
+	return moved;
 }
 
 // The screen into its texture: all of it, or just the bands set for this flip that changed (the screen's size kept).
@@ -2371,8 +2409,8 @@ static void compositeLayers(void) {
 	} else {
 		SDL_RenderCopy(vid.renderer, vid.stream_layer1, NULL, NULL);
 	}
-	drawPageMove();
-	drawSpriteList(sprites, sprite_count, true);
+	if (!drawPageMove())
+		drawSpriteList(sprites, sprite_count, true);
 	if (layer_has_content[3])
 		SDL_RenderCopy(vid.renderer, vid.target_layer3, NULL, NULL);
 	if (layer_has_content[4])

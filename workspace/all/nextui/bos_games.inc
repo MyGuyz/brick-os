@@ -208,6 +208,14 @@ void BosGames_restore(const char* console_path, const char* rom_path) {
 	}
 }
 
+// Home's Ports (§5.3b): เกม opened straight on that console's games; B goes back to Home, not to the wheel
+static bool bg_from_home;
+void BosGames_openConsole(const char* console_path) {
+	bg_step2 = false;
+	BosGames_restore(console_path, NULL);
+	bg_from_home = bg_step2;
+}
+
 void BosGames_reset(void) {
 	bg_built = false;
 	bg_games_for = -1;
@@ -623,7 +631,7 @@ static void gamesRender(SDL_Surface* s) {
 	bool part = BOS_partialOn(); // only the rows of the covers (or the list): the bars and the title stay as they are
 	int top = BOS_px(BOS_BAR_H);
 	if (!part) {
-		barTitle(s, I18N_text("Games"));
+		barTitle(s, bg_from_home ? "Ports" : I18N_text("Games")); // opened from Home's Ports: its name, as on Home
 		BgConsole* c = &bg_cons[bg_sel];
 		char sub[96];
 		snprintf(sub, sizeof(sub), I18N_text("%d games · Sorted A-Z"), gamesCount());
@@ -853,6 +861,10 @@ BosGamesInput BosGames_handleInput(unsigned long now, bool* dirty, bool tap_menu
 		return ng > 0 ? BOSGAMES_OPTIONS : BOSGAMES_HANDLED;
 	if (PAD_justPressed(BTN_B)) {
 		bg_step2 = false;
+		if (bg_from_home) {
+			bg_from_home = false;
+			return BOSGAMES_HOME;
+		}
 		return BOSGAMES_HANDLED;
 	}
 	if (tap_select) {
