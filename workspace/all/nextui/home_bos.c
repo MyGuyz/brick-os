@@ -21,6 +21,7 @@
 #include "text_thai.h"
 #include "utils.h"
 #include "ui/ui_draw.h"
+#include "ui/ui_contextmenu.h"
 #include "bos_ui.h"
 
 #include "../musicplayer/music_service_client.h"
@@ -265,9 +266,8 @@ static bool built;
 static int row;		 // 0 the carousel, 1 the app row
 static int cfocus;	 // carousel card
 static int afocus;	 // app row tile (npins = ทั้งหมด)
-static float cpos;	 // carousel position shown (tweens to cfocus)
-static float cfrom;	 // tween start
-static uint32_t cstart; // tween start time (ms), 0 = idle
+static float cpos, cvel; // carousel position shown and its speed (springStep to cfocus)
+static uint32_t cstart, clast; // moving (non-zero) / the last step's time
 static uint32_t menu_down; // when MENU went down (hold = switcher)
 #define TWEEN_MS BOS_tweenMs() // 180 ms, 120 on น้อย, a cut on ปิด
 
@@ -294,7 +294,7 @@ static void build(void) {
 	buildApps();
 	if (cfocus >= ncards)
 		cfocus = ncards > 0 ? ncards - 1 : 0;
-	cpos = cfrom = (float)cfocus;
+	cpos = (float)cfocus;
 	if (afocus > npins)
 		afocus = npins;
 	if (ncards == 0)
@@ -325,10 +325,6 @@ void HomeBos_reset(void) {
 }
 
 // ---- drawing ----
-static float easeOut(float t) {
-	return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
-}
-
 // a colour drawn at `a` alpha over the black page
 static uint32_t over(uint32_t c, float a) { // c at alpha a over the page (พื้นหลัง: black or dark grey)
 	uint32_t bg = BOS_theme()->bg, o = 0;
@@ -346,19 +342,6 @@ static void centredName(SDL_Surface* s, const char* nm, int px, int weight, uint
 		BOS_text(s, nm, px, weight, rgb, a, (s->w - w) / 2, y);
 	else
 		BOS_textMarquee(s, nm, px, weight, rgb, a, BOS_px(BOS_PAGE_PAD), y + BOS_lineH(px) / 2, room);
-}
-
-static void cover(SDL_Surface* s, const Card* c, int x, int y, int w, int h, int r, float a, bool ring) {
-	SDL_Surface* pic = NULL;
-	HomeArtState st = HomeArt_continue(c->entry->path, c->preview[0] ? c->preview : NULL, w, h, r, &pic);
-	if (st == HOMEART_LOADING)
-		pending = true;
-	if (st == HOMEART_READY && pic) {
-		BOS_blit(pic, s, x, y, a * gdim);
-	} else
-		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a * gdim));
-	if (ring) // last, over the picture (DESIGN 1: draw order)
-		BOS_focusRing(s, x, y, w, h, r);
 }
 
 static int sectionLabel(SDL_Surface* s, int y, const char* t) { // 30/600 text2, padding 8 40 10
@@ -379,11 +362,208 @@ static int pillW(const char* label, bool dot) {
 	return 2 * BOS_px(18) + (dot ? BOS_px(20) : 0) + BOS_textW(label, BOS_FS_BADGE, 600);
 }
 
-// Home's carousel (§5.3 "home"): centre 346x260, sides 240x180 at .55, outer 180x135 at .25, gap 24
+// ---- the cover carousels: เล่นต่อ (§5.3), เกม's wheel and covers (§6.2, 6.3), สลับเกม (§6.5) ----
+// They move like YouTube's carousel (springStep), and every size, place and fade follows the exact distance from the
+// middle. Each picture is made once, at the centre size; the GPU draws it as a sprite, scaled and darkened there, so
+// a frame of motion leaves the page under it as it was and costs the CPU almost nothing. Under a context menu (drawn
+// into the page, which the sprites would cover) and for the frame a picture's texture is made, the picture is scaled
+// into the page instead (liveBlit).
+static int car_tex_made; // textures made this frame: one a frame (a big one costs a few ms)
+
+// src scaled to w x h at (x, y) straight into the page (nearest pixel), its colour scaled by m/256 (faded over the
+// black page): carPic's way when the GPU can't draw it.
+static void liveBlit(SDL_Surface* src, SDL_Surface* s, int x, int y, int w, int h, uint32_t m) {
+	if (!src || w <= 0 || h <= 0 || src->format->format != SDL_PIXELFORMAT_ARGB8888 ||
+		s->format->format != SDL_PIXELFORMAT_ARGB8888) {
+		if (src && w > 0 && h > 0)
+			SDL_BlitScaled(src, NULL, s, &(SDL_Rect){x, y, w, h});
+		return;
+	}
+	SDL_Rect clip;
+	SDL_GetClipRect(s, &clip);
+	int x0 = x > clip.x ? x : clip.x, y0 = y > clip.y ? y : clip.y;
+	int x1 = x + w < clip.x + clip.w ? x + w : clip.x + clip.w, y1 = y + h < clip.y + clip.h ? y + h : clip.y + clip.h;
+	if (x1 <= x0 || y1 <= y0)
+		return;
+	uint32_t fx = ((uint32_t)src->w << 16) / (uint32_t)w, fy = ((uint32_t)src->h << 16) / (uint32_t)h;
+	if (m > 256)
+		m = 256;
+	for (int row = y0; row < y1; row++) {
+		uint32_t sy = ((uint32_t)(row - y) * fy) >> 16;
+		const uint32_t* sp = (const uint32_t*)((const uint8_t*)src->pixels + sy * src->pitch);
+		uint32_t* dp = (uint32_t*)((uint8_t*)s->pixels + row * s->pitch);
+		uint32_t sx = (uint32_t)(x0 - x) * fx + fx / 2;
+		for (int i = x0; i < x1; i++, sx += fx) {
+			uint32_t p = sp[sx >> 16], sa = p >> 24;
+			if (!sa)
+				continue;
+			uint32_t prb = p & 0xFF00FF, pg = p & 0xFF00;
+			if (m != 256)
+				prb = ((prb * m) >> 8) & 0xFF00FF, pg = ((pg * m) >> 8) & 0xFF00;
+			if (sa == 255) {
+				dp[i] = 0xFF000000u | prb | pg;
+				continue;
+			}
+			uint32_t d = dp[i], rb = d & 0xFF00FF, g = d & 0xFF00;
+			rb = (rb + (((prb - rb) * sa) >> 8)) & 0xFF00FF;
+			g = (g + (((pg - g) * sa) >> 8)) & 0xFF00;
+			dp[i] = 0xFF000000u | rb | g;
+		}
+	}
+}
+
+static bool carSprites(void) {
+	return !ContextMenu_isOpen();
+}
+
+// pic scaled into b, its colour times a (faded over the black page)
+static void carPic(SDL_Surface* s, SDL_Surface* pic, SDL_Rect b, float a) {
+	if (!pic || b.w <= 0 || b.h <= 0 || a <= 0)
+		return;
+	if (a > 1)
+		a = 1;
+	if (carSprites()) {
+		if (pic->userdata || car_tex_made++ == 0) {
+			SDL_Texture* t = PLAT_textureForSurface(pic);
+			if (t) {
+				PLAT_spriteAddShaded(t, NULL, &b, 255, (Uint8)(255 * a + 0.5f), NULL);
+				return;
+			}
+		} else
+			pending = true; // its texture is made next frame
+	}
+	liveBlit(pic, s, b.x, b.y, b.w, b.h, (uint32_t)(256 * a + 0.5f));
+}
+
+// A w x h rounded box (radius r) in rgb on clear, smooth edged: filled, or a ring th thick (th > 0). For the pieces
+// drawn over the carousels' sprites (the focus ring, the held letter), which must be sprites too.
+static SDL_Surface* carShape(int w, int h, int r, int th, uint32_t rgb) {
+	SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+	if (!d)
+		return NULL;
+	SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_BLEND);
+	float hw = w / 2.0f, hh = h / 2.0f, rad = fminf((float)r, fminf(hw, hh));
+	for (int y = 0; y < h; y++) {
+		uint32_t* row = (uint32_t*)((uint8_t*)d->pixels + y * d->pitch);
+		float qy = fabsf(y + 0.5f - hh) - hh + rad;
+		for (int x = 0; x < w; x++) {
+			float qx = fabsf(x + 0.5f - hw) - hw + rad, mx = fmaxf(qx, 0), my = fmaxf(qy, 0);
+			float dist = sqrtf(mx * mx + my * my) + fminf(fmaxf(qx, qy), 0) - rad; // < 0 inside
+			float k = fminf(fmaxf(0.5f - dist, 0), 1);
+			if (th > 0)
+				k -= fminf(fmaxf(0.5f - dist - th, 0), 1);
+			row[x] = k <= 0 ? 0 : ((uint32_t)(k * 255 + 0.5f) << 24) | (rgb & 0xFFFFFF);
+		}
+	}
+	return d;
+}
+
+// The focus ring around box b (BOS_focusRing's), over the sprites: a sprite too, made once a size
+static void carRing(SDL_Surface* s, SDL_Rect b, int r) {
+	int q = 2 * BOS_px(BOS_RING);
+	SDL_Rect o = {b.x - q, b.y - q, b.w + 2 * q, b.h + 2 * q};
+	if (carSprites()) {
+		static SDL_Surface* rs;
+		static int rw, rh, rr;
+		static uint32_t rc;
+		uint32_t c = BOS_theme()->focus;
+		if (!rs || rw != o.w || rh != o.h || rr != r || rc != c) {
+			GFX_freeSurfaceAndTexture(rs);
+			rs = carShape(o.w, o.h, r + q, BOS_px(BOS_RING), c);
+			rw = o.w, rh = o.h, rr = r, rc = c;
+		}
+		SDL_Texture* t = rs ? PLAT_textureForSurface(rs) : NULL;
+		if (t) {
+			PLAT_spriteAdd(t, NULL, &o, 255, NULL);
+			return;
+		}
+	}
+	BOS_focusRing(s, b.x, b.y, b.w, b.h, r);
+}
+
+// a value at distance ad from the middle: v0 in the middle, v1 one step out, v2 two or more, straight between
+static float byDist(float ad, float v0, float v1, float v2) {
+	return ad <= 1 ? v0 + (v1 - v0) * ad : ad <= 2 ? v1 + (v2 - v1) * (ad - 1) : v2;
+}
+
+// A cover carousel's look: the centred picture cw x ch (radius r), one and two steps out its size times s1, s2 and
+// its colour times a1, a2; the centre one step out off1 from the middle, the next off2 further.
+typedef struct {
+	int cw, ch, r;
+	float s1, s2, a1, a2;
+	int off1, off2;
+} CarSpec;
+static const CarSpec CAR_COVERS = {500, 375, 24, 0.58f, 0.42f, 0.5f, 0.25f, 360, 230};			  // เกม, สลับเกม (§6.3)
+static const CarSpec CAR_HOME = {346, 260, 24, 240 / 346.0f, 180 / 346.0f, 0.55f, 0.25f, 317, 234}; // เล่นต่อ (§5.3)
+
+// The box of the item d from the middle (cx0) of carousel k whose centred box starts at top; its radius, its colour
+static SDL_Rect carBox(const CarSpec* k, int cx0, int top, float d, int* r, float* a) {
+	float ad = fabsf(d), sc = byDist(ad, 1, k->s1, k->s2), off = ad <= 1 ? ad * k->off1 : k->off1 + (ad - 1) * k->off2;
+	int cw = BOS_px(k->cw), ch = BOS_px(k->ch), w = (int)(cw * sc + 0.5f), h = (int)(ch * sc + 0.5f);
+	int cx = cx0 + BOS_px((int)(d < 0 ? -off : off));
+	*r = (int)(BOS_px(k->r) * sc + 0.5f);
+	*a = byDist(ad, 1, k->a1, k->a2);
+	return (SDL_Rect){cx - w / 2, top + (ch - h) / 2, w, h};
+}
+
+// The items lo..hi of a carousel at pos that show, in drawing order: the farthest first, the centred one last
+static int carOrder(float pos, int lo, int hi, int* out, int max) {
+	int n = 0;
+	for (int i = (int)floorf(pos - 2.6f); i <= (int)ceilf(pos + 2.6f) && n < max; i++)
+		if (i >= lo && i <= hi && fabsf(i - pos) <= 2.6f)
+			out[n++] = i;
+	for (int a = 0; a < n; a++)
+		for (int b = a + 1; b < n; b++)
+			if (fabsf(out[b] - pos) > fabsf(out[a] - pos)) {
+				int t = out[a];
+				out[a] = out[b];
+				out[b] = t;
+			}
+	return n;
+}
+
+// The carousels move like YouTube's (DESIGN 6.2): a critically damped spring (SmoothDamp). A press moves the
+// target; the position follows, keeping its speed, so a held direction glides on instead of starting over at every
+// step. It settles in about 0.2 s at the default motion (BOS_tweenMs 180), quicker on น้อย, a cut on ปิด.
+// *moving is non-zero until it has settled.
+static void springStep(float* pos, float* vel, uint32_t* last, uint32_t* moving, float target) {
+	if (!*moving)
+		return;
+	uint32_t now = SDL_GetTicks();
+	float dt = *last ? (now - *last) / 1000.0f : 1 / 60.0f;
+	*last = now;
+	int ms = TWEEN_MS;
+	if (ms <= 0) {
+		*pos = target, *vel = 0, *moving = 0;
+		return;
+	}
+	if (dt > 0.05f) // after a hitch
+		dt = 0.05f;
+	if (dt <= 0)
+		return;
+	float om = 2.0f / (ms * (0.20f / 180)), x = om * dt, ex = 1 / (1 + x + 0.48f * x * x + 0.235f * x * x * x);
+	float chg = *pos - target, tmp = (*vel + om * chg) * dt;
+	*vel = (*vel - om * tmp) * ex;
+	*pos = target + (chg + tmp) * ex;
+	if (fabsf(*pos - target) < 0.002f && fabsf(*vel) < 0.02f)
+		*pos = target, *vel = 0, *moving = 0;
+}
+
+// a card of เล่นต่อ in box b at colour a: its picture made once at the centre size (cw x ch)
+static void cover(SDL_Surface* s, const Card* c, SDL_Rect b, int r, float a, int cw, int ch) {
+	SDL_Surface* pic = NULL;
+	HomeArtState st = HomeArt_continue(c->entry->path, c->preview[0] ? c->preview : NULL, cw, ch, BOS_px(CAR_HOME.r), &pic);
+	if (st == HOMEART_LOADING)
+		pending = true;
+	if (st == HOMEART_READY && pic)
+		carPic(s, pic, b, a * gdim);
+	else
+		BOS_rrect(s, b.x, b.y, b.w, b.h, r, over(BOS_theme()->surface, a * gdim));
+}
+
+// Home's carousel (§5.3 "home"): CAR_HOME, centre 346x260, sides 240x180 at .55, outer 180x135 at .25, gap 24
 static int carousel(SDL_Surface* s, int top) {
-	int cw = BOS_px(346), ch = BOS_px(260), sw = BOS_px(240), sh = BOS_px(180);
-	int ow = BOS_px(180), oh = BOS_px(135), gap = BOS_px(24);
-	float c1 = cw / 2.0f + gap + sw / 2.0f, c2 = cw / 2.0f + gap + sw + gap + ow / 2.0f; // slot centre offsets
+	int cw = BOS_px(CAR_HOME.cw), ch = BOS_px(CAR_HOME.ch);
 	bool focused = row == 0;
 	if (ncards == 0) {
 		BOS_rrect(s, (s->w - cw) / 2, top, cw, ch, BOS_px(24), BOS_theme()->surface);
@@ -391,23 +571,15 @@ static int carousel(SDL_Surface* s, int top) {
 		BOS_textMid(s, t, BOS_FS_TITLE, 600, BOS_C_TEXTOFF, 1, (s->w - BOS_textW(t, BOS_FS_TITLE, 600)) / 2, top + ch / 2);
 		return ch;
 	}
-	// back to front: the outer cards first so the centre draws on top
-	for (int pass = 2; pass >= 0; pass--)
-		for (int i = 0; i < ncards; i++) {
-			float d = i - cpos;
-			int slot = (int)(d < 0 ? -d + 0.5f : d + 0.5f);
-			if (slot != pass)
-				continue;
-			float ad = d < 0 ? -d : d;
-			float off = ad <= 1 ? ad * c1 : ad <= 2 ? c1 + (ad - 1) * (c2 - c1) : c2;
-			if (ad > 2.6f)
-				continue;
-			int w = slot == 0 ? cw : slot == 1 ? sw : ow, h = slot == 0 ? ch : slot == 1 ? sh : oh;
-			float a = slot == 0 ? 1.0f : slot == 1 ? 0.55f : 0.25f;
-			int r = BOS_px(slot == 0 ? 24 : slot == 1 ? 20 : 18);
-			int cx = s->w / 2 + (int)(d < 0 ? -off : off) - (focused ? BOS_bumpPx() : 0);
-			cover(s, &cards[i], cx - w / 2, top + (ch - h) / 2, w, h, r, a, focused && slot == 0 && cstart == 0);
-		}
+	int order[8], no = carOrder(cpos, 0, ncards - 1, order, 8);
+	for (int k = 0; k < no; k++) { // the farthest first: the centred one over them all
+		int r;
+		float a, d = order[k] - cpos;
+		SDL_Rect b = carBox(&CAR_HOME, s->w / 2 - (focused ? BOS_bumpPx() : 0), top, d, &r, &a);
+		cover(s, &cards[order[k]], b, r, a, cw, ch);
+		if (focused && fabsf(d) < 0.001f && cstart == 0)
+			carRing(s, b, r); // last (DESIGN 1: draw order)
+	}
 	if (focused)
 		launch_rect = (SDL_Rect){(s->w - cw) / 2, top, cw, ch};
 	return ch;
@@ -551,14 +723,8 @@ void HomeBos_render(SDL_Surface* s) {
 		return;
 	}
 	gdim = moving ? 0.35f : 1.0f;
-	if (cstart) { // the carousel tween
-		float t = (SDL_GetTicks() - cstart) / (float)TWEEN_MS;
-		if (t >= 1) {
-			t = 1;
-			cstart = 0;
-		}
-		cpos = cfrom + (cfocus - cfrom) * easeOut(t);
-	}
+	car_tex_made = 0;
+	springStep(&cpos, &cvel, &clast, &cstart, (float)cfocus); // the carousel's spring
 	BOS_benchLap(NULL);
 	// the row is on its way and nothing else moves: only its rows are drawn (the frame it lands on is a whole one)
 	static int band_h;
@@ -627,11 +793,10 @@ static void openApp(int i, bool* dirty) {
 static void moveCarousel(int to) {
 	if (to < 0 || to >= ncards || to == cfocus)
 		return;
-	cfrom = cpos;
 	cfocus = to;
-	cstart = SDL_GetTicks();
-	if (!cstart)
-		cstart = 1;
+	if (!cstart) // from rest: no old speed, no old time
+		cvel = 0, clast = 0;
+	cstart = 1;
 }
 
 // one step along เล่นต่อ: at an end a fresh press goes round, a held one knocks (§5.7)
@@ -772,7 +937,7 @@ HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) 
 		// ปิด: the game leaves เล่นต่อ and สลับเกม (its save stays), as สลับเกม's X
 		Recents_removeAt(cards[cfocus].recent);
 		build();
-		cfrom = cpos = (float)cfocus;
+		cpos = (float)cfocus;
 		cstart = 0;
 	} else if (PAD_justPressed(BTN_X) && row == 1 && afocus < npins) {
 		memcpy(saved_pins, pins, npins * sizeof(int));
@@ -810,50 +975,47 @@ void HomeBos_quit(void) {
 
 // ---- สลับเกม (DESIGN.md 6.5): the เกม cover carousel over the open games ----
 static int sw_last_sel = -1, sw_last_count = -1;
-static float sw_shift, sw_from;
-static uint32_t sw_start;
+static float sw_shift, sw_vel; // where the centred card is drawn (0: in the middle) and its speed
+static uint32_t sw_start, sw_last; // moving (non-zero) / the last step's time
 
-static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, int x, int y, int w, int h, int r, float a, bool ring) {
+static void switcherCard(SDL_Surface* s, const BosSwitchCard* c, SDL_Rect b, int r, float a, int cw, int ch) {
 	SDL_Surface* pic = NULL;
-	HomeArtState st = HomeArt_continue(c->path, c->preview[0] ? c->preview : NULL, w, h, r, &pic);
+	HomeArtState st = HomeArt_continue(c->path, c->preview[0] ? c->preview : NULL, cw, ch, BOS_px(CAR_COVERS.r), &pic);
 	if (st == HOMEART_LOADING)
 		pending = true;
 	if (st == HOMEART_READY && pic) {
-		BOS_blit(pic, s, x, y, a);
+		carPic(s, pic, b, a);
 	} else {
-		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
-		int ic = h / 3;
-		BOS_icon(s, "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
+		BOS_rrect(s, b.x, b.y, b.w, b.h, r, over(BOS_theme()->surface, a));
+		int ic = b.h / 3;
+		BOS_icon(s, "game", BOS_C_TEXTOFF, a, b.x + (b.w - ic) / 2, b.y + (b.h - ic) / 2, ic);
 	}
-	if (ring) // last, over the picture (DESIGN 1: draw order)
-		BOS_focusRing(s, x, y, w, h, r);
 }
 
 void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int sel, int count, bool playing,
 						time_t saved_at, bool from_game) {
 	pending = false;
-	// the tween: a step of one (either way round) slides the row; anything else (a removal, a reopen) just cuts
+	car_tex_made = 0;
+	// a step of one (either way round) glides the row on (the spring); anything else (a removal, a reopen) just cuts
 	if (count != sw_last_count)
-		sw_start = 0, sw_shift = 0;
+		sw_start = 0, sw_shift = 0, sw_vel = 0;
 	else if (sel != sw_last_sel && count > 1) {
 		int d = count == 2 ? (sel > sw_last_sel ? 1 : count - 1) : ((sel - sw_last_sel) % count + count) % count;
 		if (d == 1 || d == count - 1) {
-			sw_from = (d == 1 ? 1.0f : -1.0f) + sw_shift; // where the new centre is drawn now
-			sw_start = SDL_GetTicks();
+			sw_shift += d == 1 ? 1.0f : -1.0f; // the new centre is drawn where it was, and glides to the middle
 			if (!sw_start)
-				sw_start = 1;
+				sw_vel = 0, sw_last = 0;
+			sw_start = 1;
 		} else
-			sw_start = 0, sw_shift = 0;
+			sw_start = 0, sw_shift = 0, sw_vel = 0;
 	}
 	sw_last_sel = sel, sw_last_count = count;
-	if (sw_start) {
-		float t = (SDL_GetTicks() - sw_start) / (float)TWEEN_MS;
-		if (t >= 1)
-			t = 1, sw_start = 0;
-		sw_shift = sw_from * (1 - easeOut(t));
-	} else
-		sw_shift = 0;
+	springStep(&sw_shift, &sw_vel, &sw_last, &sw_start, 0);
 
+	// while the row glides, only its rows are drawn (the caption and the rest change with the selection: a key)
+	static int band_y, band_h;
+	uint32_t key = BOS_keyMix(BOS_keyMix(BOS_keyMix(BOS_keyMix(31, sel), count), (uint32_t)(time(NULL) / 60)), from_game);
+	bool part = BOS_partialBegin(s, key, sw_start != 0 && band_h > 0, band_y, band_h);
 	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
 	BOS_statusBar(s, I18N_text("Switch game"));
 	char sub[96];
@@ -866,28 +1028,29 @@ void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int
 		const char* t = I18N_text("No open games");
 		BOS_text(s, t, BOS_FS_BODY, 400, BOS_C_TEXT2, 1, (s->w - BOS_textW(t, BOS_FS_BODY, 400)) / 2, top + BOS_px(120));
 		BOS_hintBar(s, r + 1, 1, NULL, 0);
+		BOS_partialEnd(s);
 		return;
 	}
 
-	// the same slots as เกม's covers (§6.3): 500x375 | 300x225 | 225x169, gap 28
-	int cw = BOS_px(500), ch = BOS_px(375), sw = BOS_px(300), sh = BOS_px(225);
-	int ow = sw * 3 / 4, oh = sh * 3 / 4, gap = BOS_px(28);
-	float c1 = cw / 2.0f + gap + sw / 2.0f, c2 = cw / 2.0f + gap + sw + gap + ow / 2.0f;
-	for (int pass = 2; pass >= 0; pass--)
-		for (int i = 0; i < 5; i++) {
-			if (!cards[i])
-				continue;
-			float d = (i - 2) + sw_shift, ad = fabsf(d);
-			int slot = (int)(ad + 0.5f);
-			if (slot != pass || ad > 2.6f)
-				continue;
-			float off = ad <= 1 ? ad * c1 : ad <= 2 ? c1 + (ad - 1) * (c2 - c1) : c2;
-			int w = slot == 0 ? cw : slot == 1 ? sw : ow, h = slot == 0 ? ch : slot == 1 ? sh : oh;
-			float a = slot == 0 ? 1.0f : slot == 1 ? 0.5f : 0.25f;
-			int rr = BOS_px(slot == 0 ? 24 : slot == 1 ? 20 : 18);
-			int cx = s->w / 2 + (int)(d < 0 ? -off : off);
-			switcherCard(s, cards[i], cx - w / 2, top + (ch - h) / 2, w, h, rr, a, slot == 0 && !sw_start);
-		}
+	// เกม's cover carousel (§6.3): cards[2] is the selected one, the others 1 and 2 steps either way
+	int cw = BOS_px(CAR_COVERS.cw), ch = BOS_px(CAR_COVERS.ch);
+	float pos = 2 - sw_shift;
+	int order[5], no = carOrder(pos, 0, 4, order, 5);
+	for (int k = 0; k < no; k++) {
+		int i = order[k], rr;
+		if (!cards[i])
+			continue;
+		float a, d = i - pos;
+		SDL_Rect b = carBox(&CAR_COVERS, s->w / 2, top, d, &rr, &a);
+		switcherCard(s, cards[i], b, rr, a, cw, ch);
+		if (fabsf(d) < 0.001f && !sw_start)
+			carRing(s, b, rr); // last (DESIGN 1: draw order)
+	}
+	band_y = top - 2 * BOS_px(BOS_RING), band_h = ch + 4 * BOS_px(BOS_RING);
+	if (part) {
+		BOS_partialEnd(s);
+		return;
+	}
 
 	// caption: name; "<console> · บันทึกเมื่อ <time>" and the กำลังเล่น pill
 	const BosSwitchCard* c = cards[2];
@@ -914,6 +1077,7 @@ void BosSwitcher_render(SDL_Surface* s, const BosSwitchCard* const cards[5], int
 		pill(s, x + mw + (meta[0] ? BOS_px(16) : 0), cy, pl, 0);
 
 	BOS_hintBar(s, r, 3, NULL, 0);
+	BOS_partialEnd(s);
 }
 
 bool BosSwitcher_animating(void) {

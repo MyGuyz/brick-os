@@ -27,9 +27,10 @@
 ## 1. Rules for the real device
 
 - The CPU draws the UI: solid surfaces, no blur, no shadows. Alpha only for rounded corners and the faded side items of a carousel / wheel.
+  The one exception: the pictures of the carousels and the wheel (§5.3) are drawn by the GPU.
 - Fonts: Inter (Latin, digits) + IBM Plex Sans Thai (Thai), OFL. Line height 1.25.
 - Icons: stroke line icons, stroke 2 on a 24 grid, one set (the SVG paths in `mockup_v2.py` `ICONS`).
-- Animation: one tween, ease-out 180 ms, on pre-scaled images (scale covers/logos once when loaded, never per frame). Target ≥ 58 fps (NX_BENCH).
+- Animation: one tween, ease-out 180 ms, on pictures made once (never scaled by the CPU per frame); the carousels move on a spring (§5.3). Target ≥ 58 fps (NX_BENCH).
 - Every token lives in one file, `res/bos/tokens.h` (C and C++). No hex colour or font size outside it.
 - **Draw order (whole OS, YouTube too), back to front:**
   1. page background;
@@ -135,12 +136,26 @@ Nothing on screen is smaller than 22.
 - Five slots on one centre line: outer, side, **centre**, side, outer. Sides and outer slots are cut by the screen edge.
 - Sizes:
 
-  | Where | Centre | Sides | Gap |
-  |---|---|---|---|
-  | **Home** | 346×260 | 240×180, op .55 | 24 |
-  | **Full screen** (Games, Switcher) | 500×375 | 300×225, op .5 | 28 |
+  | Where | Centre | One step out | Two steps out | Centres from the middle |
+  |---|---|---|---|---|
+  | **Home** | 346×260 | 240×180, op .55 | 180×135, op .25 | 317, then 234 more |
+  | **Full screen** (Games, Switcher; board `v2-GamesMotion`) | 500×375 | 58 %, op .5 | 42 %, op .25 | 360, then 230 more |
 
-  Outer slots are the side size × .75, op .25.
+  The full-screen sides come in close and pass under the centred one.
+- **One carousel for all three** (`home_bos.c`: `CarSpec`, `carBox`, `carPic`; approved 2026-11-18 "ลื่นเหมือน Ports"):
+  - **Motion:** a critically damped spring like YouTube's carousel (SmoothDamp). A press moves the target; the row
+    follows keeping its speed, so a held direction glides on instead of starting over at every step. Settles in
+    about 0.2 s at ภาพเคลื่อนไหว ปกติ, quicker on น้อย, a cut on ปิด.
+  - **In between, everything follows the exact distance** (size, place, opacity): nothing changes size in steps.
+  - **The GPU draws the pictures:** each picture is made once at the centre size; every frame the GPU scales and
+    darkens it (a sprite), the way the old Ports list did. The page under the row stays as it was, so a frame of
+    motion costs the CPU about 4 ms and nothing is uploaded again. The focus ring (and the held letter, §5.7) are
+    sprites too, so they stay over the pictures.
+  - Under a context menu (drawn into the page) the pictures are scaled into the page instead, and for the one frame
+    a picture's texture is made (one a frame).
+  - Measured 2026-11-18 on the Brick: Home, the wheel, the covers and สลับเกม 16.6 ms a frame, 0–3 frames in 200 over
+    17 ms (was up to 94 of 119 on the wheel); the first pass over consoles not yet loaded has a frame of up to ~33 ms
+    (the PNG).
 - The centre has the ring while the carousel has focus. Without focus it keeps its size and loses the ring.
 - Caption under the centre (padding-top 14, gap 4, centred): name 40/600, then meta 30 `text2` + a pill.
 - 1 item: only the centre. 2 items: centre + one side.
@@ -185,7 +200,8 @@ Nothing on screen is smaller than 22.
 | Push a page / back | The new page slides in from the right. The old one moves left 30 % and darkens to 35 %. Back plays it reversed. | 240 ms |
 | Open an app or game | The focused tile scales up to full screen, then fades to black. The app starts. | 260 ms |
 | Back to Home | Fade in from black | 200 ms |
-| Focus, carousel, wheel | The highlight or slots tween to their new place | 120–180 ms |
+| Focus | The highlight tweens to its new place | 120–180 ms |
+| Carousel, wheel | The spring of §5.3 | ~200 ms |
 | Sheet / pop-up | Slides up from the bottom; the page behind dims to 60 % black | 220 ms |
 | Toggle | The knob slides; the track colour cross-fades | 150 ms |
 | End of a list | A held direction with nowhere to go: the page nudges 12 px towards the wall and back, once per hold (§5.10 bump) | 160 ms |
@@ -300,12 +316,8 @@ TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube 
   | 2 | 220×198 | 60 | .6 | 420 + 180 |
 
   - **In between, everything follows the distance** (size, drop, opacity, place): nothing jumps from one size to
-    the next half-way. The sizes go in steps of 1/6 of a place (copies made once per console and step, at most one
-    new copy a frame; until it is made the nearest step is drawn).
-  - **Motion (all carousels of เกม):** a critically damped spring like YouTube's carousel (SmoothDamp). A press
-    moves the target; the wheel follows keeping its speed, so a held direction glides on instead of starting over
-    at every step. Settles in about 0.2 s at ภาพเคลื่อนไหว ปกติ, quicker on น้อย, a cut on ปิด. 60 fps on the
-    Brick once the pictures are made (16.6 ms a frame).
+    the next. The picture is fitted to the centre box once and drawn by the GPU at every size (§5.3).
+  - **Motion:** the spring of §5.3.
 
   - A soft white floor glow (10 % → 0) sits under the centre.
   - No ring: the centre **is** the selection.
@@ -333,8 +345,7 @@ TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube 
 - Carousel (full size) of the console's games (board `v2-GamesMotion`):
   - The centred cover 500×375 (radius 24) with the ring once it has settled; one step out 58 % at half opacity, two
     steps 42 % at a quarter, their centres 360 and 360 + 230 from the middle, so they come in close and pass under
-    the centred one. Sizes and fades follow the distance in 1/6 steps (copies of the centre-size picture, made
-    once). Motion: the spring of §6.2.
+    the centred one (§5.3).
   - Caption: name; "เล่นล่าสุด <when>" when played; `เล่นต่อ` pill.
   - **No file size.**
 - Hint bar: left **MENU** ตัวเลือก; right **A** เล่น · **B** กลับ · **X** โปรด · **Y** ค้นหา.
@@ -349,7 +360,8 @@ TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube 
 
 ### 6.5 สลับเกม (same look as 6.3)
 - Status bar "สลับเกม". Large title "เกมที่เปิดค้าง", with "<N> เกม · ล่าสุดก่อน" under it.
-- Carousel (full size) of resume screenshots.
+- Carousel (full size, §5.3) of resume screenshots: the cards are read when the selection changes, not on every frame
+  of the glide, and only the row is drawn while it glides.
   - Caption: name; "<console> · บันทึกเมื่อ <time>".
   - The game that opened the switcher has the `กำลังเล่น` pill.
 - Hint bar: **A** เล่นเกมนี้ · **B** กลับเข้าเกม (or กลับ when opened from Home) · **X** ปิด (was ลบ: it closes the game, it does not delete anything).

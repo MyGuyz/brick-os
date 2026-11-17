@@ -501,11 +501,26 @@ static void gs_card(int i, BosSwitchCard* c) {
 
 static void gs_renderBos(void) {
 	static BosSwitchCard cards[5];
-	const BosSwitchCard* shown[5] = {0};
+	static const BosSwitchCard* shown[5];
+	static int k_sel = -1, k_count = -1, k_idx = -1;
+	static time_t saved;
 	if (gs_count <= 0) {
-		BosSwitcher_render(screen, shown, 0, 0, false, 0, gs_from_game);
+		const BosSwitchCard* none[5] = {0};
+		k_sel = -1;
+		BosSwitcher_render(screen, none, 0, 0, false, 0, gs_from_game);
 		return;
 	}
+	// The cards and the resume state are read again when the selection changes, and on a settled frame; the frames
+	// of the row's glide (BosSwitcher_animating) reuse them (reading them is several ms).
+	if (switcher_selected == k_sel && gs_count == k_count && gs_indices[switcher_selected] == k_idx &&
+		BosSwitcher_animating()) {
+		BosSwitcher_render(screen, shown, switcher_selected, gs_count, gs_from_game && switcher_selected == 0, saved,
+						   gs_from_game);
+		return;
+	}
+	k_sel = switcher_selected, k_count = gs_count, k_idx = gs_indices[switcher_selected];
+	for (int o = 0; o < 5; o++)
+		shown[o] = NULL;
 	// sel-2 .. sel+2, wrapping round when there are enough games that no card shows twice
 	for (int o = -2; o <= 2; o++) {
 		int i = switcher_selected + o;
@@ -521,7 +536,7 @@ static void gs_renderBos(void) {
 	Entry* e = Recents_entryFromRecent(Recents_at(gs_indices[switcher_selected]));
 	readyResume(e); // A reads it
 	Entry_free(e);
-	time_t saved = 0;
+	saved = 0;
 	struct stat st;
 	if (resume.can_resume && stat(resume.slot_path, &st) == 0)
 		saved = st.st_mtime;
@@ -532,8 +547,7 @@ static void gs_renderBos(void) {
 static void GameSwitcher_render_(int lastScreen, SDL_Surface* blackBG, int gsanimdir, int status_w) {
 	GFX_clearLayers(LAYER_ALL);
 	if (gs_bos()) {
-		gs_renderBos();
-		GFX_flipHidden();
+		gs_renderBos(); // the main loop's flip shows it (only the rows that changed go up)
 		return;
 	}
 

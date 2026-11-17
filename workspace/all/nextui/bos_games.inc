@@ -4,12 +4,6 @@
 #define FAV_PATH COLLECTIONS_PATH "/Favorites.txt"
 #define LISTVIEW_PATH USERDATA_PATH "/bos_games_list.txt" // consoles shown as a list (one folder path per line)
 #define LIST_ROWS 5
-#define WLEVEL_STEPS 6 // size steps per place of distance (the sizes and fades between the places)
-#define WLEVELS 17 // levels 0 .. 2.67 places out
-static void coverCacheClear(void); // the scaled covers belong to the list being replaced
-// At most one scaled copy is made per frame (a big one costs several ms): until a size is ready the nearest one
-// made is drawn, and another frame is asked for (pending).
-static int bg_made;
 
 typedef struct {
 	char path[MAX_PATH]; // console folder, or FAV_PATH
@@ -19,7 +13,7 @@ typedef struct {
 	bool fav;
 	SDL_Surface* pic;	 // the picture as loaded (NULL: none, see tried)
 	bool tried;
-	SDL_Surface* sized[WLEVELS]; // pic fitted to the box of each distance step, faded, made once when first drawn
+	SDL_Surface* big; // pic fitted to the centre box, made once: every size is drawn from it (carPic)
 } BgConsole;
 static BgConsole* bg_cons;
 static int bg_ncons, bg_sel;
@@ -55,11 +49,8 @@ bool BosGames_active(void) {
 }
 
 static void freePics(BgConsole* c) {
-	for (int k3 = 0; k3 < WLEVELS; k3++)
-		if (c->sized[k3]) {
-			SDL_FreeSurface(c->sized[k3]);
-			c->sized[k3] = NULL;
-		}
+	GFX_freeSurfaceAndTexture(c->big);
+	c->big = NULL;
 	if (c->pic)
 		SDL_FreeSurface(c->pic);
 	c->pic = NULL;
@@ -180,7 +171,6 @@ static void bgLoadGames(void) {
 		}
 		a->count = w;
 	}
-	coverCacheClear();
 	bg_games_for = bg_sel;
 	bg_gsel = bg_gtop = 0;
 	bg_gpos = 0;
@@ -284,30 +274,17 @@ static SDL_Surface* consolePic(BgConsole* c) {
 	return c->pic;
 }
 
-// a value at distance ad from the middle: v[0] in the middle, v[1] one step out, v[2] two or more, straight between
-static float byDist(float ad, float v0, float v1, float v2) {
-	return ad <= 1 ? v0 + (v1 - v0) * ad : ad <= 2 ? v1 + (v2 - v1) * (ad - 1) : v2;
-}
 #define WBOX_W(ad) byDist(ad, WSLOT[0].w, WSLOT[1].w, WSLOT[2].w)
 #define WBOX_H(ad) byDist(ad, WSLOT[0].h, WSLOT[1].h, WSLOT[2].h)
 #define WALPHA(ad) byDist(ad, WSLOT[0].a, WSLOT[1].a, WSLOT[2].a)
 
-static SDL_Surface* consoleSized(BgConsole* c, int lv) { // fitted (contain) into level lv's box, faded, made once
-	if (c->sized[lv])
-		return c->sized[lv];
+static SDL_Surface* consoleBig(BgConsole* c) { // the picture fitted (contain) into the centre box, made once
+	if (c->big)
+		return c->big;
 	SDL_Surface* p = consolePic(c);
 	if (!p)
 		return NULL;
-	if (bg_made > 0)
-		for (int k = 1; k < WLEVELS; k++) {
-			if (lv - k >= 0 && c->sized[lv - k])
-				return pending = true, c->sized[lv - k];
-			if (lv + k < WLEVELS && c->sized[lv + k])
-				return pending = true, c->sized[lv + k];
-		}
-	bg_made++;
-	float ad = lv / (float)WLEVEL_STEPS;
-	int bw = BOS_px((int)WBOX_W(ad)), bh = BOS_px((int)WBOX_H(ad));
+	int bw = BOS_px(WSLOT[0].w), bh = BOS_px(WSLOT[0].h);
 	float k3 = fminf(bw / (float)p->w, bh / (float)p->h);
 	int w = (int)(p->w * k3), h = (int)(p->h * k3);
 	SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
@@ -316,20 +293,11 @@ static SDL_Surface* consoleSized(BgConsole* c, int lv) { // fitted (contain) int
 	SDL_SetSurfaceBlendMode(p, SDL_BLENDMODE_NONE);
 	SDL_BlitScaled(p, NULL, d, NULL);
 	SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_BLEND);
-	uint32_t m = (uint32_t)(256 * WALPHA(ad)); // over the black page, alpha a = the colour scaled by a
-	if (m < 256)
-		for (int y = 0; y < h; y++) {
-			uint32_t* px = (uint32_t*)((uint8_t*)d->pixels + y * d->pitch);
-			for (int x = 0; x < w; x++)
-				px[x] = (px[x] & 0xFF000000u) | ((((px[x] & 0xFF00FF) * m) >> 8) & 0xFF00FF) |
-						((((px[x] & 0xFF00) * m) >> 8) & 0xFF00);
-		}
-	c->sized[lv] = d;
+	c->big = d;
 	return d;
 }
 
-static void wheelItem(SDL_Surface* s, BgConsole* c, int lv, int cx, int top) {
-	float ad = lv / (float)WLEVEL_STEPS;
+static void wheelItem(SDL_Surface* s, BgConsole* c, float ad, int cx, int top) {
 	int bw = BOS_px((int)WBOX_W(ad)), bh = BOS_px((int)WBOX_H(ad));
 	float a = WALPHA(ad);
 	int bx = cx - bw / 2;
@@ -340,9 +308,11 @@ static void wheelItem(SDL_Surface* s, BgConsole* c, int lv, int cx, int top) {
 		BOS_icon(s, "star", BOS_C_WARN, a, cx - ic / 2, y + (h - ic) / 2, ic);
 		return;
 	}
-	SDL_Surface* p = consoleSized(c, lv);
-	if (p) {
-		BOS_blit(p, s, cx - p->w / 2, top + (bh - p->h) / 2, 1); // its slot's dimming is in the copy
+	SDL_Surface* p = consoleBig(c);
+	if (p) { // the centre copy scaled to this box, faded (by the GPU)
+		float k3 = fminf(bw / (float)p->w, bh / (float)p->h);
+		int w = (int)(p->w * k3 + 0.5f), h = (int)(p->h * k3 + 0.5f);
+		carPic(s, p, (SDL_Rect){cx - w / 2, top + (bh - h) / 2, w, h}, a);
 		return;
 	}
 	// no picture: the console's tag as a wordmark on a surface card (radius 28)
@@ -392,14 +362,12 @@ static void wheelRender(SDL_Surface* s) {
 	for (int k = 0; k < no; k++) {
 		int i = order[k];
 		float d = n > 4 ? wrapD(i - bg_pos, n) : i - bg_pos, ad = fabsf(d);
-		int lv = (int)(ad * WLEVEL_STEPS + 0.5f); // the size steps: the place itself follows the exact position
-		float lad = lv / (float)WLEVEL_STEPS;
 		float off = ad <= 1 ? ad * WSTEP1 : WSTEP1 + (ad - 1) * WSTEP2;
 		int cx = s->w / 2 + BOS_px((int)(d < 0 ? -off : off));
-		int bh = BOS_px((int)WBOX_H(lad));
+		int bh = BOS_px((int)WBOX_H(ad));
 		// every box centred on the centre one's middle, the side ones lower by their drop
-		int y = top + (BOS_px(WSLOT[0].h) - bh) / 2 + BOS_px((int)byDist(lad, WSLOT[0].drop, WSLOT[1].drop, WSLOT[2].drop));
-		wheelItem(s, &bg_cons[i], lv, cx, y);
+		int y = top + (BOS_px(WSLOT[0].h) - bh) / 2 + BOS_px((int)byDist(ad, WSLOT[0].drop, WSLOT[1].drop, WSLOT[2].drop));
+		wheelItem(s, &bg_cons[i], ad, cx, y);
 	}
 	BOS_benchLap("wheel");
 	if (n == 0 || BOS_partialOn())
@@ -462,96 +430,20 @@ static void gamePic(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r,
 		BOS_focusRing(s, x, y, w, h, r);
 }
 
-// The covers away from the middle: copies of the centre-size picture, scaled to the level's size and faded, made
-// once (a small cache; the picture is pinned once, at the centre size, so the loader is not asked for every size).
-#define CV_CACHE 48
-static struct {
-	Entry* e;
-	SDL_Surface* src;
-	int lv, w, h;
-	uint32_t used;
-	SDL_Surface* out;
-} cv_cache[CV_CACHE];
-static uint32_t cv_tick;
-
-static void coverCacheClear(void) {
-	for (int i = 0; i < CV_CACHE; i++)
-		if (cv_cache[i].out) {
-			SDL_FreeSurface(cv_cache[i].out);
-			cv_cache[i].out = NULL;
-			cv_cache[i].e = NULL;
-		}
-}
-
-static SDL_Surface* coverAt(Entry* e, SDL_Surface* src, int lv, int w, int h, float a) {
-	int lru = 0;
-	for (int i = 0; i < CV_CACHE; i++) {
-		if (cv_cache[i].out && cv_cache[i].e == e && cv_cache[i].src == src && cv_cache[i].lv == lv &&
-			cv_cache[i].w == w && cv_cache[i].h == h) {
-			cv_cache[i].used = ++cv_tick;
-			return cv_cache[i].out;
-		}
-	}
-	for (int i = 0; i < CV_CACHE; i++) { // a free slot, else the one used longest ago
-		if (!cv_cache[i].out) {
-			lru = i;
-			break;
-		}
-		if (cv_cache[i].used < cv_cache[lru].used)
-			lru = i;
-	}
-	if (bg_made > 0) { // the nearest size made of this picture, for now
-		int best = -1;
-		for (int i = 0; i < CV_CACHE; i++)
-			if (cv_cache[i].out && cv_cache[i].e == e && cv_cache[i].src == src &&
-				(best < 0 || abs(cv_cache[i].lv - lv) < abs(cv_cache[best].lv - lv)))
-				best = i;
-		if (best >= 0) {
-			pending = true;
-			return cv_cache[best].out;
-		}
-	}
-	bg_made++;
-	SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
-	if (!d)
-		return NULL;
-	SDL_BlendMode bm;
-	SDL_GetSurfaceBlendMode(src, &bm);
-	SDL_SetSurfaceBlendMode(src, SDL_BLENDMODE_NONE);
-	SDL_BlitScaled(src, NULL, d, NULL);
-	SDL_SetSurfaceBlendMode(src, bm);
-	SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_BLEND);
-	uint32_t m = (uint32_t)(256 * a); // faded over the black page: the colour scaled by a
-	if (m < 256)
-		for (int y = 0; y < h; y++) {
-			uint32_t* px = (uint32_t*)((uint8_t*)d->pixels + y * d->pitch);
-			for (int x = 0; x < w; x++)
-				px[x] = (px[x] & 0xFF000000u) | ((((px[x] & 0xFF00FF) * m) >> 8) & 0xFF00FF) |
-						((((px[x] & 0xFF00) * m) >> 8) & 0xFF00);
-		}
-	if (cv_cache[lru].out)
-		SDL_FreeSurface(cv_cache[lru].out);
-	cv_cache[lru].e = e, cv_cache[lru].src = src, cv_cache[lru].lv = lv, cv_cache[lru].w = w, cv_cache[lru].h = h;
-	cv_cache[lru].used = ++cv_tick;
-	cv_cache[lru].out = d;
-	return d;
-}
-
-static void gamePicLv(SDL_Surface* s, Entry* e, int x, int y, int w, int h, int r, int lv, float a, int cw, int ch) {
+// A cover of the carousel in box b at colour a: the picture pinned once at the centre size, scaled by carPic
+static void coverPic(SDL_Surface* s, Entry* e, SDL_Rect b, int r, float a, int cw, int ch) {
 	SDL_Surface* pic = NULL;
 	if (e->type == ENTRY_ROM) {
 		HomeArtState st = HomeArt_pin(e->path, cw, ch, BOS_px(24), &pic);
 		if (st == HOMEART_LOADING)
 			pending = true;
 	}
-	if (pic && lv > 0)
-		pic = coverAt(e, pic, lv, w, h, a);
 	if (pic) {
-		BOS_blit(pic, s, x, y, 1);
+		carPic(s, pic, b, a);
 	} else {
-		BOS_rrect(s, x, y, w, h, r, over(BOS_theme()->surface, a));
-		int ic = h / 3;
-		BOS_icon(s, e->type == ENTRY_DIR ? "folder" : "game", BOS_C_TEXTOFF, a, x + (w - ic) / 2, y + (h - ic) / 2, ic);
+		BOS_rrect(s, b.x, b.y, b.w, b.h, r, over(BOS_theme()->surface, a));
+		int ic = b.h / 3;
+		BOS_icon(s, e->type == ENTRY_DIR ? "folder" : "game", BOS_C_TEXTOFF, a, b.x + (b.w - ic) / 2, b.y + (b.h - ic) / 2, ic);
 	}
 }
 
@@ -575,7 +467,7 @@ static bool canResume(Entry* e) {
 
 // A direction held long enough to race through the games: the letter going by, large (§5.7)
 static bool bg_letter_shown;
-static void heldLetter(SDL_Surface* s, Entry* e, int cx, int cy) {
+static void heldLetter(SDL_Surface* s, Entry* e, int cx, int cy, bool sprite) {
 	bg_letter_shown = false;
 	if (PAD_heldRepeats(BTN_LEFT | BTN_RIGHT | BTN_UP | BTN_DOWN) <= 5 || !e->name[0])
 		return;
@@ -587,49 +479,39 @@ static void heldLetter(SDL_Surface* s, Entry* e, int cx, int cy) {
 	if (n == 1 && ch[0] >= 'a' && ch[0] <= 'z')
 		ch[0] -= 32;
 	int box = BOS_px(168), px = BOS_px(104);
+	bg_letter_shown = true;
+	if (sprite && carSprites()) { // over the covers (GPU sprites): a sprite of its own, made once a letter
+		static SDL_Surface* ls;
+		static char lch[8];
+		if (!ls || strcmp(lch, ch)) {
+			GFX_freeSurfaceAndTexture(ls);
+			ls = carShape(box, box, BOS_px(36), 0, BOS_theme()->focus);
+			if (ls)
+				BOS_textMid(ls, ch, px, 700, BOS_theme()->onfocus, 1, (box - BOS_textW(ch, px, 700)) / 2, box / 2);
+			snprintf(lch, sizeof(lch), "%s", ch);
+		}
+		SDL_Texture* t = ls ? PLAT_textureForSurface(ls) : NULL;
+		if (t) {
+			PLAT_spriteAdd(t, NULL, &(SDL_Rect){cx - box / 2, cy - box / 2, box, box}, 255, NULL);
+			return;
+		}
+	}
 	BOS_rrect(s, cx - box / 2, cy - box / 2, box, box, BOS_px(36), BOS_theme()->focus);
 	BOS_textMid(s, ch, px, 700, BOS_theme()->onfocus, 1, cx - BOS_textW(ch, px, 700) / 2, cy);
-	bg_letter_shown = true;
 }
 
-// §6.3 (board v2-GamesMotion): the centred cover 500 x 375, one step out 58 % at half alpha, two steps 42 % at a
-// quarter; sizes and fades follow the distance, the neighbours come in close (360, then 230 more) and pass under it
+// §6.3 (board v2-GamesMotion): the cover carousel CAR_COVERS (home_bos.c)
 static void coversRender(SDL_Surface* s, int top) {
 	int ng = gamesCount();
-	int cw = BOS_px(500), ch = BOS_px(375);
-	int lo = (int)floorf(bg_gpos - 2.6f), hi = (int)ceilf(bg_gpos + 2.6f);
-	if (lo < 0)
-		lo = 0;
-	if (hi > ng - 1)
-		hi = ng - 1;
-	for (int pass = 0; pass < 2; pass++) // the left ones from the far end in, then the right ones: the nearest last
-		for (int k = 0; k <= hi - lo; k++) {
-			int i = pass == 0 ? lo + k : hi - k;
-			float d = i - bg_gpos, ad = fabsf(d);
-			if (ad > 2.6f || (pass == 0) != (d < 0) || i == (int)floorf(bg_gpos + 0.5f))
-				continue;
-			int lv = (int)(ad * WLEVEL_STEPS + 0.5f);
-			float lad = lv / (float)WLEVEL_STEPS, sc = byDist(lad, 1, 0.58f, 0.42f);
-			float off = ad <= 1 ? ad * 360 : 360 + (ad - 1) * 230;
-			int w = (int)(cw * sc), h = (int)(ch * sc), r = (int)(BOS_px(24) * sc);
-			int cx = s->w / 2 + BOS_px((int)(d < 0 ? -off : off)) - BOS_bumpPx();
-			gamePicLv(s, bg_games->entries->items[i], cx - w / 2, top + (ch - h) / 2, w, h, r, lv,
-					  byDist(lad, 1, 0.5f, 0.25f), cw, ch);
-		}
-	{ // the centred one over them all, with its ring once it has settled
-		int i = (int)floorf(bg_gpos + 0.5f);
-		if (i >= 0 && i < ng) {
-			float d = i - bg_gpos, ad = fabsf(d);
-			int lv = (int)(ad * WLEVEL_STEPS + 0.5f);
-			float lad = lv / (float)WLEVEL_STEPS, sc = byDist(lad, 1, 0.58f, 0.42f);
-			float off = ad * 360;
-			int w = (int)(cw * sc), h = (int)(ch * sc), r = (int)(BOS_px(24) * sc);
-			int cx = s->w / 2 + BOS_px((int)(d < 0 ? -off : off)) - BOS_bumpPx();
-			gamePicLv(s, bg_games->entries->items[i], cx - w / 2, top + (ch - h) / 2, w, h, r, lv,
-					  byDist(lad, 1, 0.5f, 0.25f), cw, ch);
-			if (lv == 0 && bg_gstart == 0)
-				BOS_focusRing(s, cx - w / 2, top + (ch - h) / 2, w, h, r); // last, over the picture (DESIGN 1)
-		}
+	int cw = BOS_px(CAR_COVERS.cw), ch = BOS_px(CAR_COVERS.ch);
+	int order[8], no = carOrder(bg_gpos, 0, ng - 1, order, 8);
+	for (int k = 0; k < no; k++) { // the farthest first: the centred one over them all
+		int r;
+		float a, d = order[k] - bg_gpos;
+		SDL_Rect b = carBox(&CAR_COVERS, s->w / 2 - BOS_bumpPx(), top, d, &r, &a);
+		coverPic(s, bg_games->entries->items[order[k]], b, r, a, cw, ch);
+		if (fabsf(d) < 0.001f && bg_gstart == 0)
+			carRing(s, b, r); // its ring once it has settled, last (DESIGN 1)
 	}
 	if (ng == 0)
 		return;
@@ -637,7 +519,7 @@ static void coversRender(SDL_Surface* s, int top) {
 	launch_rect = (SDL_Rect){(s->w - cw) / 2, top, cw, ch};
 	bg_band_y[1] = top - 2 * BOS_px(BOS_RING); // the ring, the covers, the caption: down to the hint bar
 	bg_band_h[1] = s->h - BOS_px(BOS_BAR_H) - bg_band_y[1];
-	heldLetter(s, e, s->w / 2, top + ch / 2);
+	heldLetter(s, e, s->w / 2, top + ch / 2, true);
 	int y = top + ch + BOS_px(14);
 	char name[256];
 	centredName(s, e->name, BOS_FS_BODY, 600, BOS_C_TEXT, 1, y);
@@ -734,7 +616,7 @@ static void listRender(SDL_Surface* s, int top) { // §6.4: rows of 96 on the le
 	y += BOS_lineH(BOS_FS_SMALL) + BOS_px(12); // the line's space stays, so the pill never jumps
 	if (canResume(e))
 		pill(s, rx, y + BOS_px(22), I18N_text("Continue"), BOS_C_OK);
-	heldLetter(s, e, lx + lw / 2, top + LIST_ROWS * rh / 2);
+	heldLetter(s, e, lx + lw / 2, top + LIST_ROWS * rh / 2, false);
 }
 
 static void gamesRender(SDL_Surface* s) {
@@ -770,38 +652,11 @@ static void gamesRender(SDL_Surface* s) {
 	BOS_benchLap("hint");
 }
 
-// The carousels move like YouTube's (DESIGN 6.2): a critically damped spring (SmoothDamp). A press moves the
-// target; the position follows, keeping its speed, so a held direction glides on instead of starting over at every
-// step. It settles in about 0.2 s at the default motion (BOS_tweenMs 180), quicker on น้อย, a cut on ปิด.
-// *moving is non-zero until it has settled.
-static void springStep(float* pos, float* vel, uint32_t* last, uint32_t* moving, float target) {
-	if (!*moving)
-		return;
-	uint32_t now = SDL_GetTicks();
-	float dt = *last ? (now - *last) / 1000.0f : 1 / 60.0f;
-	*last = now;
-	int ms = TWEEN_MS;
-	if (ms <= 0) {
-		*pos = target, *vel = 0, *moving = 0;
-		return;
-	}
-	if (dt > 0.05f) // after a hitch
-		dt = 0.05f;
-	if (dt <= 0)
-		return;
-	float om = 2.0f / (ms * (0.20f / 180)), x = om * dt, ex = 1 / (1 + x + 0.48f * x * x + 0.235f * x * x * x);
-	float chg = *pos - target, tmp = (*vel + om * chg) * dt;
-	*vel = (*vel - om * tmp) * ex;
-	*pos = target + (chg + tmp) * ex;
-	if (fabsf(*pos - target) < 0.002f && fabsf(*vel) < 0.02f)
-		*pos = target, *vel = 0, *moving = 0;
-}
-
 void BosGames_render(SDL_Surface* s) {
 	if (!bg_built)
 		bgBuild();
 	pending = false;
-	bg_made = 0;
+	car_tex_made = 0;
 	launch_rect = (SDL_Rect){0, 0, 0, 0};
 	bg_letter_shown = false;
 	bg_list_was = bg_list_live;
