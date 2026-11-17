@@ -1163,3 +1163,17 @@ Sync finished	ซิงก์เสร็จแล้ว
 Both devices now have the same saves.	ทั้งสองเครื่องมีเซฟตรงกันแล้ว
 Sync again	ซิงก์อีกครั้ง
 Exit Device Sync?	ออกจากซิงก์ระหว่างเครื่องไหม?
+Turn on Wi-Fi in Settings > Network,
+or sync with a USB-C cable instead.	เปิด Wi-Fi ใน ตั้งค่า > เครือข่าย
+หรือซิงก์ผ่านสาย USB-C แทน
+Every game you have played	ทุกเกมที่เคยเล่น
+Sync now	ซิงก์ตอนนี้
+Supported games	คลังเกมที่รองรับ
+Games on this device that have achievements	เกมในเครื่องที่มีรางวัล
+Sign in to RetroAchievements	เข้าสู่ระบบ RetroAchievements
+%u points	%u แต้ม
+Last sync	ซิงก์ล่าสุด
+%d achievements to send	รอส่ง %d รางวัล
+Not signed in	ยังไม่ได้เข้าสู่ระบบ
+Enter your username and password in Settings	ใส่ชื่อผู้ใช้และรหัสผ่านที่ ตั้งค่า
+Exit RetroAchievements?	ออกจาก RetroAchievements ไหม?

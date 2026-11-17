@@ -9,6 +9,7 @@
 #include "defines.h"
 #include "api.h"
 #include "bos_ui.h"
+#include "i18n.h"
 #include "config.h"
 #include "settings_menu.h"
 #include "ui_list.h"
@@ -430,7 +431,78 @@ static int render_main_header(SDL_Surface* screen) {
 
 // Selectable list of the 4 main actions, drawn by the shared ListView widget
 // with its origin pushed below the custom status header.
+static void main_row_bos(void* ctx, int i, bool hot, ListViewRow* r) {
+	(void)ctx, (void)hot;
+	static char pend[96];
+	switch (i) {
+	case 0:
+		*r = (ListViewRow){.label = I18N_text("Achievements"), .sub = I18N_text("Every game you have played"), .sq_icon = "trophy",
+						   .sq_color = 0xFF9F0A, .chevron = true};
+		break;
+	case 1:
+		snprintf(pend, sizeof(pend), I18N_text("%d achievements to send"), RA_Offline_pendingCount());
+		*r = (ListViewRow){.label = I18N_text("Sync now"), .sub = pend, .sq_icon = "sync", .sq_color = BOS_C_PRIMARY};
+		break;
+	case 2:
+		*r = (ListViewRow){.label = I18N_text("Supported games"), .sub = I18N_text("Games on this device that have achievements"),
+						   .sq_icon = "books", .sq_color = 0x5E5CE6, .chevron = true};
+		break;
+	default:
+		*r = (ListViewRow){.label = I18N_text("Settings"), .sub = ra_is_authenticated() ? NULL : I18N_text("Sign in to RetroAchievements"),
+						   .sq_icon = "settings", .sq_color = 0x8E8E93, .chevron = true};
+	}
+}
+
+// the account card (board v2-ToolsRA): a circle 96 with the initial, the name 40/700, points 28 text2, last sync right
+static void render_main_bos(SDL_Surface* s) {
+	SDL_FillRect(s, NULL, BOS_map(s, BOS_theme()->bg));
+	BOS_statusBar(s, "RetroAchievements");
+	int top = BOS_px(BOS_BAR_H), gx = BOS_px(40), gw = s->w - 2 * gx, ch = BOS_px(144), y = top + BOS_px(8);
+	BOS_rrect(s, gx, y, gw, ch, BOS_px(24), BOS_theme()->surface);
+	int av = BOS_px(96), ax = gx + BOS_px(28), cy = y + ch / 2, tx = ax + av + BOS_px(24);
+	bool auth = ra_is_authenticated();
+	char t[160], l2[160];
+	if (auth) {
+		const char* u = get_user_display();
+		BOS_rrect(s, ax, cy - av / 2, av, av, av / 2, BOS_C_WARN);
+		char ini[2] = {u && u[0] ? (char)((u[0] >= 'a' && u[0] <= 'z') ? u[0] - 32 : u[0]) : '?', 0};
+		BOS_textMid(s, ini, 44, 700, 0x000000, 1, ax + (av - BOS_textW(ini, 44, 700)) / 2, cy);
+		uint32_t score = 0, soft = 0;
+		if (RAT_getCachedScore(&score, &soft))
+			snprintf(l2, sizeof(l2), I18N_text("%u points"), soft);
+		else
+			l2[0] = 0;
+		const char* ls = I18N_text("Last sync");
+		const char* lt = I18N_text(get_lastsync_display());
+		int rw = BOS_textW(ls, 26, 400), rw2 = BOS_textW(lt, 26, 600), rx = gx + gw - BOS_px(28);
+		BOS_text(s, ls, 26, 400, BOS_C_TEXT2, 1, rx - rw, cy - BOS_lineH(26));
+		BOS_text(s, lt, 26, 600, BOS_C_TEXT, 1, rx - rw2, cy);
+		int room = rx - (rw > rw2 ? rw : rw2) - BOS_px(24) - tx;
+		BOS_fit(u, 40, 700, room, t, sizeof(t));
+		BOS_textMid(s, t, 40, 700, BOS_C_TEXT, 1, tx, cy - BOS_px(18));
+		BOS_fit(l2, 28, 400, room, t, sizeof(t));
+		BOS_textMid(s, t, 28, 400, BOS_C_TEXT2, 1, tx, cy + BOS_px(22));
+	} else {
+		BOS_rrect(s, ax, cy - av / 2, av, av, av / 2, BOS_theme()->surface2);
+		int ic = BOS_px(56);
+		BOS_icon(s, "user", BOS_C_TEXT2, 1, ax + (av - ic) / 2, cy - ic / 2, ic);
+		BOS_textMid(s, I18N_text("Not signed in"), 40, 700, BOS_C_TEXT, 1, tx, cy - BOS_px(18));
+		BOS_textMid(s, I18N_text("Enter your username and password in Settings"), 28, 400, BOS_C_TEXT2, 1, tx, cy + BOS_px(22));
+	}
+	y += ch + BOS_px(20);
+	int rh = BOS_px(BOS_ROW_H), bottom = s->h - BOS_px(BOS_BAR_H) - BOS_px(12);
+	BOS_groupRows(s, &(SDL_Rect){gx, y, gw, bottom - y}, rh, MAIN_ITEM_COUNT, main_view.selected, true, &main_view.scroll,
+				  &main_view.bos_pill, &main_view.bos_scroll, false, main_row_bos, NULL);
+	main_view.input_pending = false;
+	BosHint h[] = {{"A", I18N_text("Open")}, {"B", I18N_text("Exit")}};
+	BOS_hintBar(s, h, 2, NULL, 0);
+}
+
 static void render_main_screen(SDL_Surface* screen) {
+	if (UI_bos) {
+		render_main_bos(screen);
+		return;
+	}
 	GFX_clear(screen);
 	UI_renderMenuBar(screen, "RetroAchievements");
 
