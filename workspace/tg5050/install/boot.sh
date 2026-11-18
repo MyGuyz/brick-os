@@ -34,9 +34,9 @@ fi
 if [ "$SHOW_SPLASH" = "yes" ] ; then
 	cd $(dirname "$0")/$PLATFORM
 	if [ "$DEVICE" = "brick" ]; then
-		./show2.elf --mode=daemon --image="$LOGO_PATH" --text="Installing..." --logoheight=144 --fontsize=32 --progress=-1 &
+		./show2.elf --mode=daemon --image="$LOGO_PATH" --text="Installing..." --logoheight=96 --font=Inter-SemiBold.ttf --fontsize=32 --progress=-1 &
 	else
-		./show2.elf --mode=daemon --image="$LOGO_PATH" --text="Installing..." --logoheight=128 --progress=-1 &
+		./show2.elf --mode=daemon --image="$LOGO_PATH" --text="Installing..." --logoheight=96 --font=Inter-SemiBold.ttf --progress=-1 &
 	fi
 	# show2 creates /tmp/show2.fifo only once it is up; a TEXT: written
 	# before that lands in a plain file show2 then replaces, so the message
@@ -147,9 +147,9 @@ if [ -f "$UPDATE_PATH" ]; then
 	echo ok
 	cd $(dirname "$0")/$PLATFORM
 	if [ -d "$SYSTEM_PATH" ]; then
-		echo "TEXT:Updating NX Redux" > /tmp/show2.fifo
+		echo "TEXT:Updating Brick OS" > /tmp/show2.fifo
 	else
-		echo "TEXT:Installing NX Redux" > /tmp/show2.fifo
+		echo "TEXT:Installing Brick OS" > /tmp/show2.fifo
 	fi
 
 	# clean replacement for core paths (shipped content is redux-owned; /Emus,

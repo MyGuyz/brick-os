@@ -22,7 +22,7 @@ if [ -n "$MIN_FW" ] && [ -n "$FW" ] && [ "$FW" != "$MIN_FW" ]; then
 	if [ "$OLDEST" = "$FW" ]; then
 		echo "firmware $FW older than supported $MIN_FW"
 		if [ -p /tmp/show2.fifo ]; then
-			echo "TEXT:TrimUI firmware $FW is too old (need $MIN_FW+). Some features will not work - update the stock firmware, then reinstall NX Redux." > /tmp/show2.fifo
+			echo "TEXT:TrimUI firmware $FW is too old (need $MIN_FW+). Some features will not work - update the stock firmware, then reinstall Brick OS." > /tmp/show2.fifo
 			sleep 12
 		fi
 	fi

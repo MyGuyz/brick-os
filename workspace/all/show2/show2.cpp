@@ -20,6 +20,7 @@
  *   --timeout=N             auto-close after N seconds (0 = never)
  *   --logoheight=N          scale the logo to N px tall (0 = no scaling)
  *   --fontsize=N            font size in px (default 24)
+ *   --font=<path>           TTF to use instead of the built-in rounded font (Brick OS: Inter)
  *
  * Daemon mode FIFO commands (/tmp/show2.fifo):
  *   TEXT:message
@@ -77,6 +78,7 @@ struct Config {
     int timeout_seconds = 0;  // Auto-close timeout (0 = no timeout)
     int logo_height = 0;      // Scale logo to this height (0 = no scaling)
     int font_size = 24;       // Font size in pixels
+    std::string font_path;    // Optional TTF file; empty or unreadable = the embedded font
 };
 
 class ShowApp {
@@ -186,14 +188,16 @@ public:
         if (TTF_Init() < 0) {
             std::cerr << "TTF_Init failed: " << TTF_GetError() << std::endl;
         } else {
-            SDL_RWops* rw = SDL_RWFromConstMem(RoundedMplus1c_Bold_reduced_ttf,
+            if (!config.font_path.empty())
+                font = TTF_OpenFont(config.font_path.c_str(), config.font_size);
+            SDL_RWops* rw = font ? nullptr : SDL_RWFromConstMem(RoundedMplus1c_Bold_reduced_ttf,
                                                 RoundedMplus1c_Bold_reduced_ttf_len);
             if (rw) {
                 font = TTF_OpenFontRW(rw, 1, config.font_size);
                 if (!font) {
                     std::cerr << "Failed to load embedded font: " << TTF_GetError() << std::endl;
                 }
-            } else {
+            } else if (!font) {
                 std::cerr << "Failed to create RWops for embedded font" << std::endl;
             }
         }
@@ -692,6 +696,10 @@ int main(int argc, char* argv[]) {
 
     if (args.find("hint") != args.end()) {
         config.hint = args["hint"];
+    }
+
+    if (args.find("font") != args.end()) {
+        config.font_path = args["font"];
     }
 
     // Create and run app

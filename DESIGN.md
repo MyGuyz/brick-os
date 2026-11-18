@@ -263,6 +263,13 @@ TrimUI's overlay daemon (`trimui_osdd`) draws over every app, games and YouTube 
 - A `.wav` named after a sound (`move.wav` …) in `.userdata/shared/sounds/` replaces it in every set.
 - Never late: a sound that could not start within 250 ms is dropped.
 
+### 5.11 Install / update screen (2026-11-18; placeholder until the final logo and name)
+- Shown by the boot script while an update or first install runs (`workspace/<plat>/install/boot.sh`, drawn by `show2.elf`).
+- Black screen; the "Brick OS" wordmark (Inter Bold, white, `install/logo.png`) centred, 96 px tall.
+- Status line under it in Inter SemiBold 32 px white ("Updating Brick OS" / "Installing Brick OS"), then the moving bar.
+- English only: Inter has no Thai, and the language setting may not exist yet on a first install.
+- To rebrand later: replace `install/logo.png` (white on clear, cropped tight) and the two TEXT lines in `boot.sh`. A user's own `/.media/splash_logo.png` still wins.
+
 ### 5.8 Growth rules (anything the user adds must fit without a redesign)
 - **Apps:** every `Tools/*.pak`, shipped or installed (e.g. PortMaster), appears in แอปทั้งหมด by itself. An app with no icon gets the generic `box` icon in `secondary`.
 - **Consoles:** a console with at least one game appears in the wheel by itself. The wheel wraps.
