@@ -24,6 +24,8 @@ void Bench_init(void) {
 void Bench_tick(uint32_t now_ms) {
 	if (!bench_enabled)
 		return;
+	static unsigned loops; // main-loop passes = core.run() calls: emulated frames, which frameskip does not hide
+	loops++;
 	if (bench_start_ms == 0) {
 		bench_start_ms = now_ms;
 		bench_last_ms = now_ms;
@@ -41,7 +43,10 @@ void Bench_tick(uint32_t now_ms) {
 		khz4 = getInt("/sys/devices/system/cpu/cpu4/cpufreq/scaling_cur_freq");
 #endif
 	char line[256];
-	Bench_format(line, sizeof(line), &perf, (now_ms - bench_start_ms) / 1000, khz0, khz4);
+	int n = Bench_format(line, sizeof(line), &perf, (now_ms - bench_start_ms) / 1000, khz0, khz4);
+	if (n > 0 && n < (int)sizeof(line) - 16 && line[n - 1] == '\n')
+		snprintf(line + n - 1, sizeof(line) - n + 1, " runs=%u\n", loops);
+	loops = 0;
 	fputs(line, stdout);
 	fflush(stdout); // minarch's stdout is a file; the harness tails it live
 }
