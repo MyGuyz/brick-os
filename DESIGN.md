@@ -1006,6 +1006,27 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
 - **Full screen** (Y): the picture fitted whole between the bars on black (a 1024 px copy, the smaller one until it
   is in), "k / n" at the top, ←→ still change it; B back to the post.
 
+### 7.5c YouTube เล่นเสียงเบื้องหลัง (board `design/round2/v2-YouTubeBackground`, approved 2026-11-18)
+- **ฟังเบื้องหลัง:** the first tile of the player's options sheet (SELECT while a clip plays), `music` icon in pink.
+  YouTube closes, Home comes back and the clip's sound plays on from the same second.
+- **Home:** the toast "เสียง YouTube เล่นต่อ · กด HOME เพื่อควบคุม" once (§5.9 toast), and ♪ in the status bar while
+  it plays.
+- **HOME panel, music tile:** the clip's title, "YouTube · <channel>", its picture faint behind; ⏮ ⏯ ⏭ are
+  −10 s, play/pause, +10 s. Thai titles use `font1-thai.ttf` (they were boxes, Thai songs too).
+- **ตั้งค่า YouTube › เสียง › ออกแล้วเล่นเสียงต่อ** (on by default): when YouTube is closed while a clip plays, the
+  sound goes on. Today only the system can close it then (the player has no exit key), so the tile is the way in.
+- **Back to YouTube:** the clip reopens in the player where the sound got to, and the background sound stops.
+- **Playing anything in Music** (a song, the radio, a podcast) stops it. Games and the menus play over it, with the
+  HOME panel's Game/Music balance, as for music.
+- Not as the board: no YouTube pill and no time bar in the tile, and its buttons keep the ⏮ ⏭ pictures (the tile
+  is the music widget, shared with songs).
+- **How:** YouTube writes `/tmp/ytbg/req` (the audio stream, its user agent, the second, title, channel, picture)
+  and exits; its `launch.sh` starts `ytc.aarch64 --bg` detached (`ytc/src/bgaudio.cpp`: libmpv with no video, the
+  same `ytc://` fetcher), which keeps `/tmp/ytbg/state` and reads commands from the FIFO `/tmp/ytbg/cmd`. The music
+  service shows it as source `MUSIC_SOURCE_YOUTUBE` while it has nothing of its own, and passes the buttons on, so the
+  status bar, the HOME panel and Music need no change. On exit it writes `/tmp/ytbg/last`; `launch.sh` reads it into
+  `YTC_RESUME_ID` when YouTube opens while the sound plays.
+
 ### 7.8 Shorts และเล่นอัตโนมัติ (boards `design/round2/v3-Shorts`, approved 2026-11-16)
 - **Shorts mode:** A on any Short (Home shelf, a channel's Shorts tab, search) opens it. The clip fills the screen's
   height (432×768, centre); the right column (from x 760, 240 wide) has the channel (avatar 48 + name 24/600), the

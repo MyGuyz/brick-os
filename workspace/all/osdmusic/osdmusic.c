@@ -54,7 +54,9 @@ static int GRID_H = 2;
 #define LOCK_PATH MUSIC_DIR "/widget.lock"
 
 #define SKIN_DIR "/usr/trimui/osd/widgets/app_music/skin"
-#define FONT_PATH "/mnt/SDCARD/.system/res/font1.ttf"
+// font1 with Thai (Thai song and YouTube titles were boxes); font1 if it is missing
+#define FONT_PATH "/mnt/SDCARD/.system/res/font1-thai.ttf"
+#define FONT_LATIN "/mnt/SDCARD/.system/res/font1.ttf"
 #define FONT_FALLBACK "/usr/trimui/osd/regular.ttf"
 #define TILE_DIR "/usr/trimui/osd"
 #define BACKDROP_ALPHA 80 // 0-255: cover art opacity behind the text
@@ -381,6 +383,15 @@ static const char* snapshot_artist(void) {
 																												 : "";
 }
 
+// YouTube (DESIGN.md 7.5c): "YouTube · channel" under the title
+static const char* widget_artist(void) {
+	static char line[MUSIC_SERVICE_MAX_ARTIST + 16];
+	if (state.snapshot.source != MUSIC_SOURCE_YOUTUBE)
+		return snapshot_artist();
+	snprintf(line, sizeof(line), state.snapshot.artist[0] ? "YouTube · %s" : "YouTube", state.snapshot.artist);
+	return line;
+}
+
 static void clear_artwork(Widget* w) {
 	if (w->cover)
 		SDL_FreeSurface(w->cover);
@@ -474,7 +485,7 @@ static void render(Widget* w) {
 		SDL_Color grey = {200, 200, 200, 255};
 		draw_text_centered(f, w->title_font, snapshot_title(), cx, y, white, CANVAS_W - 48);
 		y += title_h + 4;
-		draw_text_centered(f, w->artist_font, snapshot_artist(), cx, y, grey, CANVAS_W - 48);
+		draw_text_centered(f, w->artist_font, widget_artist(), cx, y, grey, CANVAS_W - 48);
 		y += artist_h + 8 + disc - 10;
 		bool focus_visible = state.enabled && state.row == ROW_TRANSPORT;
 		draw_button(w, w->prev_icon, cx - 84, y, 36, focus_visible && state.focus == FOCUS_PREV);
@@ -760,11 +771,17 @@ int main(int argc, char** argv) {
 		goto cleanup;
 	w.title_font = TTF_OpenFont(FONT_PATH, 26);
 	if (!w.title_font)
+		w.title_font = TTF_OpenFont(FONT_LATIN, 26);
+	if (!w.title_font)
 		w.title_font = TTF_OpenFont(FONT_FALLBACK, 26);
 	w.artist_font = TTF_OpenFont(FONT_PATH, 19);
 	if (!w.artist_font)
+		w.artist_font = TTF_OpenFont(FONT_LATIN, 19);
+	if (!w.artist_font)
 		w.artist_font = TTF_OpenFont(FONT_FALLBACK, 19);
 	w.label_font = TTF_OpenFont(FONT_PATH, 15);
+	if (!w.label_font)
+		w.label_font = TTF_OpenFont(FONT_LATIN, 15);
 	if (!w.label_font)
 		w.label_font = TTF_OpenFont(FONT_FALLBACK, 15);
 	w.prev_icon = load_png("btn-prev-n.png", 44);

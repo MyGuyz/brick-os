@@ -22,6 +22,7 @@
 #include "utils.h"
 #include "ui/ui_draw.h"
 #include "ui/ui_contextmenu.h"
+#include "ui/ui_toast.h"
 #include "bos_ui.h"
 
 #include "../musicplayer/music_service_client.h"
@@ -182,6 +183,27 @@ static int countLines(const char* path) { // lines that aren't the "#fp=" header
 	return n;
 }
 
+// A toast another program left for Home (DESIGN.md 5.9): one English line in /tmp/bos_toast, shown once in the
+// language of the UI. YouTube leaves "YouTube keeps playing · HOME to control" when its sound goes on (7.5c).
+#define HOME_TOAST_PATH "/tmp/bos_toast"
+static char home_toast[160];
+static uint32_t home_toast_at;
+static void takeToast(void) {
+	FILE* f = fopen(HOME_TOAST_PATH, "r");
+	if (!f)
+		return;
+	char line[160] = "";
+	if (!fgets(line, sizeof(line), f))
+		line[0] = '\0';
+	fclose(f);
+	unlink(HOME_TOAST_PATH);
+	line[strcspn(line, "\r\n")] = '\0';
+	if (!line[0])
+		return;
+	snprintf(home_toast, sizeof(home_toast), "%s", I18N_text(line));
+	home_toast_at = SDL_GetTicks();
+}
+
 static bool musicPlaying(void) {
 	int fd = MusicService_connect(NULL, 20);
 	if (fd < 0)
@@ -300,6 +322,7 @@ static void build(void) {
 	if (ncards == 0)
 		row = 1;
 	BOS_setMusicPlaying(musicPlaying());
+	takeToast();
 	built = true;
 }
 
@@ -716,6 +739,8 @@ static void libraryRender(SDL_Surface* s) {
 void HomeBos_render(SDL_Surface* s) {
 	if (!built)
 		build();
+	if (home_toast[0])
+		UI_renderToast(s, home_toast, home_toast_at); // its own layer over the page
 	pending = false;
 	launch_rect = (SDL_Rect){0, 0, 0, 0};
 	if (lib) {
@@ -891,6 +916,7 @@ static HomeBosInput reorderInput(bool* dirty) {
 HomeBosInput HomeBos_handleInput(unsigned long now, bool* dirty, bool tap_menu) {
 	if (!built)
 		build();
+	UI_tickToast(home_toast, home_toast_at, dirty);
 	if (pick_kind == PICK_APP && !lib) {
 		buildLibrary();
 		lib = true;

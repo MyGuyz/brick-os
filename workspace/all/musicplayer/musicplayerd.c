@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 void InitSettings(void);
 void QuitSettings(void);
@@ -179,6 +180,108 @@ static void update_artwork(const PlayerSnapshot* snapshot) {
 	}
 }
 
+// ---- YouTube's sound in the background (DESIGN.md 7.5c) ----
+// "ytc --bg" plays it on its own (libmpv) and keeps /tmp/ytbg/state up to date; this service only shows it as the
+// YOUTUBE source while it has nothing of its own, so the status bar, the HOME panel and Music see it, and passes the
+// buttons on through /tmp/ytbg/cmd. Playing anything here stops it.
+#define YTBG_DIR "/tmp/ytbg"
+typedef struct {
+	int state; // MUSIC_STATE_*
+	int pos_ms, dur_ms;
+	char title[MUSIC_SERVICE_MAX_TITLE], artist[MUSIC_SERVICE_MAX_ARTIST], thumb[MUSIC_SERVICE_MAX_PATH];
+} YtbgState;
+
+static bool ytbg_read(YtbgState* y) {
+	FILE* f = fopen(YTBG_DIR "/pid", "r");
+	int pid = 0;
+	if (!f)
+		return false;
+	if (fscanf(f, "%d", &pid) != 1)
+		pid = 0;
+	fclose(f);
+	if (pid <= 0 || kill(pid, 0) != 0)
+		return false;
+	f = fopen(YTBG_DIR "/state", "r");
+	if (!f)
+		return false;
+	memset(y, 0, sizeof(*y));
+	y->state = MUSIC_STATE_PLAYING;
+	char line[1024];
+	while (fgets(line, sizeof(line), f)) {
+		line[strcspn(line, "\r\n")] = '\0';
+		char* v = strchr(line, '=');
+		if (!v)
+			continue;
+		*v++ = '\0';
+		if (!strcmp(line, "state"))
+			y->state = !strcmp(v, "paused") ? MUSIC_STATE_PAUSED : MUSIC_STATE_PLAYING;
+		else if (!strcmp(line, "pos_ms"))
+			y->pos_ms = atoi(v);
+		else if (!strcmp(line, "dur_ms"))
+			y->dur_ms = atoi(v);
+		else if (!strcmp(line, "title"))
+			snprintf(y->title, sizeof(y->title), "%s", v);
+		else if (!strcmp(line, "channel"))
+			snprintf(y->artist, sizeof(y->artist), "%s", v);
+		else if (!strcmp(line, "thumb"))
+			snprintf(y->thumb, sizeof(y->thumb), "%s", v);
+	}
+	fclose(f);
+	return true;
+}
+
+static bool ytbg_send(const char* line) {
+	int fd = open(YTBG_DIR "/cmd", O_WRONLY | O_NONBLOCK); // its reader holds it open; never blocks
+	if (fd < 0)
+		return false;
+	bool ok = write(fd, line, strlen(line)) == (ssize_t)strlen(line);
+	close(fd);
+	return ok;
+}
+
+// Shown only while this service has no source of its own
+static bool ytbg_shown(YtbgState* y) {
+	return active_source == MUSIC_SOURCE_NONE && ytbg_read(y);
+}
+
+static void ytbg_fill(MusicResponseWire* response, const YtbgState* y) {
+	MusicSnapshotWire* s = &response->snapshot;
+	s->source = MUSIC_SOURCE_YOUTUBE;
+	s->loaded = 1;
+	s->state = s->source_state = y->state;
+	s->position_ms = y->pos_ms;
+	s->duration_ms = y->dur_ms;
+	s->audio_open = 1;
+	s->playback_speed = 1.0f;
+	s->capabilities = MUSIC_CAP_PLAY | MUSIC_CAP_PAUSE | MUSIC_CAP_SEEK | MUSIC_CAP_NEXT | MUSIC_CAP_PREVIOUS;
+	snprintf(s->title, sizeof(s->title), "%s", y->title);
+	snprintf(s->artist, sizeof(s->artist), "%s", y->artist);
+	snprintf(s->album, sizeof(s->album), "YouTube");
+	snprintf(s->artwork_path, sizeof(s->artwork_path), "%s", y->thumb);
+}
+
+// The buttons while it is shown: next/previous are +-10 s (a clip has no queue here). True = handled.
+static bool ytbg_command(uint16_t command, const unsigned char* payload, int* status) {
+	YtbgState y;
+	if (!ytbg_shown(&y))
+		return false;
+	char line[48];
+	switch (command) {
+	case MUSIC_CMD_PLAY: snprintf(line, sizeof(line), "play\n"); break;
+	case MUSIC_CMD_PAUSE: case MUSIC_CMD_SLEEP: snprintf(line, sizeof(line), "pause\n"); break;
+	case MUSIC_CMD_TOGGLE: snprintf(line, sizeof(line), "toggle\n"); break;
+	case MUSIC_CMD_STOP: snprintf(line, sizeof(line), "stop\n"); break;
+	case MUSIC_CMD_NEXT: snprintf(line, sizeof(line), "seek 10\n"); break;
+	case MUSIC_CMD_PREVIOUS: snprintf(line, sizeof(line), "seek -10\n"); break;
+	case MUSIC_CMD_SEEK:
+		snprintf(line, sizeof(line), "seek %d\n", (((const MusicIntRequest*)payload)->value - y.pos_ms) / 1000);
+		break;
+	default: return false;
+	}
+	*status = ytbg_send(line) ? MUSIC_STATUS_OK : MUSIC_STATUS_UNAVAILABLE;
+	return true;
+}
+
 static void fill_snapshot(MusicResponseWire* response) {
 	PlayerSnapshot snapshot;
 	memset(&response->snapshot, 0, sizeof(response->snapshot));
@@ -188,6 +291,11 @@ static void fill_snapshot(MusicResponseWire* response) {
 		strncpy(response->error, "audio wake timed out", sizeof(response->error) - 1);
 	response->snapshot.source = active_source;
 	response->snapshot.loaded = active_source != MUSIC_SOURCE_NONE;
+	YtbgState ytbg;
+	if (ytbg_shown(&ytbg)) {
+		ytbg_fill(response, &ytbg);
+		return;
+	}
 	if (!response->snapshot.loaded || Player_getSnapshot(&snapshot) != 0)
 		return;
 	update_artwork(&snapshot);
@@ -877,6 +985,14 @@ static void handle_command(uint16_t command, const unsigned char* payload, size_
 		return;
 	}
 	int status = MUSIC_STATUS_OK;
+	if (ytbg_command(command, payload, &status)) {
+		response_error(response, status, status == MUSIC_STATUS_OK ? NULL : "command failed");
+		return;
+	}
+	// Anything this service plays itself replaces YouTube's sound
+	if (command == MUSIC_CMD_LOAD || command == MUSIC_CMD_LOAD_PLAYLIST || command == MUSIC_CMD_RADIO_LOAD ||
+		command == MUSIC_CMD_PODCAST_LOAD)
+		ytbg_send("stop\n");
 	switch (command) {
 	case MUSIC_CMD_SNAPSHOT:
 		break;
@@ -1080,8 +1196,12 @@ static void handle_command(uint16_t command, const unsigned char* payload, size_
 }
 
 static IdleClass idle_class(void) {
-	if (active_source == MUSIC_SOURCE_NONE)
+	if (active_source == MUSIC_SOURCE_NONE) {
+		YtbgState y; // stay up while YouTube's sound plays, for the panel and the status bar
+		if (ytbg_read(&y))
+			return y.state == MUSIC_STATE_PAUSED ? IDLE_PAUSED : IDLE_PLAYING;
 		return IDLE_STOPPED;
+	}
 	if (active_source == MUSIC_SOURCE_RADIO) {
 		if (radio_paused)
 			return IDLE_PAUSED;

@@ -32,7 +32,31 @@ export YTC_MEDIA_FLAG=/tmp/bos_media_playing YTC_SCREEN_OFF_FLAG=/tmp/bos_screen
 rm -f "$YTC_MEDIA_FLAG" "$YTC_SCREEN_OFF_FLAG"
 sleepmon.elf &
 
+# YouTube's sound in the background (DESIGN.md 7.5c): if it is playing, stop it and reopen its clip there
+BG=/tmp/ytbg
+unset YTC_RESUME_ID
+if [ -f $BG/pid ] && kill -0 "$(cat $BG/pid)" 2>/dev/null; then
+	echo stop > $BG/cmd
+	i=0
+	while [ -f $BG/pid ] && [ $i -lt 30 ]; do sleep 0.1; i=$((i + 1)); done
+	[ -f $BG/pid ] && kill -9 "$(cat $BG/pid)" 2>/dev/null
+	rm -f $BG/pid $BG/state
+	YTC_RESUME_ID=$(sed -n 's/^id=//p' $BG/last 2>/dev/null)
+	[ -n "$YTC_RESUME_ID" ] && export YTC_RESUME_ID
+fi
+rm -f $BG/req
+
 ./ytc.aarch64 > "${LOGS_PATH:-/tmp}/youtube.txt" 2>&1
+
+# The clip was handed over (ฟังเบื้องหลัง, or leaving while it played): play its sound on, detached, after
+# stopping the music service's own song so the two never play at once
+if [ -f $BG/req ]; then
+	musicplayerctl.elf stop > /dev/null 2>&1
+	# the music service shows it to the status bar, the HOME panel and Music (it exits after 3 idle minutes)
+	pidof musicplayerd.elf > /dev/null || musicplayerd.elf < /dev/null > /dev/null 2>&1 &
+	./ytc.aarch64 --bg $BG/req > /tmp/ytbg.log 2>&1 &
+	echo "YouTube keeps playing · HOME to control" > /tmp/bos_toast   # Home shows it once
+fi
 
 killall sleepmon.elf 2>/dev/null
 rm -f "$YTC_MEDIA_FLAG" "$YTC_SCREEN_OFF_FLAG"

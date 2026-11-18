@@ -79,7 +79,8 @@ typedef enum {
 	MUSIC_SOURCE_NONE = 0,
 	MUSIC_SOURCE_LOCAL = 1,
 	MUSIC_SOURCE_RADIO = 2,
-	MUSIC_SOURCE_PODCAST = 3
+	MUSIC_SOURCE_PODCAST = 3,
+	MUSIC_SOURCE_YOUTUBE = 4 // YouTube's sound after the app closed (DESIGN.md 7.5c); played by "ytc --bg"
 } MusicSource;
 
 typedef struct __attribute__((packed)) {

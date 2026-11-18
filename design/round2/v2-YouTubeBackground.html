@@ -1,0 +1,94 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><title>YouTube เล่นเบื้องหลัง</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0;background:#333;font-family:Inter,'IBM Plex Sans Thai',sans-serif;color:#fff}
+.grid{display:grid;grid-template-columns:512px 512px;gap:0;width:1024px}
+.cell{width:512px;height:420px;position:relative;overflow:hidden}
+.cap{position:absolute;left:0;right:0;top:0;height:36px;background:#222;font-size:18px;font-weight:600;display:flex;align-items:center;padding:0 12px;box-sizing:border-box}
+.scr{position:absolute;left:0;top:36px;width:1024px;height:768px;transform:scale(.5);transform-origin:0 0;background:#000;overflow:hidden;line-height:1.25}
+.sb{height:64px;padding:0 32px;display:flex;align-items:center;justify-content:space-between}
+.sb .t{font-size:30px;font-weight:600}.sb .r{display:flex;align-items:center;gap:22px;font-size:30px;font-weight:600}
+.bat{width:46px;height:24px;box-sizing:border-box;border:3px solid #FFF;border-radius:7px;padding:3px;display:inline-block}.bat i{display:block;width:26px;height:100%;background:#FFF;border-radius:2px}
+.hb{position:absolute;left:0;right:0;bottom:0;height:64px;padding:0 32px;display:flex;align-items:center;justify-content:flex-end;gap:28px}
+.k{display:flex;align-items:center;gap:12px;font-size:30px;color:#B4B4BA}.k b{width:40px;height:40px;border-radius:20px;background:#FFF;color:#000;font-size:24px;display:flex;align-items:center;justify-content:center}
+.tile{height:80px;border-radius:20px;background:#2C2C30;display:flex;align-items:center;gap:22px;padding:0 24px;font-size:30px;font-weight:600}
+.tile.f{background:#F2F2F7;color:#0B0B0D}
+.toast{position:absolute;left:50%;transform:translateX(-50%);top:608px;height:72px;border-radius:24px;background:#1C1C1F;border:1px solid #2C2C30;display:flex;align-items:center;gap:16px;padding:0 28px 0 16px;font-size:26px;white-space:nowrap}
+.badge{width:40px;height:40px;border-radius:20px;background:#4A9BFF;display:flex;align-items:center;justify-content:center}
+.qt{position:absolute;background:#1C1C1F;border-radius:28px}
+.disc{width:80px;height:80px;border-radius:40px;background:#2C2C30;display:flex;align-items:center;justify-content:center}
+.disc.on{background:#F2F2F7}
+.note{padding:10px 14px;font-size:15px;color:#ccc;background:#222;line-height:1.45;width:1024px;box-sizing:border-box}
+</style></head><body>
+<div class="grid">
+
+<!-- 1: player options -->
+<div class="cell"><div class="cap">1 · ในคลิป กด SELECT → ฟังเบื้องหลัง</div><div class="scr">
+ <div style="position:absolute;inset:0;background:linear-gradient(135deg,#5a3a22,#1a0f08)"></div>
+ <div style="position:absolute;inset:0;background:rgba(0,0,0,.6)"></div>
+ <div style="position:absolute;left:0;right:0;top:186px;bottom:64px;background:#1C1C1F;border-radius:28px 28px 0 0;padding:24px 40px">
+  <div style="display:flex;gap:20px;align-items:center;margin-bottom:22px"><div style="width:160px;height:90px;border-radius:12px;background:linear-gradient(135deg,#7a4a2a,#e0a060)"></div>
+   <div><div style="font-size:34px;font-weight:700">GAVIN:D x BLVCKHEART - ได้แค่เดินมาส่ง</div><div style="font-size:24px;color:#B4B4BA">GAVIN:D · 3:42 / 4:15</div></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
+   <div class="tile f"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0B0B0D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><rect x="3" y="14" width="5" height="7" rx="2"/><rect x="16" y="14" width="5" height="7" rx="2"/></svg>ฟังเบื้องหลัง</div>
+   <div class="tile"><span style="color:#4A9BFF">⚙</span>การเล่น</div>
+   <div class="tile"><span style="color:#5AC8FA">≡</span>คำอธิบาย</div>
+   <div class="tile"><span style="color:#30D158">💬</span>ความคิดเห็น</div>
+   <div class="tile"><span style="color:#BF5AF2">👤</span>ไปที่ช่อง</div>
+   <div class="tile"><span style="color:#30D158">↓</span>ดาวน์โหลด</div>
+  </div></div>
+ <div class="hb" style="background:#000"><span class="k"><b>A</b>เลือก</span><span class="k"><b>B</b>ปิด</span></div>
+</div></div>
+
+<!-- 2: home with toast and note in status bar -->
+<div class="cell"><div class="cap">2 · YouTube ปิด กลับหน้าแรก เสียงเล่นต่อ</div><div class="scr">
+ <div class="sb"><span class="t">หน้าแรก</span><span class="r"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>📶</span><span>19:08</span><span>91% <span class="bat"><i></i></span></span></span></div>
+ <div style="padding:8px 40px;font-size:30px;color:#B4B4BA">เล่นต่อ</div>
+ <div style="position:absolute;left:332px;top:112px;width:360px;height:270px;border-radius:24px;background:linear-gradient(135deg,#6b2a10,#2a1008);box-shadow:0 0 0 4px #30D158"></div>
+ <div style="position:absolute;left:712px;top:160px;width:240px;height:180px;border-radius:24px;background:#3a2a20;opacity:.55"></div>
+ <div style="position:absolute;top:396px;width:100%;text-align:center;font-size:40px;font-weight:600">God of War - Chains of Olympus</div>
+ <div style="position:absolute;top:510px;width:100%;display:flex;justify-content:center;gap:28px">
+  <div style="width:112px;height:112px;border-radius:24px;background:#1C1C1F"></div><div style="width:112px;height:112px;border-radius:24px;background:#1C1C1F"></div><div style="width:112px;height:112px;border-radius:24px;background:#1C1C1F"></div><div style="width:112px;height:112px;border-radius:24px;background:#1C1C1F"></div><div style="width:112px;height:112px;border-radius:24px;background:#1C1C1F"></div></div>
+ <div class="toast"><span class="badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>เสียง YouTube เล่นต่อ · กด HOME เพื่อควบคุม</div>
+ <div class="hb"><span class="k"><b>A</b>เล่นต่อ</span></div>
+</div></div>
+
+<!-- 3: quick panel music tile -->
+<div class="cell"><div class="cap">3 · กด HOME: ช่องเพลงแสดงคลิป YouTube</div><div class="scr">
+ <div style="position:absolute;inset:0;background:#0b0b0b"></div>
+ <div class="qt" style="left:90px;top:106px;width:412px;height:268px;overflow:hidden;box-shadow:0 0 0 4px #F2F2F7">
+  <div style="position:absolute;inset:0;background:linear-gradient(135deg,#7a4a2a,#e0a060);opacity:.32"></div>
+  <div style="position:absolute;left:0;right:0;top:34px;text-align:center;font-size:24px;font-weight:600;padding:0 24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GAVIN:D x BLVCKHEART - ได้แค่เดินมาส่ง</div>
+  <div style="position:absolute;left:0;right:0;top:68px;text-align:center;font-size:18px;color:#ddd"><span style="background:#FF0033;color:#fff;border-radius:6px;padding:1px 7px;font-weight:700;font-size:15px">YouTube</span> GAVIN:D</div>
+  <div style="position:absolute;left:0;right:0;top:108px;display:flex;justify-content:center;align-items:center;gap:40px">
+   <div style="font-size:22px;color:#ddd">↺10</div><div style="width:64px;height:64px;border-radius:32px;background:#F2F2F7;color:#000;display:flex;align-items:center;justify-content:center;font-size:26px">❚❚</div><div style="font-size:22px;color:#ddd">10↻</div></div>
+  <div style="position:absolute;left:48px;right:48px;top:196px;height:6px;border-radius:3px;background:#555"><div style="width:86%;height:100%;background:#FF0033;border-radius:3px"></div></div>
+  <div style="position:absolute;left:48px;right:48px;top:210px;display:flex;justify-content:space-between;font-size:16px;color:#aaa"><span>3:42</span><span>4:15</span></div>
+ </div>
+ <div class="qt" style="left:522px;top:106px;width:124px;height:124px"></div><div class="qt" style="left:666px;top:106px;width:124px;height:124px"></div><div class="qt" style="left:810px;top:106px;width:124px;height:124px"></div>
+ <div class="qt" style="left:522px;top:250px;width:124px;height:124px"></div><div class="qt" style="left:666px;top:250px;width:124px;height:124px"></div><div class="qt" style="left:810px;top:250px;width:124px;height:124px"></div>
+ <div class="qt" style="left:90px;top:394px;width:268px;height:124px"></div><div class="qt" style="left:378px;top:394px;width:268px;height:124px"></div><div class="qt" style="left:666px;top:394px;width:268px;height:124px"></div>
+ <div class="qt" style="left:90px;top:538px;width:556px;height:124px"></div><div class="qt" style="left:666px;top:538px;width:124px;height:124px"></div><div class="qt" style="left:810px;top:538px;width:124px;height:124px"></div>
+</div></div>
+
+<!-- 4: settings switch -->
+<div class="cell"><div class="cap">4 · ตั้งค่า YouTube › เสียง</div><div class="scr">
+ <div class="sb"><span class="t">ตั้งค่า YouTube</span><span class="r"><span>19:08</span><span>91% <span class="bat"><i></i></span></span></span></div>
+ <div style="display:flex;gap:28px;padding:8px 32px 0 24px">
+  <div style="width:380px;background:#1C1C1F;border-radius:24px">
+   <div style="height:80px;display:flex;align-items:center;padding:0 24px;font-size:40px;font-weight:500;background:#2C2C30;border-radius:20px">เสียง</div>
+   <div style="height:80px;display:flex;align-items:center;padding:0 24px;font-size:40px;font-weight:500">วิดีโอ</div>
+   <div style="height:80px;display:flex;align-items:center;padding:0 24px;font-size:40px;font-weight:500">คำบรรยาย</div>
+   <div style="height:80px;display:flex;align-items:center;padding:0 24px;font-size:40px;font-weight:500">การเล่น</div></div>
+  <div style="flex-grow:1"><div style="font-size:56px;font-weight:700;padding:0 0 14px 8px">เสียง</div>
+   <div style="background:#1C1C1F;border-radius:24px">
+    <div style="height:96px;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 28px;font-size:40px;font-weight:500;border-bottom:1px solid #38383A">ความดัง<span style="font-size:30px;color:#B4B4BA">100</span></div>
+    <div style="height:96px;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 28px;font-size:40px;font-weight:500;border-bottom:1px solid #38383A">เสียงตอนปิดจอ<span style="width:80px;height:46px;border-radius:23px;background:#4A9BFF;position:relative"><span style="position:absolute;top:4px;right:4px;width:38px;height:38px;border-radius:19px;background:#FFF"></span></span></div>
+    <div style="height:96px;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 28px;font-size:40px;font-weight:600;background:#F2F2F7;color:#0B0B0D;border-radius:22px;transform:scale(1.04)">ออกแล้วเล่นเสียงต่อ<span style="width:80px;height:46px;border-radius:23px;background:#0B0B0D;position:relative"><span style="position:absolute;top:4px;right:4px;width:38px;height:38px;border-radius:19px;background:#FFF"></span></span></div>
+   </div>
+   <div style="font-size:26px;color:#6E6E73;padding:14px 0 0 28px">ออกจาก YouTube ระหว่างดูคลิป เสียงจะเล่นต่อ</div></div></div>
+ <div class="hb"><span class="k"><b>A</b>เปิด/ปิด</span><span class="k"><b>B</b>กลับ</span></div>
+</div></div>
+</div>
+<div class="note">กลับเข้า YouTube: เปิดคลิปเดิมต่อจากจุดที่เสียงเล่นถึง แล้วเสียงเบื้องหลังหยุด · เล่นเกมไปด้วยได้แบบเดียวกับเพลง (ปรับ เกม/เพลง ในแผง HOME) · เปิดแอปเพลง: เห็นคลิปนี้ในหน้ากำลังเล่น</div>
+</body></html>
