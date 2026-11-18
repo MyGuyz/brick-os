@@ -1016,6 +1016,9 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
 - **ตั้งค่า YouTube › เสียง › ออกแล้วเล่นเสียงต่อ** (on by default): when YouTube is closed while a clip plays, the
   sound goes on. Today only the system can close it then (the player has no exit key), so the tile is the way in.
 - **Back to YouTube:** the clip reopens in the player where the sound got to, and the background sound stops.
+- **When a clip ends** (2026-11-18, the user's ask): YouTube's own recommendation plays next, as in the app's
+  autoplay: the first related clip not played yet in this run (no Shorts, no live), added to ประวัติ. The tile
+  and the reopen follow the clip on now. A live or downloaded clip just ends.
 - **Playing anything in Music** (a song, the radio, a podcast) stops it. Games and the menus play over it, with the
   HOME panel's Game/Music balance, as for music.
 - Not as the board: no YouTube pill and no time bar in the tile, and its buttons keep the ⏮ ⏭ pictures (the tile
