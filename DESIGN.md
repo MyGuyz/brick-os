@@ -981,6 +981,14 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   next chapter (no chapters: −/+30 s)** · **X captions on/off** · Y comments · SELECT options · **START hides the
   controls**. Volume is on the side buttons only (▲▼ no longer change it). Hint bar while the controls show:
   L1 R1 คลิปก่อน/ถัดไป · X คำบรรยาย · B กลับ · A หยุด (≤ 4 + one on the left).
+- **What "next" is** (2026-11-24, the user's ask: "สุ่มแบบ YouTube", not just the next tile): as on YouTube, the
+  next clip is YouTube's own recommendation for the clip playing (its "Up next" column), not the list's next tile:
+  **R1**, the **▼ row** (up to 10) and **autoplay** at the end all use it. Never a clip already played in this run, no
+  Shorts, no live. The recommendations are fetched as a clip starts, so R1 is instant; before they are in, "กำลังหา
+  คลิปถัดไป…". **L1** goes back through the clips played (the one before, then the one before that); with none, the
+  list's previous. B still goes back to the list the first clip came from.
+  - **Lists that keep their order:** a playlist, ดูภายหลัง and ดาวน์โหลด play in their order (as YouTube plays a
+    playlist); at the end, YouTube's next. Shorts mode keeps its own rule (§7.8).
 - **Keyboard (every app):** A type · B delete (held: repeats; on an empty field a fresh press closes) · X space ·
   Y ก/A · **L1 one-shot shift, a double tap = caps lock (⇧ drawn filled, until L1 again)** · **R1 the #+= page /
   back to abc** · L2/R2 caret left/right, held = repeat · START search / OK · SELECT close (keeps the text).
@@ -1011,8 +1019,9 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   YouTube closes, Home comes back and the clip's sound plays on from the same second.
 - **Home:** the toast "เสียง YouTube เล่นต่อ · กด HOME เพื่อควบคุม" once (§5.9 toast), and ♪ in the status bar while
   it plays.
-- **HOME panel, music tile:** the clip's title, "YouTube · <channel>", its picture faint behind; ⏮ ⏯ ⏭ are
-  −10 s, play/pause, +10 s. Thai titles use `font1-thai.ttf` (they were boxes, Thai songs too).
+- **HOME panel, music tile:** the clip's title, "YouTube · <channel>", its picture faint behind; ⏯ play/pause,
+  **⏭ YouTube's next clip** (as when a clip ends, below), **⏮ back to the start** (past 5 s) **or the clip played
+  before** (2026-11-24; they were −10 s / +10 s). Thai titles use `font1-thai.ttf` (they were boxes, Thai songs too).
 - **ตั้งค่า YouTube › เสียง › ออกแล้วเล่นเสียงต่อ** (on by default): when YouTube is closed while a clip plays, the
   sound goes on. Today only the system can close it then (the player has no exit key), so the tile is the way in.
 - **Back to YouTube:** the clip reopens in the player where the sound got to, and the background sound stops.
@@ -1041,8 +1050,8 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   ◀▶ 5 s. X captions, Y comments, SELECT options, START hides the column. B goes back with the last Short watched
   selected.
 - **Autoplay** (one setting: ตั้งค่า › การเล่น › เล่นอัตโนมัติ, and the first row of the player's SELECT sheet, a
-  switch with "จบคลิปแล้วเล่นคลิปถัดไป"): on → a Short moves to the next one, a video shows "ถัดไป: …" and plays the
-  next (B cancels); off → a Short loops, a video stops and goes back to its list.
+  switch with "จบคลิปแล้วเล่นคลิปถัดไป"): on → a Short moves to the next one, a video shows "ถัดไป: …" and plays
+  YouTube's next for it (§7.7 What "next" is; B cancels); off → a Short loops, a video stops and goes back to its list.
 - **7.7/7.8 built (2026-11-16):** YouTube's player, Shorts mode, the autoplay switch (a tile with a switch in the
   player's options) and both keyboards (YouTube's and `ui_keyboard.c`: L1 twice = caps lock with ⇧ filled in
   `primary`, R1 #+=, SELECT closes). YouTube's lists page with L2/R2.

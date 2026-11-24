@@ -260,7 +260,8 @@ static void ytbg_fill(MusicResponseWire* response, const YtbgState* y) {
 	snprintf(s->artwork_path, sizeof(s->artwork_path), "%s", y->thumb);
 }
 
-// The buttons while it is shown: next/previous are +-10 s (a clip has no queue here). True = handled.
+// The buttons while it is shown: next = YouTube's next clip, previous = back to the start (past 5 s) or the clip
+// before (DESIGN.md 7.5c). True = handled.
 static bool ytbg_command(uint16_t command, const unsigned char* payload, int* status) {
 	YtbgState y;
 	if (!ytbg_shown(&y))
@@ -271,8 +272,8 @@ static bool ytbg_command(uint16_t command, const unsigned char* payload, int* st
 	case MUSIC_CMD_PAUSE: case MUSIC_CMD_SLEEP: snprintf(line, sizeof(line), "pause\n"); break;
 	case MUSIC_CMD_TOGGLE: snprintf(line, sizeof(line), "toggle\n"); break;
 	case MUSIC_CMD_STOP: snprintf(line, sizeof(line), "stop\n"); break;
-	case MUSIC_CMD_NEXT: snprintf(line, sizeof(line), "seek 10\n"); break;
-	case MUSIC_CMD_PREVIOUS: snprintf(line, sizeof(line), "seek -10\n"); break;
+	case MUSIC_CMD_NEXT: snprintf(line, sizeof(line), "next\n"); break;
+	case MUSIC_CMD_PREVIOUS: snprintf(line, sizeof(line), "prev\n"); break;
 	case MUSIC_CMD_SEEK:
 		snprintf(line, sizeof(line), "seek %d\n", (((const MusicIntRequest*)payload)->value - y.pos_ms) / 1000);
 		break;
