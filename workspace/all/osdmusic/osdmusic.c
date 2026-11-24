@@ -59,7 +59,7 @@ static int GRID_H = 2;
 #define FONT_LATIN "/mnt/SDCARD/.system/res/font1.ttf"
 #define FONT_FALLBACK "/usr/trimui/osd/regular.ttf"
 #define TILE_DIR "/usr/trimui/osd"
-#define BACKDROP_ALPHA 80 // 0-255: cover art opacity behind the text
+#define BACKDROP_DIM 55 // % of the cover art's brightness kept behind the white text
 
 #define POLL_MS 100
 #define MUSIC_PROBE_MS 250
@@ -90,7 +90,7 @@ static struct {
 	int row;
 	int balance_pending;
 	Uint32 balance_commit_at;
-	char artwork_identity[MUSIC_SERVICE_MAX_PATH * 2 + 2];
+	char artwork_identity[MUSIC_SERVICE_MAX_PATH * 2 + MUSIC_SERVICE_MAX_TITLE + 3];
 } state = {.focus = FOCUS_PLAY, .row = ROW_TRANSPORT, .balance_pending = -1};
 
 
@@ -225,13 +225,28 @@ static void load_geometry(void) {
 	GRID_H = osdmusic_config_int(json, "gridheight", GRID_H);
 }
 
-// Widget background: the cover art scaled to fill the tile, dimmed, and
-// masked by the block tile's own alpha so it keeps the rounded corners.
+// Widget background: the cover art at full resolution, cropped to fill the tile (no stretching; a 4:3 YouTube
+// thumbnail's black bars cut off), darkened just enough for the white text, and masked by the block tile's own
+// alpha so it keeps the rounded corners. Was a 90 px copy blown up and faded to 31 %: blurry and dull.
 static SDL_Surface* make_backdrop(SDL_Surface* cover_src) {
 	if (!cover_src)
 		return NULL;
-	int side = CANVAS_W > CANVAS_H ? CANVAS_W : CANVAS_H;
-	SDL_Surface* big = resample(cover_src, side, side);
+	SDL_Rect src = {0, 0, cover_src->w, cover_src->h};
+	if (cover_src->w * 3 == cover_src->h * 4 && state.snapshot.source == MUSIC_SOURCE_YOUTUBE) {
+		src.h = cover_src->w * 9 / 16; // hqdefault: a 16:9 picture between black bars
+		src.y = (cover_src->h - src.h) / 2;
+	}
+	// scale so the picture covers the tile, then take its middle
+	double k = SDL_max((double)CANVAS_W / src.w, (double)CANVAS_H / src.h);
+	int bw = (int)(src.w * k + 0.5), bh = (int)(src.h * k + 0.5);
+	SDL_Surface* part = SDL_CreateRGBSurfaceWithFormat(0, src.w, src.h, 32, SDL_PIXELFORMAT_ARGB8888);
+	if (!part)
+		return NULL;
+	SDL_SetSurfaceBlendMode(cover_src, SDL_BLENDMODE_NONE);
+	SDL_BlitSurface(cover_src, &src, part, NULL);
+	SDL_SetSurfaceBlendMode(cover_src, SDL_BLENDMODE_BLEND);
+	SDL_Surface* big = resample(part, bw, bh);
+	SDL_FreeSurface(part);
 	if (!big)
 		return NULL;
 	char tile[128];
@@ -239,7 +254,7 @@ static SDL_Surface* make_backdrop(SDL_Surface* cover_src) {
 	SDL_Surface* mask = load_png_path(tile, CANVAS_W, CANVAS_H);
 	SDL_Surface* out = SDL_CreateRGBSurfaceWithFormat(0, CANVAS_W, CANVAS_H, 32, SDL_PIXELFORMAT_ARGB8888);
 	if (out) {
-		int ox = (side - CANVAS_W) / 2, oy = (side - CANVAS_H) / 2;
+		int ox = (bw - CANVAS_W) / 2, oy = (bh - CANVAS_H) / 2;
 		for (int y = 0; y < CANVAS_H; y++) {
 			Uint32* row = (Uint32*)((Uint8*)out->pixels + y * out->pitch);
 			for (int x = 0; x < CANVAS_W; x++) {
@@ -251,7 +266,8 @@ static SDL_Surface* make_backdrop(SDL_Surface* cover_src) {
 					SDL_GetRGBA(((Uint32*)((Uint8*)mask->pixels + y * mask->pitch))[x], mask->format, &mr, &mg, &mb,
 								&ma);
 				}
-				row[x] = SDL_MapRGBA(out->format, r, g, b, (Uint8)(a * ma / 255 * BACKDROP_ALPHA / 255));
+				row[x] = SDL_MapRGBA(out->format, r * BACKDROP_DIM / 100, g * BACKDROP_DIM / 100,
+									 b * BACKDROP_DIM / 100, (Uint8)(a * ma / 255));
 			}
 		}
 		SDL_SetSurfaceBlendMode(out, SDL_BLENDMODE_BLEND);
@@ -408,7 +424,8 @@ static void sync_music(Widget* w, bool poll_owner) {
 	state.connected = MusicClient_isConnected();
 	char identity[sizeof(state.artwork_identity)];
 	if (music_active())
-		snprintf(identity, sizeof(identity), "%s:%s", state.snapshot.current_file, state.snapshot.artwork_path);
+		snprintf(identity, sizeof(identity), "%s:%s:%s", state.snapshot.current_file, state.snapshot.artwork_path,
+				 state.snapshot.title); // YouTube keeps one thumb.jpg: the next clip is a new title
 	else
 		identity[0] = '\0';
 	if (strcmp(identity, state.artwork_identity) == 0)
@@ -416,7 +433,7 @@ static void sync_music(Widget* w, bool poll_owner) {
 	clear_artwork(w);
 	snprintf(state.artwork_identity, sizeof(state.artwork_identity), "%s", identity);
 	if (music_active()) {
-		w->cover = state.snapshot.artwork_path[0] ? load_png_path(state.snapshot.artwork_path, 90, 90) : NULL;
+		w->cover = state.snapshot.artwork_path[0] ? IMG_Load(state.snapshot.artwork_path) : NULL; // full size
 		if (!w->cover)
 			w->cover = load_png("widget-cover-default.png", 90);
 		w->backdrop = make_backdrop(w->cover);

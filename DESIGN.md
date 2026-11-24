@@ -1019,11 +1019,16 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   YouTube closes, Home comes back and the clip's sound plays on from the same second.
 - **Home:** the toast "เสียง YouTube เล่นต่อ · กด HOME เพื่อควบคุม" once (§5.9 toast), and ♪ in the status bar while
   it plays.
-- **HOME panel, music tile:** the clip's title, "YouTube · <channel>", its picture faint behind; ⏯ play/pause,
+- **HOME panel, music tile:** the clip's title, "YouTube · <channel>", its picture behind (2026-11-24, the user's
+  ask "ชัดกว่านี้ ไม่เอาทึบๆ": full resolution, cropped to fill the tile, a 4:3 thumbnail's black bars cut off, kept
+  at 55 % brightness for the white text; it was a 90 px copy blown up at 31 %; it changes with the clip); ⏯ play/pause,
   **⏭ YouTube's next clip** (as when a clip ends, below), **⏮ back to the start** (past 5 s) **or the clip played
   before** (2026-11-24; they were −10 s / +10 s). Thai titles use `font1-thai.ttf` (they were boxes, Thai songs too).
 - **ตั้งค่า YouTube › เสียง › ออกแล้วเล่นเสียงต่อ** (on by default): when YouTube is closed while a clip plays, the
   sound goes on. Today only the system can close it then (the player has no exit key), so the tile is the way in.
+- **Speed (2026-11-24, the user's ask: ⏭ and R1 were slow):** YouTube's next clip is found while the one before plays
+  (its recommendations, then its stream and picture), so ⏭ and a clip's end switch at once (were ~5 s). In the app
+  the same: as the recommendations come in, the clip R1 / autoplay will play is resolved ahead.
 - **Back to YouTube:** the clip reopens in the player where the sound got to, and the background sound stops.
 - **When a clip ends** (2026-11-18, the user's ask): YouTube's own recommendation plays next, as in the app's
   autoplay: the first related clip not played yet in this run (no Shorts, no live), added to ประวัติ. The tile
