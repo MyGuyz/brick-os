@@ -286,6 +286,12 @@ i.e. the panel's redraw) measured 16-55 ms a press, and 650-880 ms for one press
 
 ### Idle wait shim (`libosdwait.so`)
 
+**Volume keys in the panel (2026-11-24):** the side volume keys arrive only on the pad (TRIMUI Player1), which the
+daemon grabs while the panel is shown, so keymon never saw them and the keys did nothing there. The shim also
+interposes `read()`: while `osdd_show_up` exists, volume key events read from an input device are copied to a
+uinput device "BrickOS panel volume" (created only in the daemon, not the widgets that inherit the preload), which
+keymon reads like any other, so its steps, HUD and saving apply unchanged.
+
 Measured 2026-09-19 with the panel hidden and the pad at rest, the daemon
 costs ~6.4% of one core on both the Brick Pro and the Smart Pro S. Two thirds
 of that is `do_osd_input_thread`: it blocks in `SDL_WaitEvent`, the daemon has
