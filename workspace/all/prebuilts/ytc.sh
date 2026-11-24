@@ -17,7 +17,7 @@ if [ "$PLATFORM" != "tg5040" ]; then
 fi
 
 YTC_REPO=https://github.com/MyGuyz/ytc
-YTC_COMMIT=0e769e657a4c0d179855fe1c473edffc3a51356b
+YTC_COMMIT=bed83e537bfc2ba6ad33d271f8103c81ac7bba09
 
 PREBUILTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORK="$PREBUILTS_DIR/work/ytc"

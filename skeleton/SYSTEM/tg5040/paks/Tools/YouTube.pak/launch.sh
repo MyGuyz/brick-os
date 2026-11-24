@@ -32,16 +32,13 @@ export YTC_MEDIA_FLAG=/tmp/bos_media_playing YTC_SCREEN_OFF_FLAG=/tmp/bos_screen
 rm -f "$YTC_MEDIA_FLAG" "$YTC_SCREEN_OFF_FLAG"
 sleepmon.elf &
 
-# YouTube's sound in the background (DESIGN.md 7.5c): if it is playing, stop it and reopen its clip there
+# YouTube's sound in the background (DESIGN.md 7.5c): if it is playing, reopen its clip. The sound plays on while
+# YouTube starts and finds the clip's stream; YouTube stops it the moment its own player starts, at the second the
+# sound got to (2026-11-24, the user's ask: no long silence on the way in).
 BG=/tmp/ytbg
 unset YTC_RESUME_ID
 if [ -f $BG/pid ] && kill -0 "$(cat $BG/pid)" 2>/dev/null; then
-	echo stop > $BG/cmd
-	i=0
-	while [ -f $BG/pid ] && [ $i -lt 30 ]; do sleep 0.1; i=$((i + 1)); done
-	[ -f $BG/pid ] && kill -9 "$(cat $BG/pid)" 2>/dev/null
-	rm -f $BG/pid $BG/state
-	YTC_RESUME_ID=$(sed -n 's/^id=//p' $BG/last 2>/dev/null)
+	YTC_RESUME_ID=$(sed -n 's/^id=//p' $BG/state 2>/dev/null)
 	[ -n "$YTC_RESUME_ID" ] && export YTC_RESUME_ID
 fi
 rm -f $BG/req
@@ -51,6 +48,13 @@ rm -f $BG/req
 # The clip was handed over (ฟังเบื้องหลัง, or leaving while it played): play its sound on, detached, after
 # stopping the music service's own song so the two never play at once
 if [ -f $BG/req ]; then
+	if [ -f $BG/pid ] && kill -0 "$(cat $BG/pid)" 2>/dev/null; then   # never two: the old sound goes first
+		echo stop > $BG/cmd
+		i=0
+		while [ -f $BG/pid ] && [ $i -lt 30 ]; do sleep 0.1; i=$((i + 1)); done
+		[ -f $BG/pid ] && kill -9 "$(cat $BG/pid)" 2>/dev/null
+		rm -f $BG/pid $BG/state
+	fi
 	musicplayerctl.elf stop > /dev/null 2>&1
 	# the music service shows it to the status bar, the HOME panel and Music (it exits after 3 idle minutes)
 	pidof musicplayerd.elf > /dev/null || musicplayerd.elf < /dev/null > /dev/null 2>&1 &

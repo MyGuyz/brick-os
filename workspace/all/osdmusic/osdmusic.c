@@ -64,6 +64,7 @@ static int GRID_H = 2;
 #define POLL_MS 100
 #define MUSIC_PROBE_MS 250
 #define MUSIC_PAK "/mnt/SDCARD/.system/paks/Tools/Music Player.pak"
+#define YOUTUBE_PAK "/mnt/SDCARD/.system/paks/Tools/YouTube.pak"
 #define LAUNCHER_PROCESS "nextui.elf"
 #define OPEN_PAK_REQUEST_PATH "/tmp/nextui_open"
 #define OSD_HIDE_PATH "/tmp/hide_osdd"
@@ -80,7 +81,8 @@ enum { FOCUS_PREV = 0,
 	   FOCUS_NEXT = 2,
 	   FOCUS_COUNT = 3 };
 enum { ROW_TRANSPORT = 0,
-	   ROW_BALANCE = 1 };
+	   ROW_BALANCE = 1,
+	   ROW_OPEN = 2 }; // the title and picture: A opens the app the sound comes from (DESIGN.md 7.5c)
 
 static struct {
 	MusicSnapshotWire snapshot;
@@ -323,6 +325,35 @@ static void fill_circle(SDL_Surface* dst, int cx, int cy, int radius, Uint8 r, U
 	}
 }
 
+// Anti-aliased rounded rectangle (x, y, w, h, radius r): filled, or only a ring t thick inside its edge.
+static void round_rect(SDL_Surface* dst, int x, int y, int w, int h, int r, int t, Uint8 cr, Uint8 cg, Uint8 cb) {
+	for (int py = y; py < y + h; py++) {
+		if (py < 0 || py >= dst->h)
+			continue;
+		Uint32* row = (Uint32*)((Uint8*)dst->pixels + py * dst->pitch);
+		for (int px = x; px < x + w; px++) {
+			if (px < 0 || px >= dst->w)
+				continue;
+			double qx = SDL_max(SDL_max(x + r - (px + 0.5), (px + 0.5) - (x + w - r)), 0.0);
+			double qy = SDL_max(SDL_max(y + r - (py + 0.5), (py + 0.5) - (y + h - r)), 0.0);
+			double inside = r - SDL_sqrt(qx * qx + qy * qy); // distance in from the outer edge
+			if (qx == 0 || qy == 0) // along a straight side: the nearest edge
+				inside = SDL_min(SDL_min(px + 0.5 - x, x + w - (px + 0.5)), SDL_min(py + 0.5 - y, y + h - (py + 0.5)));
+			double cov = SDL_min(inside + 0.5, 1.0);
+			if (t > 0)
+				cov = SDL_min(cov, t + 0.5 - inside); // the ring's inner edge
+			if (cov <= 0)
+				continue;
+			Uint8 dr, dg, db, da;
+			SDL_GetRGBA(row[px], dst->format, &dr, &dg, &db, &da);
+			double bg = (1 - cov) * (da / 255.0), oa = cov + bg;
+			row[px] = SDL_MapRGBA(dst->format, (Uint8)((cr * cov + dr * bg) / oa + 0.5),
+								  (Uint8)((cg * cov + dg * bg) / oa + 0.5), (Uint8)((cb * cov + db * bg) / oa + 0.5),
+								  (Uint8)(oa * 255 + 0.5));
+		}
+	}
+}
+
 static int text_width(TTF_Font* font, const char* text) {
 	int w = 0;
 	if (font && text)
@@ -361,7 +392,7 @@ static void draw_button(Widget* w, SDL_Surface* icon, int cx, int cy, int disc, 
 	}
 }
 
-static void request_music_player(void) {
+static void request_pak(const char* pak) {
 	// Only the launcher consumes the request; while a game or another tool is
 	// in the foreground there is nothing to hand the pak to.
 	if (!proc_running(LAUNCHER_PROCESS))
@@ -369,7 +400,7 @@ static void request_music_player(void) {
 	FILE* f = fopen(OPEN_PAK_REQUEST_PATH, "w");
 	if (!f)
 		return;
-	fprintf(f, "%s\n", MUSIC_PAK);
+	fprintf(f, "%s\n", pak);
 	fclose(f);
 	// Close the panel so the pad goes back to the app that is about to start.
 	f = fopen(OSD_HIDE_PATH, "w");
@@ -496,14 +527,28 @@ static void render(Widget* w) {
 		const int title_h = w->title_font ? TTF_FontHeight(w->title_font) : 30;
 		const int artist_h = w->artist_font ? TTF_FontHeight(w->artist_font) : 22;
 		const int disc = 42, balance_gap = 18, balance_h = 30;
-		int y = (CANVAS_H - (title_h + 4 + artist_h + 8 + disc * 2 + balance_gap + balance_h)) / 2;
+		// The title row (▲, ROW_OPEN): a ring round the title, and the pill "A เปิดใน YouTube" in the channel line's
+		// place (the tile has no height for a third line). ring_pad keeps the ring clear of the ⏯ disc below.
+		const int ring_pad = 6;
+		int y = (CANVAS_H - (title_h + 4 + artist_h + ring_pad * 2 + disc * 2 + balance_gap + balance_h)) / 2;
 		const int cx = CANVAS_W / 2;
 		SDL_Color white = {255, 255, 255, 255};
 		SDL_Color grey = {200, 200, 200, 255};
-		draw_text_centered(f, w->title_font, snapshot_title(), cx, y, white, CANVAS_W - 48);
+		const bool open_focus = state.enabled && state.row == ROW_OPEN;
+		const int head_y = y;
+		draw_text_centered(f, w->title_font, snapshot_title(), cx, y, white, CANVAS_W - 64);
 		y += title_h + 4;
-		draw_text_centered(f, w->artist_font, widget_artist(), cx, y, grey, CANVAS_W - 48);
-		y += artist_h + 8 + disc - 10;
+		if (open_focus) { // the pill, then the ring last (DESIGN.md 1: draw order)
+			const char* label = state.snapshot.source == MUSIC_SOURCE_YOUTUBE ? "A เปิดใน YouTube" : "A เปิด Music";
+			int lw = text_width(w->artist_font, label) + 28;
+			round_rect(f, cx - lw / 2, y, lw, artist_h, artist_h / 2, 0, 255, 255, 255);
+			draw_text_centered(f, w->artist_font, label, cx, y, (SDL_Color){17, 17, 17, 255}, CANVAS_W - 64);
+			round_rect(f, 8, head_y - ring_pad, CANVAS_W - 16, title_h + 4 + artist_h + ring_pad * 2, 16, 3, 255, 255,
+					   255);
+		} else {
+			draw_text_centered(f, w->artist_font, widget_artist(), cx, y, grey, CANVAS_W - 64);
+		}
+		y += artist_h + ring_pad * 2 + disc;
 		bool focus_visible = state.enabled && state.row == ROW_TRANSPORT;
 		draw_button(w, w->prev_icon, cx - 84, y, 36, focus_visible && state.focus == FOCUS_PREV);
 		draw_button(w, state.snapshot.state == MUSIC_STATE_PLAYING ? w->pause_icon : w->play_icon, cx, y, disc,
@@ -563,9 +608,16 @@ static void handle_command(Widget* w, const char* cmd) {
 	} else if (!state.enabled) {
 		return;
 	} else if (!strcmp(cmd, "down")) {
-		state.row = ROW_BALANCE;
+		state.row = state.row == ROW_OPEN ? ROW_TRANSPORT : ROW_BALANCE;
 	} else if (!strcmp(cmd, "up")) {
-		state.row = ROW_TRANSPORT;
+		// the title row only where A can open something: music on, the launcher in front
+		if (state.row == ROW_BALANCE || !music_active() || !proc_running(LAUNCHER_PROCESS))
+			state.row = ROW_TRANSPORT;
+		else
+			state.row = ROW_OPEN;
+	} else if (state.row == ROW_OPEN) {
+		if (!strcmp(cmd, "key_a"))
+			request_pak(state.snapshot.source == MUSIC_SOURCE_YOUTUBE ? YOUTUBE_PAK : MUSIC_PAK);
 	} else if (state.row == ROW_BALANCE) {
 		if (!strcmp(cmd, "left") || !strcmp(cmd, "right")) {
 			int base = state.balance_pending >= 0 ? state.balance_pending : MusicBalance_getValue();
@@ -584,7 +636,7 @@ static void handle_command(Widget* w, const char* cmd) {
 		state.focus = (state.focus + 1) % FOCUS_COUNT;
 	} else if (!strcmp(cmd, "key_a")) {
 		if (!music_active())
-			request_music_player();
+			request_pak(MUSIC_PAK);
 		else
 			action(w, state.focus);
 	}

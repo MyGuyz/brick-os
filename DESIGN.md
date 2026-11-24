@@ -1029,7 +1029,11 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
 - **Speed (2026-11-24, the user's ask: ⏭ and R1 were slow):** YouTube's next clip is found while the one before plays
   (its recommendations, then its stream and picture), so ⏭ and a clip's end switch at once (were ~5 s). In the app
   the same: as the recommendations come in, the clip R1 / autoplay will play is resolved ahead.
-- **Back to YouTube:** the clip reopens in the player where the sound got to, and the background sound stops.
+- **Back to YouTube** (2026-11-24, the user's ask): **▲ on the HOME panel's music tile** puts a white ring round the
+  title and shows the pill "A เปิดใน YouTube" in the channel line's place ("A เปิด Music" for Music's own songs; only
+  while the launcher is in front); **A** opens the app. The clip reopens where the sound is, with **no silence**: the
+  sound plays on while YouTube starts; the player starts silent 4 s ahead under the loading page, waits for the
+  sound to reach its second, then the sound stops and the player's comes up.
 - **When a clip ends** (2026-11-18, the user's ask): YouTube's own recommendation plays next, as in the app's
   autoplay: the first related clip not played yet in this run (no Shorts, no live), added to ประวัติ. The tile
   and the reopen follow the clip on now. A live or downloaded clip just ends.
