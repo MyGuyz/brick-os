@@ -929,6 +929,10 @@ Every screen the app has today, redrawn with §5; nothing dropped. Status bar ti
   radius 18, a duration pill, a red (`youtube`) watched line, title 22/600 and meta 18 `text2`; the focused card
   x1.04 with a 4 px `focus` ring outside a 4 px gap. Hints: A เล่น · B กลับ · X ติดตามช่อง · Y ค้นหา · SELECT ตัวเลือก.
   Favourite channels, watch later, downloads, history and search results use the same page.
+- **What Home shows (2026-11-25, the user's ask: "หน้าแรกให้เหมือน YouTube"):** YouTube's recommendations for the last
+  clips watched (the "Up next" of 4 clips, different channels first, one from each in turn; the next 4 as the list nears
+  its end, 12 at most), without clips already watched. Favourite channels' clips are woven in. Kept 20 min, so
+  reopening asks YouTube nothing. ตั้งค่า › การเรียกดู › ฟีดหน้าแรก has its switch "YouTube แนะนำ" (on), first in the list.
 - **Drawer (`-Drawer`, START or the rail):** 380 wide from the left over the page at 60 % black, rows 72 with icon and
   name (ค้นหา, หน้าแรก, ช่องโปรด, ดูภายหลัง, ประวัติ, ตั้งค่า, เพลย์ลิสต์โปรด, ที่ดาวน์โหลด), the current one focused.
 - **Options (`-Options`, SELECT on a video, and the player's menu):** the §6.10 sheet: header thumb 160×90 + title +
