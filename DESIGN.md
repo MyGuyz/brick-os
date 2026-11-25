@@ -1028,6 +1028,8 @@ Pattern: YouTube on TVs / consoles for the player, Steam Deck / Switch for the k
   at 55 % brightness for the white text; it was a 90 px copy blown up at 31 %; it changes with the clip); ⏯ play/pause,
   **⏭ YouTube's next clip** (as when a clip ends, below), **⏮ back to the start** (past 5 s) **or the clip played
   before** (2026-11-24; they were −10 s / +10 s). Thai titles use `font1-thai.ttf` (they were boxes, Thai songs too).
+- **The clip on screen too (2026-11-25, the user's ask):** HOME over a playing clip shows the same tile for it, and its
+  buttons work on the clip: ⏯, ⏭ as R1, ⏮ the start or the clip before. No title-row ▲ there: YouTube is open.
 - **ตั้งค่า YouTube › เสียง › ออกแล้วเล่นเสียงต่อ** (on by default): when YouTube is closed while a clip plays, the
   sound goes on. Today only the system can close it then (the player has no exit key), so the tile is the way in.
 - **Speed (2026-11-24, the user's ask: ⏭ and R1 were slow):** YouTube's next clip is found while the one before plays

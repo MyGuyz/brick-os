@@ -184,15 +184,22 @@ static void update_artwork(const PlayerSnapshot* snapshot) {
 // "ytc --bg" plays it on its own (libmpv) and keeps /tmp/ytbg/state up to date; this service only shows it as the
 // YOUTUBE source while it has nothing of its own, so the status bar, the HOME panel and Music see it, and passes the
 // buttons on through /tmp/ytbg/cmd. Playing anything here stops it.
+//
+// The clip playing on screen in YouTube keeps the same files in /tmp/ytfg: shown and controlled the same way, also over
+// a paused song of this service.
 #define YTBG_DIR "/tmp/ytbg"
+#define YTFG_DIR "/tmp/ytfg"
 typedef struct {
+	const char* dir; // YTBG_DIR or YTFG_DIR
 	int state; // MUSIC_STATE_*
 	int pos_ms, dur_ms;
 	char title[MUSIC_SERVICE_MAX_TITLE], artist[MUSIC_SERVICE_MAX_ARTIST], thumb[MUSIC_SERVICE_MAX_PATH];
 } YtbgState;
 
-static bool ytbg_read(YtbgState* y) {
-	FILE* f = fopen(YTBG_DIR "/pid", "r");
+static bool yt_read_dir(YtbgState* y, const char* dir) {
+	char path[32];
+	snprintf(path, sizeof(path), "%s/pid", dir);
+	FILE* f = fopen(path, "r");
 	int pid = 0;
 	if (!f)
 		return false;
@@ -201,10 +208,12 @@ static bool ytbg_read(YtbgState* y) {
 	fclose(f);
 	if (pid <= 0 || kill(pid, 0) != 0)
 		return false;
-	f = fopen(YTBG_DIR "/state", "r");
+	snprintf(path, sizeof(path), "%s/state", dir);
+	f = fopen(path, "r");
 	if (!f)
 		return false;
 	memset(y, 0, sizeof(*y));
+	y->dir = dir;
 	y->state = MUSIC_STATE_PLAYING;
 	char line[1024];
 	while (fgets(line, sizeof(line), f)) {
@@ -230,8 +239,15 @@ static bool ytbg_read(YtbgState* y) {
 	return true;
 }
 
-static bool ytbg_send(const char* line) {
-	int fd = open(YTBG_DIR "/cmd", O_WRONLY | O_NONBLOCK); // its reader holds it open; never blocks
+// The background sound first: while YouTube takes it over (7.5c) the two run together
+static bool ytbg_read(YtbgState* y) {
+	return yt_read_dir(y, YTBG_DIR) || yt_read_dir(y, YTFG_DIR);
+}
+
+static bool ytbg_send(const char* dir, const char* line) {
+	char path[32];
+	snprintf(path, sizeof(path), "%s/cmd", dir);
+	int fd = open(path, O_WRONLY | O_NONBLOCK); // its reader holds it open; never blocks
 	if (fd < 0)
 		return false;
 	bool ok = write(fd, line, strlen(line)) == (ssize_t)strlen(line);
@@ -239,9 +255,13 @@ static bool ytbg_send(const char* line) {
 	return ok;
 }
 
-// Shown only while this service has no source of its own
+static IdleClass own_class(void);
+
+// Shown only while this service has no source of its own; the clip on screen also over a paused one
 static bool ytbg_shown(YtbgState* y) {
-	return active_source == MUSIC_SOURCE_NONE && ytbg_read(y);
+	if (!ytbg_read(y))
+		return false;
+	return active_source == MUSIC_SOURCE_NONE || (!strcmp(y->dir, YTFG_DIR) && own_class() != IDLE_PLAYING);
 }
 
 static void ytbg_fill(MusicResponseWire* response, const YtbgState* y) {
@@ -279,7 +299,7 @@ static bool ytbg_command(uint16_t command, const unsigned char* payload, int* st
 		break;
 	default: return false;
 	}
-	*status = ytbg_send(line) ? MUSIC_STATUS_OK : MUSIC_STATUS_UNAVAILABLE;
+	*status = ytbg_send(y.dir, line) ? MUSIC_STATUS_OK : MUSIC_STATUS_UNAVAILABLE;
 	return true;
 }
 
@@ -993,7 +1013,7 @@ static void handle_command(uint16_t command, const unsigned char* payload, size_
 	// Anything this service plays itself replaces YouTube's sound
 	if (command == MUSIC_CMD_LOAD || command == MUSIC_CMD_LOAD_PLAYLIST || command == MUSIC_CMD_RADIO_LOAD ||
 		command == MUSIC_CMD_PODCAST_LOAD)
-		ytbg_send("stop\n");
+		ytbg_send(YTBG_DIR, "stop\n");
 	switch (command) {
 	case MUSIC_CMD_SNAPSHOT:
 		break;
@@ -1197,12 +1217,15 @@ static void handle_command(uint16_t command, const unsigned char* payload, size_
 }
 
 static IdleClass idle_class(void) {
-	if (active_source == MUSIC_SOURCE_NONE) {
-		YtbgState y; // stay up while YouTube's sound plays, for the panel and the status bar
-		if (ytbg_read(&y))
-			return y.state == MUSIC_STATE_PAUSED ? IDLE_PAUSED : IDLE_PLAYING;
+	YtbgState y; // stay up while YouTube's sound plays, for the panel and the status bar
+	if (ytbg_shown(&y))
+		return y.state == MUSIC_STATE_PAUSED ? IDLE_PAUSED : IDLE_PLAYING;
+	return own_class();
+}
+
+static IdleClass own_class(void) {
+	if (active_source == MUSIC_SOURCE_NONE)
 		return IDLE_STOPPED;
-	}
 	if (active_source == MUSIC_SOURCE_RADIO) {
 		if (radio_paused)
 			return IDLE_PAUSED;
