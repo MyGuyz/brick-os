@@ -264,7 +264,8 @@ cores: # TODO: can't assume every platform will have the same stock cores (platf
 	# PlayStation (PSX): SwanStation, the accurate alternative to PS's pcsx_rearmed
 	cp ./workspace/$(PLATFORM)/cores/output/swanstation_libretro.so ./build/SYSTEM/$(PLATFORM)/paks/Emus/PSX.pak
 	cp ./workspace/$(PLATFORM)/cores/output/licenses/swanstation.txt ./build/SYSTEM/$(PLATFORM)/paks/Emus/PSX.pak/LICENSE-swanstation.txt
-	cp ./workspace/$(PLATFORM)/cores/output/ppsspp_libretro.so ./build/SYSTEM/$(PLATFORM)/paks/Emus/PSP.pak
+	# tg5040 plays PSP in standalone PPSSPP (prebuilts/ppsspp.sh): no core there, only its assets
+	[ "$(PLATFORM)" = tg5040 ] || cp ./workspace/$(PLATFORM)/cores/output/ppsspp_libretro.so ./build/SYSTEM/$(PLATFORM)/paks/Emus/PSP.pak
 	cp ./workspace/$(PLATFORM)/cores/output/licenses/ppsspp.txt ./build/SYSTEM/$(PLATFORM)/paks/Emus/PSP.pak/LICENSE-ppsspp.txt
 	# PPSSPP runtime assets (staged next to the core by all/cores/ppsspp/build-libretro.sh), read via NX_PPSSPP_ASSETS
 	rm -rf ./build/SYSTEM/$(PLATFORM)/paks/Emus/PSP.pak/PPSSPP

@@ -92,13 +92,6 @@ if 'NX_PPSSPP_ASSETS' not in t:
     open(n, 'w', encoding='utf-8').write(t)
     print('patched assets', n)
 
-# No VFPU tables: PPSSPP's plain maths instead (part of the +2-3 % measured in God of War, the only game played here).
-n = 'Core/MIPS/MIPSVFPUUtils.cpp'
-t = open(n, encoding='utf-8').read()
-if '"vfpu/" #name' in t:
-    open(n, 'w', encoding='utf-8').write(t.replace('"vfpu/" #name', '"vfpu-not-shipped/" #name', 1))
-    print('patched', n)
-
 p = 'SDL/SDLVulkanGraphicsContext.cpp'
 s = open(p, encoding='utf-8').read()
 if 'Brick:' in s:

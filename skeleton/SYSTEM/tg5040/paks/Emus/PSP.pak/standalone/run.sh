@@ -1,6 +1,7 @@
 #!/bin/sh
-# Standalone PPSSPP (Vulkan, built by workspace/all/prebuilts/ppsspp.sh) for the PSP games listed in games.txt.
-# Called by PSP.pak/launch.sh with the ROM path; every other game plays through minarch.
+# Standalone PPSSPP (Vulkan, built by workspace/all/prebuilts/ppsspp.sh) plays the PSP games.
+# Called by PSP.pak/launch.sh with the ROM path. Settings are PPSSPP's own defaults (ppsspp.ini holds only what the Brick
+# needs) and the player's from then on: MENU > Settings, or "Create game config" for one game.
 D="$(cd "$(dirname "$0")" && pwd)"
 ROM="$1"
 CONF="$SHARED_USERDATA_PATH/PSP-ppsspp-standalone"
@@ -13,8 +14,13 @@ mkdir -p "$P/SYSTEM" "$P/SAVEDATA" "$P/PPSSPP_STATE" "$SDCARD_PATH/Saves/PSP/SAV
 [ -f "$P/SYSTEM/ppsspp.ini" ] || cp "$D/ppsspp.ini" "$P/SYSTEM/ppsspp.ini"
 [ -f "$P/SYSTEM/controls.ini" ] || cp "$D/controls.ini" "$P/SYSTEM/controls.ini" 2>/dev/null
 cp "$D/compat.ini" "$P/SYSTEM/compat.ini"   # ours: God of War at 30 fps (updates with the system)
-# nothing phones home
-sed -i 's/^CheckForNewVersion = True/CheckForNewVersion = False/; s/^DiscordPresence = True/DiscordPresence = False/' "$P/SYSTEM/ppsspp.ini"
+# God of War - Chains of Olympus starts with settings of its own (the player may change or delete them, once only)
+if [ ! -f "$P/SYSTEM/.brick-games" ]; then
+	for id in UCUS98653 UCES00842 UCAS40198 UCKS45084 ULJM05348 ULJM05438; do
+		[ -f "$P/SYSTEM/${id}_ppsspp.ini" ] || cp "$D/god-of-war.ini" "$P/SYSTEM/${id}_ppsspp.ini"
+	done
+	: >"$P/SYSTEM/.brick-games"
+fi
 # Same memory-stick saves as the minarch core: a game saved in one opens in the other
 mount -o bind "$SDCARD_PATH/Saves/PSP/SAVEDATA" "$P/SAVEDATA"
 

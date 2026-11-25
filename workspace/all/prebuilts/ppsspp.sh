@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Build standalone PPSSPP (SDL, Vulkan through VK_KHR_display) that ships in
-# SYSTEM/tg5040/paks/Emus/PSP.pak/standalone for the PSP games too heavy for
-# the libretro core (games.txt there). PPSSPP v1.20.4 at a pinned commit +
+# SYSTEM/tg5040/paks/Emus/PSP.pak/standalone and plays every PSP game there
+# (tg5050 keeps the libretro core). PPSSPP v1.20.4 at a pinned commit +
 # ppsspp/brick_patch.py, with the profile of God of War's opening fight
 # (ppsspp/gow-profile.tar.xz, gcc 8 .gcda files). tg5040 only.
 #

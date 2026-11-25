@@ -425,10 +425,11 @@ The network category is labelled "WiFi" in Thai too (user, 2026-11-11), not "เ
 
 **Built so far (2026-11-12):** every category above except ภาพปก (not built yet). อัปเดต (§6.7a), แอปที่ปักหมุด (§6.7b) and ตั้งค่าแยกเครื่อง (§6.7c) were built 2026-11-12 and checked on the device.
 - The Emulator Settings app is gone from the app list (`bos_apps.c` MERGED); its pak stays, since a game's ตัวเลือกเกม still opens options.elf per game.
-- **PSP games the core is too slow for (2026-11-25):** God of War - Chains of Olympus plays in standalone PPSSPP
-  (Vulkan, `PSP.pak/standalone`, games by disc ID in its `games.txt`), not in minarch: 30 fps mode, PSP clock 180 MHz,
-  about 20–30 frames a second at full speed in fights. In-game saves are shared with the core; save states are
-  PPSSPP's own. Its pause menu (MENU) is PPSSPP's, not §6's: an accepted exception, only for these games.
+- **PSP plays in standalone PPSSPP (2026-11-25, the user's decision, all games):** Vulkan, `PSP.pak/standalone`. It
+  starts with PPSSPP's default settings and the player changes them there (MENU › Settings; "Create game config" for
+  one game). God of War - Chains of Olympus comes with tuned settings as its game config (30 fps mode, PSP clock 180
+  MHz). In-game saves are the same files as before; save states are PPSSPP's own. MENU is PPSSPP's menu, not §6's: the
+  user's accepted exception for emulators that are apps of their own (PSP, NDS). No core options for PSP any more.
 - Thai for core options so far: GBA (gpSP), PS, N64, PSP, DC — the consoles the user has games for. The other cores
   show English until their batch is written. FC/FDS (fceumm) and FBNeo have no options until one game has run.
 - ภาพเคลื่อนไหว maps onto v1's two flags: เต็ม = animations + transitions, น้อย = animations only, ปิด = neither.
