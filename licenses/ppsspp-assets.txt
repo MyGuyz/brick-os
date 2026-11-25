@@ -6,6 +6,8 @@ Shipped as: .system/<platform>/paks/Emus/PSP.pak/PPSSPP/ for tg5040 and tg5050 (
   - flash0/font/{jpn0,kr0,ltn0..ltn15}.pgf
   - font_atlas.zim/.meta, asciifont_atlas.zim/.meta, ppge_atlas.zim/.meta, lang/*.ini, shaders/*, vfpu/*.dat,
     compat.ini, compatvr.ini, knownfuncs.ini, langregion.ini, cheats.json, infra-dns.json, adhoc-servers.json, redump.csv
+Also shipped for tg5040: standalone PPSSPP v1.20.4 (PSP.pak/standalone/PPSSPPSDL, built from source with
+  workspace/all/prebuilts/ppsspp/brick_patch.py, GPL-2.0-or-later) with its ui_images, themes, sounds and gamecontrollerdb.txt
 License: OFL-1.1 (Roboto Condensed, Inconsolata); GPL-2.0-or-later as part of PPSSPP (everything else, see notes; the PPSSPP license text ships next to the core as PSP.pak/LICENSE-ppsspp.txt)
 
 Notes

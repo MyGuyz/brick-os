@@ -312,7 +312,7 @@ common: build system cores prebuilts
 # inside the toolchain image (shared ones with tg5040's). CI builds each in its
 # own cached job and drops the results in workspace/all/prebuilts/output/; locally,
 # `make build-prebuilts PLATFORM=...` builds what that platform needs.
-PREBUILTS_tg5040 = ffplay rsync sdl2-drastic ytc
+PREBUILTS_tg5040 = ffplay rsync sdl2-drastic ytc ppsspp
 PREBUILTS_tg5050 = sdl2-drastic tun-ko
 
 build-prebuilts:
@@ -327,7 +327,7 @@ endif
 	docker run --rm -v $(CURDIR)/workspace:/root/workspace ghcr.io/loveretro/$(PLATFORM)-toolchain:latest \
 		/bin/bash -c '. ~/.bashrc && cd /root/workspace && PLATFORM=$(PLATFORM) bash all/prebuilts/$(PREBUILT).sh'
 
-PREBUILT_FILES_tg5040 = SYSTEM/shared/bin/ffplay SYSTEM/shared/bin/rsync SYSTEM/tg5040/paks/Tools/YouTube.pak/ytc/ytc.aarch64
+PREBUILT_FILES_tg5040 = SYSTEM/shared/bin/ffplay SYSTEM/shared/bin/rsync SYSTEM/tg5040/paks/Tools/YouTube.pak/ytc/ytc.aarch64 SYSTEM/tg5040/paks/Emus/PSP.pak/standalone/PPSSPPSDL
 PREBUILT_FILES_tg5050 = SYSTEM/tg5050/lib/modules/tun.ko
 PREBUILT_FILES = $(PREBUILT_FILES_$(PLATFORM)) \
 	SYSTEM/$(PLATFORM)/paks/Emus/NDS.pak/libs/libSDL2-2.0.so.0

@@ -1,0 +1,7 @@
+# PSP games that play in standalone PPSSPP (Vulkan), by disc ID: God of War - Chains of Olympus
+UCUS-98653
+UCES-00842
+UCAS-40198
+UCKS-45084
+ULJM-05348
+ULJM-05438
