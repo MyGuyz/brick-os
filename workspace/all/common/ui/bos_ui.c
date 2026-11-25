@@ -13,6 +13,8 @@
 #include "defines.h"
 #include "text_thai.h"
 #include "ui_draw.h"
+#include "text_shape.h"
+#include "text_world.c"
 
 #define BOS_RES RES_PATH "/bos"
 
@@ -103,21 +105,25 @@ uint32_t BOS_iconColor(uint32_t own) {
 
 // ---- fonts ----
 typedef struct {
-	int px, weight;
-	bool thai;
-	TTF_Font* f;
+	int px, weight, face; // FACE_*
+	TTF_Font* f;          // NULL: its file is missing
 } FontSlot;
-static FontSlot fonts[40];
+enum { FACE_INTER, FACE_THAI, FACE_CJK, FACE_WORLD };
+static FontSlot fonts[120];
 static int nfonts;
 
-static TTF_Font* fontFor(int px, int weight, bool thai) {
+static TTF_Font* fontFor(int px, int weight, int face) {
+	if (face >= FACE_CJK)
+		weight = 400; // one weight each
 	for (int i = 0; i < nfonts; i++)
-		if (fonts[i].px == px && fonts[i].weight == weight && fonts[i].thai == thai)
+		if (fonts[i].px == px && fonts[i].weight == weight && fonts[i].face == face)
 			return fonts[i].f;
 	if (nfonts == (int)(sizeof(fonts) / sizeof(fonts[0])))
 		return NULL;
 	TTF_Font* f;
-	if (thai) {
+	if (face >= FACE_CJK) {
+		f = TTF_OpenFont(face == FACE_CJK ? RES_PATH "/font1.ttf" : RES_PATH "/font1-world.ttf", px);
+	} else if (face == FACE_THAI) {
 		// a real SemiBold for 600/700 (scripts/font/gen_thai_font.py on IBM Plex Sans Thai SemiBold): SDL_ttf's
 		// synthetic bold blurs Thai and grows the strokes past the glyph box, cutting their tops and bottoms
 		f = NULL;
@@ -133,23 +139,36 @@ static TTF_Font* fontFor(int px, int weight, bool thai) {
 		snprintf(path, sizeof(path), "%s/%s.ttf", BOS_RES, name);
 		f = TTF_OpenFont(path, px);
 	}
-	if (!f)
+	if (!f && face < FACE_CJK)
 		return NULL;
-	fonts[nfonts++] = (FontSlot){px, weight, thai, f};
+	fonts[nfonts++] = (FontSlot){px, weight, face, f};
 	return f;
 }
 
-// The font and the string to hand it: Thai strings are reshaped into the font's glyph positions first.
-static TTF_Font* prepare(const char* s, int px, int weight, char* glyphs, int size, const char** draw) {
-	*draw = s;
+// The string to draw and the faces it is drawn with: Thai strings are reshaped into the font's glyph positions, Arabic
+// ones into visual order; what the face lacks comes from the others (text_world.h).
+typedef struct {
+	int px, weight;
+	bool thai;
+	const char* draw;
+	char glyphs[1024];
+} Prepared;
+static bool prepare(const char* s, int px, int weight, Prepared* p) {
+	p->px = px, p->weight = weight, p->draw = s, p->thai = false;
 	if (TextThai_has(s)) {
-		TTF_Font* f = fontFor(px, weight, true);
-		if (!f || TextThai_toGlyphs(s, glyphs, size) <= 0)
-			return NULL;
-		*draw = glyphs;
-		return f;
+		p->thai = true;
+		p->draw = p->glyphs;
+		return TextThai_toGlyphs(s, p->glyphs, sizeof(p->glyphs)) > 0;
 	}
-	return fontFor(px, weight, false);
+	if (TextShape_hasArabic(s) && TextShape_toVisual(s, p->glyphs, sizeof(p->glyphs)) > 0)
+		p->draw = p->glyphs;
+	return true;
+}
+static TTF_Font* chainFont(int i, void* ctx) {
+	const Prepared* p = ctx;
+	return fontFor(p->px, p->weight, i == 0 ? p->thai ? FACE_THAI : FACE_INTER : i == 1 ? FACE_INTER
+																	: i == 2	? FACE_CJK
+																				: FACE_WORLD);
 }
 
 // ---- text caches ----
@@ -204,12 +223,8 @@ int BOS_textW(const char* s, int px, int weight) {
 				slot = e;
 		}
 	}
-	char g[1024];
-	const char* d;
-	TTF_Font* f = prepare(s, px, weight, g, sizeof(g), &d);
-	int w = 0;
-	if (f)
-		TTF_SizeUTF8(f, d, &w, NULL);
+	Prepared p;
+	int w = prepare(s, px, weight, &p) ? TextWorld_width(p.draw, chainFont, &p) : 0;
 	if (slot) {
 		slot->hash = hash, slot->px = (short)px, slot->weight = (short)weight, slot->w = w, slot->lru = ++cache_lru;
 		memcpy(slot->text, s, len + 1);
@@ -218,14 +233,14 @@ int BOS_textW(const char* s, int px, int weight) {
 }
 
 int BOS_lineH(int px) {
-	TTF_Font* f = fontFor(px, 400, false);
+	TTF_Font* f = fontFor(px, 400, FACE_INTER);
 	return f ? TTF_FontHeight(f) : px;
 }
 
 int BOS_text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, float alpha, int x, int y) {
 	if (!s || !s[0])
 		return 0;
-	TTF_Font* latin = fontFor(px, weight, false);
+	TTF_Font* latin = fontFor(px, weight, FACE_INTER);
 	int baseline = y + (latin ? TTF_FontAscent(latin) : px); // Inter's line box sets the baseline for both scripts
 	rgb &= 0xFFFFFF;
 	Uint8 mod = alpha < 1.0f ? (Uint8)(alpha * 255 + 0.5f) : 255;
@@ -246,22 +261,21 @@ int BOS_text(SDL_Surface* dst, const char* s, int px, int weight, uint32_t rgb, 
 				slot = e;
 		}
 	}
-	char g[1024];
-	const char* d;
-	TTF_Font* f = prepare(s, px, weight, g, sizeof(g), &d);
-	if (!f)
+	Prepared p;
+	if (!prepare(s, px, weight, &p))
 		return 0;
 	SDL_Color c = {(rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, 255};
-	SDL_Surface* t = TTF_RenderUTF8_Blended(f, d, c);
+	int ascent;
+	SDL_Surface* t = TextWorld_render(p.draw, c, &ascent, chainFont, &p);
 	if (!t)
 		return 0;
-	BOS_blit(t, dst, x, baseline - TTF_FontAscent(f), mod / 255.0f);
+	BOS_blit(t, dst, x, baseline - ascent, mod / 255.0f);
 	int w = t->w;
 	if (slot) {
 		if (slot->surf)
 			SDL_FreeSurface(slot->surf);
 		slot->hash = hash, slot->px = (short)px, slot->weight = (short)weight, slot->rgb = rgb;
-		slot->surf = t, slot->ascent = TTF_FontAscent(f), slot->lru = ++cache_lru;
+		slot->surf = t, slot->ascent = ascent, slot->lru = ++cache_lru;
 		memcpy(slot->text, s, len + 1);
 	} else
 		SDL_FreeSurface(t);

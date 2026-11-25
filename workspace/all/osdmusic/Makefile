@@ -25,11 +25,11 @@ PRODUCT = build/$(PLATFORM)/$(TARGET).elf
 CC = $(CROSS_COMPILE)gcc
 MY_CFLAGS = -Os -Wall -std=gnu99 $(CFLAGS) -DPLATFORM=\"$(PLATFORM)\" \
 	-DPLATFORM_$(shell echo $(PLATFORM) | tr a-z A-Z) \
-	-I../musicplayer -I../../$(PLATFORM)/libmsettings -DUSE_SDL2
+	-I../musicplayer -I../common -I../../$(PLATFORM)/platform -I../../$(PLATFORM)/libmsettings -DUSE_SDL2
 MY_LDFLAGS = $(LDFLAGS) -L../../$(PLATFORM)/libmsettings \
 	$(shell pkg-config --libs sdl2 2>/dev/null || echo "-lSDL2") \
 	-lSDL2_image -lSDL2_ttf -lmsettings -ldl -lrt -Wl,--gc-sections -s
-SOURCE = $(TARGET).c ../musicplayer/music_client.c ../musicplayer/music_service_client.c ../musicplayer/music_balance.c
+SOURCE = $(TARGET).c ../musicplayer/music_client.c ../musicplayer/music_service_client.c ../musicplayer/music_balance.c ../common/text_shape.c
 
 all:
 	mkdir -p build/$(PLATFORM)

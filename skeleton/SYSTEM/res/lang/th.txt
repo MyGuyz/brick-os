@@ -1314,3 +1314,7 @@ Changed %s	%s
 Copy	คัดลอก
 New folder	โฟลเดอร์ใหม่
 Exit Files?	ออกจากไฟล์ไหม?
+No music playing	ยังไม่ได้เล่นเพลง
+Press A to open Music Player	กด A เพื่อเปิดแอปเพลง
+A opens YouTube	A เปิดใน YouTube
+A opens Music	A เปิดแอปเพลง

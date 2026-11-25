@@ -13,6 +13,7 @@ export YTC_MAXHEIGHT=480
 export YTC_QUALITY_CEIL=720    # the A133P decodes in software: 1080p drops frames
 export YTC_VIEW=4              # TV view: icon rail + rows of tiles
 export HOME="$DATA"
+export YTC_FONTS=/mnt/SDCARD/.system/res/font1.ttf:/mnt/SDCARD/.system/res/font1-world.ttf   # every other language
 export SDL_NOMOUSE=1
 export LD_LIBRARY_PATH="$PWD/libs.aarch64:$LD_LIBRARY_PATH"
 [ -f /mnt/SDCARD/.system/shared/bin/nx_ca_bundle.sh ] && . /mnt/SDCARD/.system/shared/bin/nx_ca_bundle.sh

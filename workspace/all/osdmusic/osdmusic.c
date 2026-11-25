@@ -14,6 +14,10 @@
 #include "../musicplayer/music_client.h"
 #include "osdmusic_config.h"
 #include "../common/proc_util.h"
+#include "../common/i18n.h"
+#include "../common/text_shape.h"
+#include "../common/text_thai.h"
+#include "../common/text_world.c"
 #include "../common/settings_kv.h"
 #if defined(PLATFORM_TG5050)
 #include "../../tg5050/libmsettings/msettings.h"
@@ -57,6 +61,7 @@ static int GRID_H = 2;
 // font1 with Thai (Thai song and YouTube titles were boxes); font1 if it is missing
 #define FONT_PATH "/mnt/SDCARD/.system/res/font1-thai.ttf"
 #define FONT_LATIN "/mnt/SDCARD/.system/res/font1.ttf"
+#define FONT_WORLD "/mnt/SDCARD/.system/res/font1-world.ttf"
 #define FONT_FALLBACK "/usr/trimui/osd/regular.ttf"
 #define TILE_DIR "/usr/trimui/osd"
 #define BACKDROP_DIM 55 // % of the cover art's brightness kept behind the white text
@@ -354,25 +359,68 @@ static void round_rect(SDL_Surface* dst, int x, int y, int w, int h, int r, int 
 	}
 }
 
+// The fonts a text may need beside its own (text_world.h), at its size, opened the first time they are
+static struct {
+	TTF_Font* own;
+	TTF_Font* more[2];
+	bool tried[2];
+	int px;
+} chains[3];
+static TTF_Font* chain_font(int i, void* ctx) {
+	TTF_Font* own = ctx;
+	if (i == 0)
+		return own;
+	if (i == 1)
+		return NULL;
+	for (size_t k = 0; k < sizeof(chains) / sizeof(chains[0]); k++) {
+		if (chains[k].own != own)
+			continue;
+		if (!chains[k].tried[i - 2]) {
+			chains[k].tried[i - 2] = true;
+			chains[k].more[i - 2] = TTF_OpenFont(i == 2 ? FONT_LATIN : FONT_WORLD, chains[k].px);
+		}
+		return chains[k].more[i - 2];
+	}
+	return NULL;
+}
+
+// s as it is drawn: Thai marks placed, Arabic in visual order
+static const char* display_text(const char* s, char* out, int size) {
+	if (TextThai_has(s))
+		return TextThai_toGlyphs(s, out, size) > 0 ? out : s;
+	if (TextShape_hasArabic(s) && TextShape_toVisual(s, out, size) > 0)
+		return out;
+	return s;
+}
+
 static int text_width(TTF_Font* font, const char* text) {
-	int w = 0;
-	if (font && text)
-		TTF_SizeUTF8(font, text, &w, NULL);
-	return w;
+	char d[512];
+	return font && text && text[0] ? TextWorld_width(display_text(text, d, sizeof(d)), chain_font, font) : 0;
 }
 
 static void draw_text_centered(SDL_Surface* dst, TTF_Font* font, const char* text, int cx, int y, SDL_Color color,
 							   int max_w) {
 	if (!font || !text || !*text)
 		return;
-	char clipped[128];
-	snprintf(clipped, sizeof(clipped), "%s", text);
-	while (text_width(font, clipped) > max_w && strlen(clipped) > 4)
-		strcpy(clipped + strlen(clipped) - 4, "...");
-	SDL_Surface* s = TTF_RenderUTF8_Blended(font, clipped, color);
+	char clipped[256], d[512];
+	size_t n = strlen(text);
+	if (n > sizeof(clipped) - 5) {
+		n = sizeof(clipped) - 5;
+		while (n > 0 && ((unsigned char)text[n] & 0xC0) == 0x80)
+			n--;
+	}
+	snprintf(clipped, sizeof(clipped), "%.*s%s", (int)n, text, n < strlen(text) ? "..." : "");
+	while (n > 0 && text_width(font, clipped) > max_w) { // whole characters off the end
+		n--;
+		while (n > 0 && ((unsigned char)text[n] & 0xC0) == 0x80)
+			n--;
+		snprintf(clipped, sizeof(clipped), "%.*s...", (int)n, text);
+	}
+	int ascent;
+	SDL_Surface* s = TextWorld_render(display_text(clipped, d, sizeof(d)), color, &ascent, chain_font, font);
 	if (!s)
 		return;
-	blit_at(dst, s, cx - s->w / 2, y);
+	blit_at(dst, s, cx - s->w / 2, y + TTF_FontAscent(font) - ascent);
 	SDL_FreeSurface(s);
 }
 
@@ -481,9 +529,9 @@ static void render_placeholder(Widget* w) {
 	int y = (CANVAS_H - (title_h + 6 + hint_h + balance_gap + balance_h)) / 2;
 	SDL_Color white = {255, 255, 255, 255};
 	SDL_Color grey = {170, 170, 170, 255};
-	draw_text_centered(f, w->title_font, "No music playing", CANVAS_W / 2, y, white, CANVAS_W - 48);
+	draw_text_centered(f, w->title_font, I18N_text("No music playing"), CANVAS_W / 2, y, white, CANVAS_W - 48);
 	y += title_h + 6;
-	draw_text_centered(f, w->artist_font, "Press A to open Music Player", CANVAS_W / 2, y,
+	draw_text_centered(f, w->artist_font, I18N_text("Press A to open Music Player"), CANVAS_W / 2, y,
 					   state.enabled ? accent : grey, CANVAS_W - 48);
 	draw_balance_row(w, y + hint_h + balance_gap + balance_h / 2);
 }
@@ -509,12 +557,12 @@ static void draw_balance_row(Widget* w, int y) {
 	fill_circle(f, knob_x, y, focused ? 8 : 5, focused ? accent.r : 255, focused ? accent.g : 255,
 				focused ? accent.b : 255);
 	int ly = y + 10;
-	int gw = text_width(w->label_font, "Game");
-	int mw = text_width(w->label_font, "Music");
-	draw_text_centered(f, w->label_font, "Game", bar_x + gw / 2, ly, focused ? white : grey, 80);
+	int gw = text_width(w->label_font, I18N_text("Game"));
+	int mw = text_width(w->label_font, I18N_text("Music"));
+	draw_text_centered(f, w->label_font, I18N_text("Game"), bar_x + gw / 2, ly, focused ? white : grey, 80);
 	draw_text_centered(f, w->label_font, MusicBalance_formatValue(balance), CANVAS_W / 2, ly,
 					   focused ? accent : grey, 120);
-	draw_text_centered(f, w->label_font, "Music", bar_x + bar_w - mw / 2, ly, focused ? white : grey, 80);
+	draw_text_centered(f, w->label_font, I18N_text("Music"), bar_x + bar_w - mw / 2, ly, focused ? white : grey, 80);
 }
 
 static void render(Widget* w) {
@@ -539,7 +587,7 @@ static void render(Widget* w) {
 		draw_text_centered(f, w->title_font, snapshot_title(), cx, y, white, CANVAS_W - 64);
 		y += title_h + 4;
 		if (open_focus) { // the pill, then the ring last (DESIGN.md 1: draw order)
-			const char* label = state.snapshot.source == MUSIC_SOURCE_YOUTUBE ? "A เปิดใน YouTube" : "A เปิด Music";
+			const char* label = state.snapshot.source == MUSIC_SOURCE_YOUTUBE ? I18N_text("A opens YouTube") : I18N_text("A opens Music");
 			int lw = text_width(w->artist_font, label) + 28;
 			round_rect(f, cx - lw / 2, y, lw, artist_h, artist_h / 2, 0, 255, 255, 255);
 			draw_text_centered(f, w->artist_font, label, cx, y, (SDL_Color){17, 17, 17, 255}, CANVAS_W - 64);
@@ -853,6 +901,9 @@ int main(int argc, char** argv) {
 		w.label_font = TTF_OpenFont(FONT_LATIN, 15);
 	if (!w.label_font)
 		w.label_font = TTF_OpenFont(FONT_FALLBACK, 15);
+	chains[0].own = w.title_font, chains[0].px = 26;
+	chains[1].own = w.artist_font, chains[1].px = 19;
+	chains[2].own = w.label_font, chains[2].px = 15;
 	w.prev_icon = load_png("btn-prev-n.png", 44);
 	w.play_icon = load_png("btn-play-n.png", 52);
 	w.pause_icon = load_png("btn-pause-n.png", 52);

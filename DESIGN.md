@@ -32,6 +32,10 @@
 - Icons: stroke line icons, stroke 2 on a 24 grid, one set (the SVG paths in `mockup_v2.py` `ICONS`).
 - Animation: one tween, ease-out 180 ms, on pictures made once (never scaled by the CPU per frame); the carousels move on a spring (§5.3). Target ≥ 58 fps (NX_BENCH).
 - Every token lives in one file, `res/bos/tokens.h` (C and C++). No hex colour or font size outside it.
+- **Every language (2026-11-25, the user's rule: no boxes):** a glyph the face lacks comes from `font1.ttf` (Chinese,
+  Japanese), then `font1-world.ttf` (Hangul, other scripts, symbols, one-colour emoji): the kit (`text_world.c`), the
+  HOME panel and YouTube. Not shaped: Indic, Khmer and Burmese marks; Hebrew (and Arabic in YouTube) is not reordered.
+  The HOME panel's words go through the language table (`th.txt`).
 - **Draw order (whole OS, YouTube too), back to front:**
   1. page background;
   2. the picture or card (its own rounded corners are part of it, made once when it is loaded);
