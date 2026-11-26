@@ -54,11 +54,11 @@ const char* updater_find_zip_asset_url(const char* json, const char* asset_suffi
 									   char* digest_out, size_t digest_size);
 
 /**
- * Copy the first paragraph of a JSON-escaped release body (literal "\n"
- * sequences) into out: single line breaks become spaces, "\n\n" or
- * "\n\r\n" ends the paragraph, '#' heading markers are dropped and
- * trailing whitespace is trimmed.
+ * One line of the plain release notes (no '\n') as the update screen shows it (DESIGN 6.7e). Returns its kind:
+ * a heading is "#..." or a line that is all **bold**; a bullet starts with "- ", "* " or a bullet dot. out gets the
+ * line without those markers, "**" or '`', trimmed, cut at out_size on a UTF-8 character boundary.
  */
-void updater_extract_first_paragraph(const char* body, char* out, size_t out_size);
+enum { NOTE_TEXT = 0, NOTE_HEADING = 1, NOTE_BULLET = 2, NOTE_BLANK = 3 };
+int updater_note_line(const char* line, size_t len, char* out, size_t out_size);
 
 #endif // UPDATER_URL_H

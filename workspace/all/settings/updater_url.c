@@ -148,41 +148,64 @@ const char* updater_find_zip_asset_url(const char* json, const char* asset_suffi
 	return NULL;
 }
 
-void updater_extract_first_paragraph(const char* body, char* out, size_t out_size) {
-	if (!body || !out || out_size == 0)
-		return;
-
+int updater_note_line(const char* line, size_t len, char* out, size_t out_size) {
+	if (!out || out_size == 0)
+		return NOTE_BLANK;
 	out[0] = '\0';
-	size_t j = 0;
+	if (!line)
+		return NOTE_BLANK;
+	size_t i = 0;
+	while (i < len && (line[i] == ' ' || line[i] == '\t'))
+		i++;
+	while (len > i && (line[len - 1] == ' ' || line[len - 1] == '\t' || line[len - 1] == '\r'))
+		len--;
+	if (i >= len)
+		return NOTE_BLANK;
 
-	for (size_t i = 0; body[i] && j < out_size - 1; i++) {
-		if (body[i] == '\\' && body[i + 1] == 'r') {
+	int kind = NOTE_TEXT;
+	if (line[i] == '#') {
+		while (i < len && line[i] == '#')
 			i++;
-			continue;
-		}
-		if (body[i] == '\\' && body[i + 1] == 'n') {
-			// Check for paragraph break: \n followed by optional \r then \n
-			size_t k = i + 2;
-			if (body[k] == '\\' && body[k + 1] == 'r')
-				k += 2;
-			if (body[k] == '\\' && body[k + 1] == 'n')
-				break;
-			out[j++] = ' ';
-			i++;
-			continue;
-		}
-		if (body[i] == '#') {
-			while (body[i] == '#')
-				i++;
-			if (body[i] == ' ')
-				i++;
-			i--;
-			continue;
-		}
-		out[j++] = body[i];
+		kind = NOTE_HEADING;
+	} else if (len - i >= 2 && (line[i] == '-' || line[i] == '*') && line[i + 1] == ' ') {
+		i += 2;
+		kind = NOTE_BULLET;
+	} else if (len - i >= 4 && !memcmp(line + i, "\xE2\x80\xA2 ", 4)) {
+		i += 4;
+		kind = NOTE_BULLET;
+	} else if (len - i > 4 && !memcmp(line + i, "**", 2) && !memcmp(line + len - 2, "**", 2)) {
+		const char* in = line + i + 2;
+		size_t n = len - i - 4, k = 0;
+		while (k + 1 < n && memcmp(in + k, "**", 2))
+			k++;
+		if (k + 1 >= n) // no ** inside: the whole line is bold
+			kind = NOTE_HEADING;
 	}
+	while (i < len && line[i] == ' ')
+		i++;
 
+	size_t j = 0;
+	while (i < len) {
+		if (line[i] == '`') {
+			i++;
+			continue;
+		}
+		if (line[i] == '*' && i + 1 < len && line[i + 1] == '*') {
+			i += 2;
+			continue;
+		}
+		unsigned char ch = (unsigned char)line[i];
+		size_t n = ch < 0x80 ? 1 : ch >= 0xF0 ? 4 : ch >= 0xE0 ? 3 : ch >= 0xC0 ? 2 : 1;
+		if (i + n > len)
+			n = len - i;
+		if (j + n >= out_size)
+			break;
+		memcpy(out + j, line + i, n);
+		j += n;
+		i += n;
+	}
+	while (j > 0 && out[j - 1] == ' ')
+		j--;
 	out[j] = '\0';
-	while (j > 0 && (out[j - 1] == ' ' || out[j - 1] == '\n' || out[j - 1] == '\r'))
-		out[--j] = '\0';
+	return j ? kind : NOTE_BLANK;
 }

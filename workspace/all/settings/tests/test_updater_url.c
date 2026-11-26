@@ -163,27 +163,26 @@ int main(void) {
 	assert(updater_find_zip_asset_url(NULL, "brick.zip", out, sizeof(out), NULL, 0) == NULL);
 	assert(updater_find_zip_asset_url(rel, "brick.zip", out, 0, NULL, 0) == NULL);
 
-	// --- updater_extract_first_paragraph ---
+	// --- updater_note_line ---
 
-	char notes[64];
-	updater_extract_first_paragraph("## What's new\\nFaster menus\\n\\nSecond paragraph", notes, sizeof(notes));
-	assert(strcmp(notes, "What's new Faster menus") == 0);
-
-	// CRLF breaks: a lone \r\n joins lines, \r\n\r\n ends the paragraph.
-	updater_extract_first_paragraph("Line one\\r\\nline two\\r\\n\\r\\nmore", notes, sizeof(notes));
-	assert(strcmp(notes, "Line one line two") == 0);
-
-	// Trailing whitespace is trimmed; '#' runs are dropped mid-text too.
-	updater_extract_first_paragraph("Fixes ### for #1   \\n", notes, sizeof(notes));
-	assert(strcmp(notes, "Fixes for 1") == 0);
-
-	// Output is cut to out_size.
-	updater_extract_first_paragraph("abcdefghij", notes, 5);
-	assert(strcmp(notes, "abcd") == 0);
-
-	updater_extract_first_paragraph("", notes, sizeof(notes));
-	assert(strcmp(notes, "") == 0);
-	updater_extract_first_paragraph(NULL, notes, sizeof(notes));
+	char nl[64];
+#define NL(s) updater_note_line(s, strlen(s), nl, sizeof(nl))
+	assert(NL("## What's new") == NOTE_HEADING && strcmp(nl, "What's new") == 0);
+	assert(NL("**PSP**") == NOTE_HEADING && strcmp(nl, "PSP") == 0);
+	assert(NL("**a** and **b**") == NOTE_TEXT && strcmp(nl, "a and b") == 0);
+	assert(NL("- ปุ่ม `A` = ตกลง  \r") == NOTE_BULLET && strcmp(nl, "ปุ่ม A = ตกลง") == 0);
+	assert(NL("  * nested") == NOTE_BULLET && strcmp(nl, "nested") == 0);
+	assert(NL("\xE2\x80\xA2 dot") == NOTE_BULLET && strcmp(nl, "dot") == 0);
+	assert(NL("-5 degrees") == NOTE_TEXT && strcmp(nl, "-5 degrees") == 0);
+	assert(NL("Brick OS 0.9.3: \"x\"") == NOTE_TEXT && strcmp(nl, "Brick OS 0.9.3: \"x\"") == 0);
+	assert(NL("   \r") == NOTE_BLANK && nl[0] == 0);
+	assert(NL("") == NOTE_BLANK);
+	assert(NL("**") == NOTE_BLANK);
+	// Cut on a character boundary: "ไทย" is 9 bytes; 8 bytes of room keep two characters.
+	assert(updater_note_line("ไทย", 9, nl, 8) == NOTE_TEXT && strcmp(nl, "ไท") == 0);
+	// len, not the terminator, ends the line
+	assert(updater_note_line("one\ntwo", 3, nl, sizeof(nl)) == NOTE_TEXT && strcmp(nl, "one") == 0);
+	assert(updater_note_line(NULL, 0, nl, sizeof(nl)) == NOTE_BLANK);
 
 	printf("test_updater_url: all tests passed\n");
 	return 0;

@@ -28,6 +28,7 @@
 #include "ui_menubar.h"
 #include "wget_fetch.h"
 #include "updater_url.h"
+#include "cjson/cJSON.h"
 #include "i18n.h"
 #include "bos_ui.h"
 #include <ctype.h>
@@ -83,7 +84,7 @@ static const char* get_asset_suffix(void) {
 typedef struct {
 	char tag_name[128];
 	char download_url[512];
-	char release_notes[2048];
+	char release_notes[8192]; // the release body as plain text ("" if not fetched)
 	char expected_sha256[80]; // hex SHA-256 from the asset "digest" ("" if none)
 } ReleaseInfo;
 
@@ -469,10 +470,21 @@ static int fetch_release_details(SDL_Surface* screen, ReleaseInfo* release) {
 			updater_find_zip_asset_url(data, get_asset_suffix(), api.download_url,
 									   sizeof(api.download_url),
 									   api.expected_sha256, sizeof(api.expected_sha256))) {
-			char body[4096] = "";
-			json_extract_string(data, "body", body, sizeof(body));
-			updater_extract_first_paragraph(body, api.release_notes,
-											sizeof(api.release_notes));
+			// The whole body, unescaped by cJSON (json_extract_string stops at an escaped quote)
+			cJSON* root = cJSON_Parse(data);
+			const char* body = root ? cJSON_GetStringValue(cJSON_GetObjectItem(root, "body")) : NULL;
+			if (body) {
+				snprintf(api.release_notes, sizeof(api.release_notes), "%s", body);
+				size_t n = strlen(api.release_notes);
+				if (n == sizeof(api.release_notes) - 1) { // cut: drop a character split in two
+					while (n > 0 && ((unsigned char)api.release_notes[n - 1] & 0xC0) == 0x80)
+						n--;
+					if (n > 0 && (unsigned char)api.release_notes[n - 1] >= 0xC0)
+						n--;
+					api.release_notes[n] = '\0';
+				}
+			}
+			cJSON_Delete(root);
 			*release = api;
 			free(data);
 			return 1;
@@ -493,9 +505,57 @@ static int fetch_release_details(SDL_Surface* screen, ReleaseInfo* release) {
 	return 1;
 }
 
-// Show update info (version + release notes) with A to confirm, B to cancel.
+// The release notes as the update page shows them (DESIGN 6.7e): one block per line of the body
+#define NOTE_MAX 80
+typedef struct {
+	int kind; // NOTE_* (updater_url.h)
+	int h;	  // height on the page, its gap below included
+	char text[400];
+} NoteBlock;
+static NoteBlock note_blocks[NOTE_MAX];
+
+static int note_lh(void) { return BOS_lineH(BOS_FS_SMALL); }
+static int note_indent(void) { return BOS_px(32); }
+
+// Lay the notes out for width w; returns the block count, *total the height of all of them
+static int notes_layout(const char* notes, int w, int* total) {
+	int n = 0;
+	*total = 0;
+	for (const char* p = notes; *p && n < NOTE_MAX;) {
+		const char* e = strchr(p, '\n');
+		size_t len = e ? (size_t)(e - p) : strlen(p);
+		NoteBlock* b = &note_blocks[n];
+		b->kind = updater_note_line(p, len, b->text, sizeof(b->text));
+		p += len + (e ? 1 : 0);
+		if (b->kind == NOTE_BLANK) {
+			if (n == 0 || note_blocks[n - 1].kind == NOTE_BLANK)
+				continue; // no gap at the top, one gap for many blank lines
+			b->h = BOS_px(16);
+		} else {
+			int tw = b->kind == NOTE_BULLET ? w - note_indent() : w;
+			int weight = b->kind == NOTE_HEADING ? 700 : 400;
+			b->h = BOS_textLines(b->text, BOS_FS_SMALL, weight, tw, 99) * note_lh() + BOS_px(6);
+		}
+		*total += b->h;
+		n++;
+	}
+	while (n > 0 && note_blocks[n - 1].kind == NOTE_BLANK) // no gap at the end
+		*total -= note_blocks[--n].h;
+	return n;
+}
+
+// Show update info (version + every line of the release notes) with A to confirm, B to cancel; ▲▼ scroll the notes,
+// L1/R1 a page.
 static int show_update_info(SDL_Surface* screen, ReleaseInfo* release) {
 	bool dirty = true;
+	int px = BOS_px(BOS_PAGE_PAD), w = screen->w - 2 * px;
+	const char* notes = release->release_notes[0]
+							? release->release_notes
+							: I18N_text("Release notes are unavailable right now, but you can still update to the "
+										"latest version. Press A to install.");
+	int total = 0, scroll = 0;
+	int nblocks = notes_layout(notes, w - BOS_px(16), &total); // room for the scroll mark
+	int view_top = 0, view_h = 0;
 	while (1) {
 		GFX_startFrame();
 		PAD_poll();
@@ -504,6 +564,25 @@ static int show_update_info(SDL_Surface* screen, ReleaseInfo* release) {
 			return 0;
 		if (PAD_justPressed(BTN_A))
 			return 1;
+		if (view_h > 0 && total > view_h) {
+			int to = scroll, page = view_h - note_lh();
+			if (PAD_justRepeated(BTN_DOWN))
+				to += note_lh() * 2;
+			if (PAD_justRepeated(BTN_UP))
+				to -= note_lh() * 2;
+			if (PAD_justRepeated(BTN_R1))
+				to += page;
+			if (PAD_justRepeated(BTN_L1))
+				to -= page;
+			if (to > total - view_h)
+				to = total - view_h;
+			if (to < 0)
+				to = 0;
+			if (to != scroll) {
+				scroll = to;
+				dirty = true;
+			}
+		}
 		if (!dirty) { // a still page: nothing to draw until a key
 			GFX_sync();
 			continue;
@@ -512,8 +591,7 @@ static int show_update_info(SDL_Surface* screen, ReleaseInfo* release) {
 
 		SDL_FillRect(screen, NULL, BOS_map(screen, BOS_theme()->bg));
 		BOS_statusBar(screen, I18N_text("Update"));
-		int px = BOS_px(BOS_PAGE_PAD), w = screen->w - 2 * px; // under the large title
-		int y = BOS_px(BOS_BAR_H) + BOS_px(16);
+		int y = BOS_px(BOS_BAR_H) + BOS_px(16); // under the large title
 		char sub[160];
 		if (current_tag_cache[0])
 			snprintf(sub, sizeof(sub), "%s → %s", current_tag_cache, release->tag_name);
@@ -521,11 +599,31 @@ static int show_update_info(SDL_Surface* screen, ReleaseInfo* release) {
 			snprintf(sub, sizeof(sub), "%s", release->tag_name);
 		y += BOS_largeTitle(screen, y, I18N_text("Update Available"), sub);
 		y += BOS_px(24);
-		const char* notes = release->release_notes[0]
-								? release->release_notes
-								: I18N_text("Release notes are unavailable right now, but you can still update to the "
-											"latest version. Press A to install.");
-		BOS_textWrap(screen, notes, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px, y, w, 9);
+		view_top = y;
+		view_h = screen->h - BOS_px(BOS_BAR_H) - BOS_px(8) - view_top;
+		if (scroll > total - view_h)
+			scroll = total - view_h > 0 ? total - view_h : 0;
+		SDL_Rect view = {0, view_top, screen->w, view_h};
+		BOS_clip(screen, &view);
+		int by = view_top - scroll;
+		for (int i = 0; i < nblocks && by < view_top + view_h; by += note_blocks[i++].h) {
+			NoteBlock* b = &note_blocks[i];
+			if (b->kind == NOTE_BLANK || by + b->h <= view_top)
+				continue;
+			if (b->kind == NOTE_HEADING)
+				BOS_textWrap(screen, b->text, BOS_FS_SMALL, 700, BOS_C_TEXT, 1, px, by, w - BOS_px(16), 99);
+			else if (b->kind == NOTE_BULLET) {
+				BOS_text(screen, "•", BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px + BOS_px(6), by);
+				BOS_textWrap(screen, b->text, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px + note_indent(), by,
+							 w - BOS_px(16) - note_indent(), 99);
+			} else
+				BOS_textWrap(screen, b->text, BOS_FS_SMALL, 400, BOS_C_TEXT2, 1, px, by, w - BOS_px(16), 99);
+		}
+		BOS_clip(screen, NULL);
+		if (total > view_h) { // a scroll mark (DESIGN 5: 6 px textoff at the right)
+			int mh = view_h * view_h / total, my = view_top + (view_h - mh) * scroll / (total - view_h);
+			BOS_rrect(screen, screen->w - BOS_px(14), my, BOS_px(6), mh, BOS_px(3), BOS_C_TEXTOFF);
+		}
 		BosHint r[] = {{"A", I18N_text("Install")}, {"B", I18N_text("Cancel")}};
 		BOS_hintBar(screen, r, 2, NULL, 0);
 		GFX_flip(screen);
