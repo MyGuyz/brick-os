@@ -141,6 +141,9 @@ system:
 	cp ./workspace/all/imageviewer/build/$(PLATFORM)/imageviewer.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Image\ Viewer.pak/
 	cp ./workspace/all/files/build/$(PLATFORM)/files.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Files.pak/
 	cp ./workspace/all/sync/build/$(PLATFORM)/sync.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Device\ Sync.pak/
+	cp ./workspace/all/wifitransfer/build/$(PLATFORM)/wifitransfer.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/WiFi\ Transfer.pak/
+	mkdir -p ./build/SYSTEM/$(PLATFORM)/paks/Tools/WiFi\ Transfer.pak/web
+	cp ./workspace/all/wifitransfer/web/index.html ./build/SYSTEM/$(PLATFORM)/paks/Tools/WiFi\ Transfer.pak/web/
 	cp ./workspace/all/scraper/build/$(PLATFORM)/scraper.elf ./build/SYSTEM/$(PLATFORM)/paks/Tools/Artwork\ Manager.pak/
 ifneq (,$(filter $(PLATFORM),tg5040 tg5050))
 	# Fast shutdown (and limbo fix on tg5040)

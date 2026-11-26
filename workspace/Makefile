@@ -51,6 +51,7 @@ endif
 	# native PICO-8: bridge core + LD_PRELOAD shim + the child's SDL2 (after minarch: needs its libretro-common)
 	cd ./all/pico8native/ && make
 	cd ./all/sync/ && make
+	cd ./all/wifitransfer/ && make
 ifneq (,$(filter $(PLATFORM),tg5040 tg5050))
 	cd ./all/netplay-wizard/ && make
 	cd ./all/usblink/ && make
@@ -113,6 +114,7 @@ endif
 	cd ./all/files/ && make clean
 	cd ./all/pico8native/ && make clean
 	cd ./all/sync/ && make clean
+	cd ./all/wifitransfer/ && make clean
 	cd ./all/netplay-wizard/ && make clean
 	cd ./all/usblink/ && make clean
 	cd ./all/emu-options/ && make clean

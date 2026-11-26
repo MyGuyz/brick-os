@@ -1,0 +1,5 @@
+build/
+tests/test_wt
+tests/srv
+tests/*.txt
+tests/*.zip

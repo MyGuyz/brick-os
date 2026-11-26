@@ -1318,3 +1318,21 @@ No music playing	ยังไม่ได้เล่นเพลง
 Press A to open Music Player	กด A เพื่อเปิดแอปเพลง
 A opens YouTube	A เปิดใน YouTube
 A opens Music	A เปิดแอปเพลง
+# WiFi Transfer (DESIGN 6.13)
+WiFi Transfer	ส่งไฟล์
+Transfer	ส่งไฟล์
+Send files over WiFi	ส่งไฟล์ผ่าน WiFi
+On · stops when you leave this page	เปิดอยู่ · ปิดเองเมื่อออกจากหน้านี้
+Join the same WiFi as this device	ต่อ WiFi เดียวกับเครื่องนี้
+Scan the QR code or open this link	สแกน QR หรือเปิดลิงก์นี้
+Enter this code	ใส่รหัสนี้
+Nothing yet. Files you send show here.	ยังไม่มีไฟล์ ไฟล์ที่ส่งจะขึ้นที่นี่
+Did not finish	ส่งไม่สำเร็จ
+To the phone / PC	ไปที่มือถือ / คอม
+New code	รหัสใหม่
+Turn on WiFi first	เปิด WiFi ก่อน
+Connect to WiFi in Settings > Network. This page starts by itself once it is connected.	ต่อ WiFi ที่ ตั้งค่า > เครือข่าย หน้านี้จะเริ่มเองเมื่อต่อแล้ว
+Could not start	เปิดไม่ได้
+Another app is using port 8080. Close it and open this again.	มีแอปอื่นใช้พอร์ต 8080 อยู่ ปิดแอปนั้นแล้วเปิดหน้านี้ใหม่
+Still sending. Files not finished will be deleted. Leave?	ยังส่งไม่เสร็จ ไฟล์ที่ยังไม่ครบจะถูกลบ ออกเลยไหม?
+Leave WiFi Transfer?	ออกจาก ส่งไฟล์ ไหม?

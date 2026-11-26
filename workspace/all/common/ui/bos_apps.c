@@ -36,6 +36,7 @@ static const struct {
 	{"RetroAchievements", "Trophies", "trophy", BOS_APP_TROPHIES},
 	{"Game Tracker", "Stats", "chart", BOS_APP_STATS},
 	{"Device Sync", "Sync", "sync", BOS_APP_SYNC},
+	{"WiFi Transfer", "Transfer", "upload", BOS_APP_TRANSFER},
 	{"Xtras", "Xtras", "spark", BOS_APP_XTRAS},
 	{"Artwork Manager", "Artwork", "palette", BOS_APP_ARTWORK},
 	{"PortMaster", "PortMaster", "box", BOS_APP_PORTMASTER},

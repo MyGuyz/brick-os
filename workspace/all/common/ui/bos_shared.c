@@ -69,6 +69,13 @@ static int quitHandle(void* vctx) {
 }
 
 bool BOS_askQuit(SDL_Surface* screen, const char* app) {
+	char head[192];
+	snprintf(head, sizeof(head), I18N_text("Leave %s?"), I18N_text(app));
+	return BOS_askLeave(screen, head);
+}
+
+// the same sheet with the app's own question (already translated)
+bool BOS_askLeave(SDL_Surface* screen, const char* question) {
 	QuitAsk q = {0};
 	q.back = SDL_ConvertSurface(screen, screen->format, 0);
 	if (q.back) { // the page behind, 60 % black between the bars
@@ -81,7 +88,7 @@ bool BOS_askQuit(SDL_Surface* screen, const char* app) {
 			SDL_FreeSurface(dim);
 		}
 	}
-	snprintf(q.head, sizeof(q.head), I18N_text("Leave %s?"), I18N_text(app));
+	snprintf(q.head, sizeof(q.head), "%s", question);
 	q.t0 = SDL_GetTicks();
 	q.ms = BOS_motionMs(220);
 	BOS_partialCancel();

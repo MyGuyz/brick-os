@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Brick OS · ส่งไฟล์</title>
+<style>
+:root{--bg:#000;--card:#1c1c1f;--card2:#2c2c30;--line:#38383a;--text:#fff;--text2:#b4b4ba;--off:#6e6e73;--focus:#f2f2f7;--onfocus:#0b0b0d;--primary:#4a9bff;--ok:#30d158;--warn:#ffd60a;--danger:#ff453a;--row:72px}
+@media (prefers-color-scheme: light){:root{--bg:#f2f2f7;--card:#fff;--card2:#e5e5ea;--line:#d1d1d6;--text:#0b0b0d;--text2:#55555c;--off:#8e8e93;--focus:#0b0b0d;--onfocus:#fff;--primary:#0a6cff;--ok:#1a8f3c;--warn:#a26b00;--danger:#d70015}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI","Noto Sans Thai",sans-serif}
+body{min-height:100dvh;display:flex;flex-direction:column;max-width:720px;margin:0 auto;padding:0 16px env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:8px;min-height:56px;padding-top:env(safe-area-inset-top)}
+header h1{font-size:20px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .free{font-size:13px;color:var(--text2);white-space:nowrap}
+.back{width:40px;height:40px;border-radius:20px;border:0;background:var(--card);color:var(--text);font-size:22px;line-height:1;cursor:pointer}
+main{flex:1;display:flex;flex-direction:column;padding-bottom:16px}
+.sub{color:var(--text2);font-size:14px;margin:0 0 12px}
+.home{flex:1;display:grid;grid-template-rows:1fr 1fr;gap:16px;min-height:calc(100dvh - 120px)}
+.big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border-radius:24px;background:var(--card);border:0;color:var(--text);padding:16px;cursor:pointer;font:inherit}
+.big svg{width:56px;height:56px}
+.big b{font-size:24px}
+.big span{color:var(--text2);font-size:15px;max-width:22em}
+.list{background:var(--card);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;height:var(--row);padding:0 16px;border-top:1px solid var(--line);cursor:pointer;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;color:inherit;font:inherit;text-align:left}
+.row:first-child{border-top:0}
+.row .ic{width:28px;height:28px;flex:none;color:var(--text2)}
+.row .tx{flex:1;min-width:0}
+.row .t1,.row .t2{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t2{color:var(--text2);font-size:14px}
+.row .chev{color:var(--off);flex:none;width:20px;height:20px}
+.box svg{width:16px;height:16px}
+.thumb{width:40px;height:52px;border-radius:6px;background:var(--card2);flex:none;object-fit:cover}
+.box{width:24px;height:24px;border-radius:7px;border:2px solid var(--off);flex:none;display:flex;align-items:center;justify-content:center}
+.on .box{background:var(--focus);border-color:var(--focus);color:var(--onfocus)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chip{background:var(--card2);border-radius:999px;padding:4px 10px;font-size:13px}
+.btn{display:block;width:100%;min-height:52px;border-radius:14px;border:0;background:var(--focus);color:var(--onfocus);font:inherit;font-weight:600;font-size:17px;cursor:pointer;padding:0 16px}
+.btn2{display:block;width:100%;min-height:52px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-weight:600;font-size:17px;cursor:pointer}
+.btn[disabled]{opacity:.4}
+.gap{height:12px}
+.ok,.row .t2.ok{color:var(--ok)}.bad,.row .t2.bad{color:var(--danger)}.warn,.row .t2.warn{color:var(--warn)}
+.note{border-radius:14px;padding:12px 14px;margin:0 0 12px;font-size:14px}
+.note.bad{background:color-mix(in srgb,var(--danger) 16%,transparent)}
+.foot{position:sticky;bottom:0;background:var(--bg);padding:12px 0 8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-radius:12px;padding:4px;margin:0 0 10px}
+.seg button{border:0;border-radius:9px;min-height:40px;background:none;color:var(--text2);font:inherit;cursor:pointer}
+.seg button.sel{background:var(--focus);color:var(--onfocus);font-weight:600}
+.bar{height:4px;border-radius:2px;background:var(--card2);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--primary);width:0}
+.pin{display:flex;gap:12px;justify-content:center;margin:24px 0}
+.pin span{width:60px;height:72px;border-radius:16px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700}
+.pin span.cur{outline:2px solid var(--focus)}
+#pinin{position:absolute;opacity:0;pointer-events:none}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:340px;margin:0 auto}
+.pad button{min-height:60px;border-radius:16px;border:0;background:var(--card);color:var(--text);font:inherit;font-size:24px;cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
+.dlg{background:var(--card);border-radius:20px;padding:20px;max-width:440px;width:100%}
+.dlg h2{font-size:19px;margin:0 0 8px}
+.dlg p{margin:0 0 10px;color:var(--text2);font-size:15px;white-space:pre-line;max-height:40vh;overflow:auto}
+.dlg .two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+select{width:100%;min-height:44px;border-radius:10px;background:var(--card2);color:var(--text);border:0;font:inherit;padding:0 10px;margin:4px 0 10px}
+.empty{color:var(--text2);text-align:center;padding:32px 16px}
+</style>
+</head>
+<body>
+<header><button class="back" id="back" hidden aria-label="กลับ">‹</button><h1 id="title">Brick OS</h1><span class="free" id="free"></span></header>
+<main id="main"></main>
+<input type="file" id="pick" multiple hidden>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const main=$('#main');
+const ICON={
+ up:'<path d="M12 16V4m0 0l-5 5m5-5l5 5M5 20h14"/>',
+ down:'<path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14"/>',
+ games:'<rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M15 12h.01M17.5 13.5h.01"/>',
+ saves:'<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>',
+ covers:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>',
+ music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+ videos:'<rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3z"/>',
+ bios:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+ shots:'<path d="M3 8h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/>',
+ chev:'<path d="M9 6l6 6-6 6"/>',
+ check:'<path d="M5 12l5 5 9-10"/>',
+};
+const svg=(n,c='ic')=>`<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ext=n=>{const i=n.lastIndexOf('.');return i>0?n.slice(i+1).toLowerCase():''};
+const base=n=>{const i=n.lastIndexOf('.');return i>0?n.slice(0,i):n};
+const size=b=>b>=1e9?(b/1e9).toFixed(1)+' GB':b>=1e6?(b/1e6).toFixed(1)+' MB':Math.max(1,Math.round(b/1e3))+' KB';
+const KINDS={
+ games:{name:'เกม',up:'ไฟล์เกมของแต่ละเครื่อง',down:'ไฟล์เกมของแต่ละเครื่อง',console:true},
+ saves:{name:'เซฟเกม',up:'เอาเซฟที่มีไปเล่นต่อ',down:'เซฟและสเตตของแต่ละเกม',console:true},
+ covers:{name:'ภาพปก',up:'ทีละเกม หรือหลายรูปตามชื่อ',down:'ได้ชื่อไฟล์ตามชื่อเกม',console:true},
+ music:{name:'เพลง',up:'mp3 flac ogg opus wav m4a aac',down:'เพลงทั้งหมดในเครื่อง',exts:'mp3 wav ogg opus flac m4a aac mod xm s3m it'},
+ videos:{name:'วิดีโอ',up:'mp4 mkv avi webm mov ts',down:'วิดีโอและคลิปที่อัดไว้',exts:'mp4 mkv avi webm mov ts flv m4v wmv mpg'},
+ bios:{name:'BIOS',up:'ไฟล์ระบบที่บางเครื่องต้องใช้',down:'ไฟล์ระบบของแต่ละเครื่อง',console:true,exts:'bin rom zip img dat sys bios'},
+ shots:{name:'ภาพหน้าจอ',down:'ภาพที่จับจากหน้าจอเครื่อง'},
+};
+const COVER_EXTS='jpg jpeg png webp';
+const SAVE_RE=/\.(srm|sav|dsv|state|state\d|state\.\d|state\.auto|st\d)$/i;
+let info=null, busy=0;
+
+async function api(path,opt){
+ const r=await fetch(path,Object.assign({credentials:'same-origin'},opt||{}));
+ if(r.status===401&&!path.startsWith('/api/login')){showPin();throw new Error('login')}
+ let j={};try{j=await r.json()}catch(e){}
+ j._status=r.status;return j;
+}
+function head(title,back){
+ $('#title').textContent=title;
+ $('#back').hidden=!back;
+ $('#back').onclick=back?()=>history.back():null;
+ if(info)$('#free').textContent='ว่าง '+size(info.free);
+}
+
+// ---------- the popup ----------
+function ask(title,text,okWord='ตกลง',extra){
+ return new Promise(res=>{
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="dlg" role="dialog" aria-modal="true"><h2>${esc(title)}</h2><p>${esc(text)}</p>${extra||''}<div class="two"><button class="btn2" data-a="0">ยกเลิก</button><button class="btn" data-a="1">${esc(okWord)}</button></div></div>`;
+  m.onclick=e=>{const a=e.target.dataset&&e.target.dataset.a;if(a!==undefined||e.target===m){const sel=m.querySelector('select');m.remove();res(a==='1'?(sel?sel.value:true):false)}};
+  document.body.appendChild(m);m.querySelector('[data-a="1"]').focus();
+ });
+}
+function tell(title,text){
+ return new Promise(res=>{
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="dlg"><h2>${esc(title)}</h2><p>${esc(text)}</p><button class="btn">ตกลง</button></div>`;
+  m.onclick=e=>{if(e.target.tagName==='BUTTON'||e.target===m){m.remove();res()}};
+  document.body.appendChild(m);
+ });
+}
+
+// ---------- PIN ----------
+function showPin(){
+ head('ใส่รหัส',false);
+ main.innerHTML=`<p class="sub" style="text-align:center;margin-top:16px">ใส่รหัส 4 หลักที่ขึ้นบนจอเครื่อง</p><div class="pin" id="boxes">${'<span></span>'.repeat(4)}</div><p class="sub bad" id="pinerr" style="text-align:center;min-height:20px"></p><div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div>`;
+ let v='';
+ const draw=()=>{[...document.querySelectorAll('#boxes span')].forEach((s,i)=>{s.textContent=v[i]?'•':'';s.className=i===v.length?'cur':''})};
+ const key=async k=>{
+  if(k==='⌫'){v=v.slice(0,-1);draw();return}
+  if(v.length>=4)return;v+=k;draw();
+  if(v.length===4){
+   const j=await api('/api/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'pin='+v});
+   if(j.ok){route()}else{$('#pinerr').textContent=j._status===429?'ใส่ผิดหลายครั้ง รอสักครู่แล้วลองใหม่':'รหัสไม่ถูก ลองใหม่';v='';draw()}
+  }
+ };
+ main.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>key(b.dataset.k));
+ document.onkeydown=e=>{if(!$('#boxes'))return;if(/^\d$/.test(e.key))key(e.key);else if(e.key==='Backspace')key('⌫')};
+ draw();
+}
+
+// ---------- pages ----------
+async function loadInfo(){const j=await api('/api/info');if(j.consoles)info=j;return info}
+
+function rowHTML(o){
+ return `<button class="row${o.on?' on':''}" ${o.attr||''}>${o.lead||''}<span class="tx"><span class="t1">${esc(o.t1)}</span><span class="t2${o.c2?' '+o.c2:''}">${esc(o.t2||' ')}</span></span>${o.chev?svg('chev','chev'):''}</button>`;
+}
+function home(){
+ head('Brick OS',false);
+ main.innerHTML=`<div class="home"><button class="big" onclick="go('up')">${svg('up','')}<b>อัปโหลดเข้าเครื่อง</b><span>เกม เซฟเกม ภาพปก เพลง วิดีโอ BIOS</span></button><button class="big" onclick="go('down')">${svg('down','')}<b>ดาวน์โหลดจากเครื่อง</b><span>เกม เซฟเกม ภาพปก เพลง วิดีโอ BIOS ภาพหน้าจอ</span></button></div>`;
+}
+function menu(dir){
+ head(dir==='up'?'อัปโหลดเข้าเครื่อง':'ดาวน์โหลดจากเครื่อง',true);
+ const ks=Object.keys(KINDS).filter(k=>KINDS[k][dir]);
+ main.innerHTML=`<p class="sub">${dir==='up'?'จะอัปโหลดอะไร':'จะดาวน์โหลดอะไร'}</p><div class="list">${ks.map(k=>rowHTML({lead:svg(k),t1:KINDS[k].name,t2:KINDS[k][dir],chev:1,attr:`onclick="go('${dir}/${k}')"`})).join('')}</div>`;
+}
+function consoles(dir,k){
+ head(KINDS[k].name,true);
+ let cs=info.consoles;
+ if(k==='saves')cs=cs.filter(c=>c.saves);
+ main.innerHTML=`<p class="sub">${dir==='up'?'อัปโหลดเข้าเครื่องไหน':'ของเครื่องไหน'}</p><div class="list">${cs.map((c,i)=>rowHTML({t1:c.name,t2:c.games+' เกม · '+(k==='bios'?'Bios/'+c.tag:c.exts.split(' ').slice(0,6).join(' ')),chev:1,attr:`onclick="go('${dir}/${k}/'+encodeURIComponent(${JSON.stringify(c.c)}))"`})).join('')}</div>${k==='saves'?'<p class="sub" style="margin-top:12px">PSP ใช้เซฟของ PPSSPP เอง จึงไม่อยู่ในรายการนี้</p>':''}`;
+}
+const findC=c=>info.consoles.find(x=>x.c===c);
+function allowed(k,c){ // the types this destination takes
+ if(k==='games'){const x=c.exts.split(' ');return c.zip?x.concat(['zip','7z']).filter((v,i,a)=>a.indexOf(v)===i):x}
+ if(k==='covers')return COVER_EXTS.split(' ');
+ if(k==='saves')return c.tag==='NDS'?['dsv','sav']:['srm','sav','state','state1-9','state.auto','st0-9'];
+ return KINDS[k].exts.split(' ');
+}
+function typeOk(k,c,name){
+ const e=ext(name);
+ if(k==='saves')return c.tag==='NDS'?/\.(dsv|sav)$/i.test(name):SAVE_RE.test(name);
+ return allowed(k,c).includes(e);
+}
+function whereName(k,c){return c?c.name:KINDS[k].name}
+
+// ---------- upload ----------
+let queue=[];
+async function upPage(k,cid){
+ const c=cid?findC(cid):null;
+ if(KINDS[k].console&&!c){go('up/'+k);return}
+ head(c?KINDS[k].name+' · '+c.name:KINDS[k].name,true);
+ const types=allowed(k,c);
+ let games=[];
+ if(k==='saves'||k==='covers'){const j=await api('/api/list?k=games&c='+encodeURIComponent(cid));games=(j.items||[])}
+ const pickWord=k==='covers'?'เลือกรูป (หลายรูปได้)':k==='games'?'เลือกเกม (หลายไฟล์ได้)':'เลือกไฟล์ (หลายไฟล์ได้)';
+ const hint=k==='covers'?'ชื่อรูปต้องตรงกับชื่อเกม เช่น '+(games[0]?base(games[0].n):'Crash Bandicoot')+'.png':k==='saves'?'ชื่อไฟล์เซฟต้องตรงกับชื่อเกม เช่น '+(games[0]?base(games[0].n):'Crash Bandicoot')+'.srm':'รับเฉพาะไฟล์ที่เครื่องเปิดได้';
+ main.innerHTML=`<p class="sub">${esc(hint)}</p><div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div><button class="btn" id="pickb">${pickWord}</button><div class="gap"></div><div id="q"></div>${k==='covers'?'<div class="gap"></div><p class="sub">หรือเลือกทีละเกม</p><div class="list" id="glist"></div>':''}`;
+ const pick=$('#pick');
+ pick.accept=k==='saves'?'':types.filter(t=>/^[a-z0-9]+$/.test(t)).map(t=>'.'+t).join(',');
+ $('#pickb').onclick=()=>{pick.value='';pick.onchange=()=>prepare(k,c,[...pick.files],games);pick.click()};
+ if(k==='covers')drawCoverList(c,games);
+ queue=[];drawQueue();
+}
+function drawCoverList(c,games){
+ const g=$('#glist');if(!g)return;
+ const real=games.filter(x=>!x.part);
+ g.innerHTML=real.length?real.map((x,i)=>rowHTML({lead:x.cover?`<img class="thumb" loading="lazy" src="/api/cover?r=${encodeURIComponent(x.r)}&t=${x.ct||0}" alt="">`:'<span class="thumb"></span>',t1:base(x.n),t2:x.cover?'แตะเพื่อเปลี่ยนหรือลบปก':'+ ปก',attr:`data-i="${i}"`})).join(''):'<div class="empty">ยังไม่มีเกมในเครื่องนี้</div>';
+ g.querySelectorAll('[data-i]').forEach(b=>b.onclick=async()=>{
+  const x=real[+b.dataset.i];
+  if(x.cover){
+   const a=await askCover(x);
+   if(a==='del'){if(await ask('ลบปก?','ลบปกของ '+base(x.n)+' ออกจากเครื่อง\nลบแล้วเอาคืนไม่ได้','ลบ')){await api('/api/delcover?r='+encodeURIComponent(x.r),{method:'POST'});x.cover=false;drawCoverList(c,games)}return}
+   if(a!=='change')return;
+  }
+  const pick=$('#pick');pick.value='';pick.accept='.jpg,.jpeg,.png,.webp';
+  pick.onchange=()=>{const f=pick.files[0];if(f)prepare('covers',c,[f],games,x)};pick.click();
+ });
+}
+function askCover(x){
+ return new Promise(res=>{
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="dlg"><h2>${esc(base(x.n))}</h2><p>มีปกอยู่แล้ว</p><button class="btn" data-a="change">เปลี่ยนปก</button><div class="gap"></div><button class="btn2 bad" data-a="del">ลบปก</button><div class="gap"></div><button class="btn2" data-a="">ยกเลิก</button></div>`;
+  m.onclick=e=>{const a=e.target.dataset&&e.target.dataset.a;if(a!==undefined||e.target===m){m.remove();res(a||'')}};
+  document.body.appendChild(m);
+ });
+}
+const norm=s=>s.toLowerCase().replace(/\s+/g,' ').trim();
+function matchGame(name,games){ // a save or picture to the game with the same name
+ let b=name;
+ b=b.replace(/\.(state\.auto|state\.\d|state\d?|st\d|srm|sav|dsv|png|jpe?g|webp)$/i,'');
+ const real=games.filter(g=>!g.part);
+ const pools=[real,games];
+ for(const p of pools){
+  let g=p.find(x=>norm(base(x.n))===norm(b));if(g)return g;
+  g=p.find(x=>norm(x.n)===norm(b));if(g)return g; // Game.gba.sav
+ }
+ return null;
+}
+async function cueNeeds(file){
+ try{const t=await file.text();const out=[];for(const m of t.matchAll(/^\s*FILE\s+(?:"([^"]+)"|(\S+))/gim))out.push((m[1]||m[2]).split(/[\\/]/).pop());return out}catch(e){return[]}
+}
+async function prepare(k,c,files,games,forGame){
+ const names=new Set(files.map(f=>f.name.toLowerCase()));
+ let onDevice=new Set();
+ if(k==='games'){const j=await api('/api/list?k=games&c='+encodeURIComponent(c.c));(j.items||[]).forEach(x=>onDevice.add(x.n.toLowerCase()))}
+ for(const f of files){
+  const it={f,name:f.name,k,c,state:'wait',msg:'',game:null};
+  if(!typeOk(k,c,f.name)){it.state='bad';it.msg=k==='covers'?'รับแค่ jpg png webp':(whereName(k,c)+' เปิดไฟล์ .'+(ext(f.name)||'?')+' ไม่ได้')}
+  else if(k==='games'&&ext(f.name)==='cue'){
+   const need=(await cueNeeds(f)).filter(n=>!names.has(n.toLowerCase())&&!onDevice.has(n.toLowerCase()));
+   if(need.length){it.state='bad';it.msg='ต้องเลือก '+need.join(', ')+' มาพร้อมกัน'}
+  }
+  if(it.state!=='bad'&&(k==='saves'||k==='covers')){
+   it.game=forGame||matchGame(f.name,games);
+   if(!it.game){it.state='nogame';it.msg='ไม่มีเกมชื่อนี้'}
+  }
+  queue.push(it);
+ }
+ const total=queue.filter(i=>i.state==='wait').reduce((a,i)=>a+i.f.size,0);
+ if(info&&total+8e6>info.free){await tell('ที่ในเมมไม่พอ','ไฟล์ที่เลือกรวม '+size(total)+' แต่เครื่องเหลือที่ '+size(info.free)+'\nต้องเหลือที่อีก '+size(total+8e6-info.free)+' ลบไฟล์บางอย่างออกก่อน');queue.forEach(i=>{if(i.state==='wait'){i.state='bad';i.msg='ที่ในเมมไม่พอ'}});drawQueue();return}
+ drawQueue();
+ await run();
+}
+function drawQueue(){
+ const q=$('#q');if(!q)return;
+ if(!queue.length){q.innerHTML='';return}
+ const bad=queue.filter(i=>i.state==='bad').length;
+ q.innerHTML=(bad?`<div class="note bad">ส่งไม่ได้ ${bad} ไฟล์ · ดูเหตุผลที่แต่ละไฟล์</div>`:'')+`<div class="list">${queue.map((it,i)=>{
+  const st=it.state==='done'?['ส่งแล้ว','ok']:it.state==='bad'||it.state==='fail'?[it.msg||'ส่งไม่สำเร็จ','bad']:it.state==='nogame'?[it.msg+' · แตะเพื่อเลือกเกมเอง','bad']:it.state==='skip'?['ข้ามไฟล์นี้','']:it.state==='send'?[Math.round(it.p||0)+'% · '+size(it.f.size),'']:[it.msg||('รอส่ง · '+size(it.f.size)),it.msg?'warn':''];
+  return `<button class="row" data-i="${i}"><span class="tx"><span class="t1">${esc(it.name)}${it.game&&it.k!=='games'?' → '+esc(base(it.game.n)):''}</span><span class="t2 ${st[1]}">${esc(st[0])}</span>${it.state==='send'?`<span class="bar"><i style="width:${it.p||0}%"></i></span>`:''}</span></button>`}).join('')}</div>`;
+ q.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>pickGameFor(queue[+b.dataset.i]));
+}
+async function pickGameFor(it){
+ if(it.state!=='nogame'||busy)return;
+ const j=await api('/api/list?k=games&c='+encodeURIComponent(it.c.c));
+ const gs=(j.items||[]).filter(x=>!x.part);
+ if(!gs.length){tell('ยังไม่มีเกม','เครื่องนี้ยังไม่มีเกมให้เลือก');return}
+ const v=await ask('เลือกเกมเอง',it.name+' จะเป็น'+(it.k==='covers'?'ปก':'เซฟ')+'ของเกมไหน','เลือก',`<select>${gs.map((g,i)=>`<option value="${i}">${esc(base(g.n))}</option>`).join('')}</select>`);
+ if(v===false)return;
+ const g=gs[+v];
+ if(!await ask('ใช่เกมนี้ไหม?',it.name+'\n→ '+base(g.n)+'\n\nถ้าเลือกผิดเกม เกมนั้นจะได้'+(it.k==='covers'?'ปก':'เซฟ')+'ผิด','ใช่'))return;
+ it.game=g;it.state='wait';it.msg='';drawQueue();run();
+}
+function qs(o){return Object.entries(o).filter(([k,v])=>v!==undefined&&v!==null).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')}
+async function toPng(file){ // longest side 640, a PNG: the device does no work
+ const img=await createImageBitmap(file);
+ const s=Math.min(1,640/Math.max(img.width,img.height));
+ const cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
+ cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+ return await new Promise(r=>cv.toBlob(r,'image/png'));
+}
+let curX=null;
+function put(url,body,onp){
+ return new Promise(res=>{
+  const x=new XMLHttpRequest();curX=x;x.open('PUT',url);
+  x.upload.onprogress=e=>{if(e.lengthComputable)onp(e.loaded*100/e.total)};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}j._status=x.status;res(j)};
+  x.onerror=x.onabort=()=>res({_status:0,error:'network'});
+  x.send(body);
+ });
+}
+const why=j=>j.error==='type'?'เครื่องนี้เปิดไฟล์นี้ไม่ได้':j.error==='png'?'รูปนี้เปิดไม่ได้':j.error==='nostates'?'เล่นเกมนี้บนเครื่องสักครั้งก่อน แล้วค่อยส่งสเตต':String(j.error||'').startsWith('space')?'ที่ในเมมไม่พอ':j.error==='game'?'ไม่มีเกมนี้ในเครื่อง':j._status===0?'การเชื่อมต่อหลุด ลองใหม่':'ส่งไม่สำเร็จ';
+let running=false;
+async function run(){
+ if(running)return;running=true;
+ // ask first about every one that would replace a file
+ const todo=queue.filter(i=>i.state==='wait');
+ const repl=[];
+ for(const it of todo){
+  const j=await api('/api/up?'+qs({k:it.k,c:it.c&&it.c.c,n:it.k==='covers'?'cover.png':it.name,g:it.game&&it.game.n,q:1}),{method:'PUT',body:''});
+  if(j.exists)repl.push(it);
+  else if(!j.ok){it.state='bad';it.msg=why(j)}
+ }
+ if(repl.length){
+  const what=repl[0].k==='saves'?'เซฟ':repl[0].k==='covers'?'ปก':repl[0].k==='bios'?'BIOS':'ไฟล์';
+  const extra=repl[0].k==='saves'?'\n\nของเดิมจะถูกเก็บสำรองไว้ในเครื่อง ไม่หาย':'\n\nของเดิมจะถูกแทนที่ เอาคืนไม่ได้';
+  const ok=await ask('แทน'+what+'เดิม '+repl.length+' ไฟล์?',repl.map(i=>'• '+(i.game?base(i.game.n):i.name)).join('\n')+extra,'แทนที่');
+  repl.forEach(i=>{if(ok)i.replace=1;else{i.state='skip'}});
+ }
+ drawQueue();
+ busy++;
+ for(const it of queue){
+  if(it.state!=='wait')continue;
+  it.state='send';it.p=0;drawQueue();
+  let body=it.f;
+  if(it.k==='covers'){try{body=await toPng(it.f)}catch(e){it.state='bad';it.msg='รูปนี้เปิดไม่ได้';drawQueue();continue}}
+  const j=await put('/api/up?'+qs({k:it.k,c:it.c&&it.c.c,n:it.k==='covers'?'cover.png':it.name,g:it.game&&it.game.n,x:it.replace?1:0}),body,p=>{it.p=p;drawQueue()});
+  if(j.ok){it.state='done';if(it.k==='covers'&&it.game){it.game.cover=true;it.game.ct=Date.now()}}
+  else if(j._status===409){it.state='skip'}
+  else{it.state='fail';it.msg=why(j)}
+  drawQueue();
+ }
+ busy--;running=false;
+ loadInfo().then(()=>{if(info)$('#free').textContent='ว่าง '+size(info.free)});
+ const g=$('#glist');if(g&&queue[0]&&queue[0].k==='covers'){const j=await api('/api/list?k=games&c='+encodeURIComponent(queue[0].c.c));drawCoverList(queue[0].c,j.items||[])}
+}
+window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue='ยังส่งไม่เสร็จ ถ้าออกตอนนี้ ไฟล์ที่ยังไม่ครบจะถูกลบ'}});
+
+// ---------- download ----------
+let mode=localStorage.getItem('wt_mode')||'zip';
+async function downPage(k,cid){
+ const c=cid?findC(cid):null;
+ if(KINDS[k].console&&!c){go('down/'+k);return}
+ head(c?KINDS[k].name+' · '+c.name:KINDS[k].name,true);
+ main.innerHTML='<div class="empty">กำลังโหลด…</div>';
+ const j=await api('/api/list?'+qs({k,c:c&&c.c}));
+ let rows=[]; // {t1,t2,refs:[],size,thumb}
+ if(k==='saves'){
+  const by={};
+  for(const s of j.items||[]){
+   const b=s.n.replace(/\.(state\.auto|state\.\d|state\d?|st\d|srm|sav|dsv|rtc)$/i,'');
+   const key=norm(b);(by[key]=by[key]||{name:b,saves:0,states:0,refs:[],size:0});
+   const st=/\.(state|st\d)/i.test(s.n)&&!/\.(srm|sav|dsv|rtc)$/i.test(s.n);
+   st?by[key].states++:by[key].saves++;by[key].refs.push(s.r);by[key].size+=s.s;
+  }
+  rows=Object.values(by).sort((a,b)=>a.name.localeCompare(b.name)).map(g=>({t1:g.name,t2:[g.saves?'เซฟ':'',g.states?'สเตต '+g.states+' ไฟล์':''].filter(Boolean).join(' + '),refs:g.refs,size:g.size}));
+ }else if(k==='covers'){
+  rows=(j.items||[]).filter(x=>x.cover&&!x.part).map(x=>({t1:base(x.n)+'.png',t2:'ปกของ '+base(x.n),refs:[x.r],cover:1,size:0,thumb:`/api/cover?r=${encodeURIComponent(x.r)}&t=${x.ct||0}`}));
+ }else{
+  rows=(j.items||[]).map(x=>({t1:x.n,t2:size(x.s)+(x.r.includes('/Recordings/')?' · คลิปที่อัดไว้':''),refs:[x.r],size:x.s}));
+ }
+ if(!rows.length){main.innerHTML=`<div class="empty">ยังไม่มี${KINDS[k].name}${c?'ของ '+esc(c.name):''}ในเครื่อง</div>`;return}
+ const sel=new Set();
+ const draw=()=>{
+  const all=sel.size===rows.length;
+  const tot=[...sel].reduce((a,i)=>a+rows[i].size,0);
+  main.innerHTML=`<p class="sub">เลือกได้หลายอัน</p><div class="list">${rowHTML({on:all,lead:`<span class="box">${all?svg('check',''):''}</span>`,t1:'เลือกทั้งหมด',t2:rows.length+' รายการ'+(rows[0].size?' · '+size(rows.reduce((a,r)=>a+r.size,0)):''),attr:'data-all="1"'})}${rows.map((r,i)=>rowHTML({on:sel.has(i),lead:`<span class="box">${sel.has(i)?svg('check',''):''}</span>`+(r.thumb?`<img class="thumb" loading="lazy" src="${r.thumb}" alt="">`:''),t1:r.t1,t2:r.t2,attr:`data-i="${i}"`})).join('')}</div>
+  <div class="foot"><div class="seg"><button data-m="zip" class="${mode==='zip'?'sel':''}">zip ไฟล์เดียว</button><button data-m="files" class="${mode==='files'?'sel':''}">ไฟล์แยก</button></div><button class="btn" id="dl" ${sel.size?'':'disabled'}>${sel.size?'ดาวน์โหลด '+sel.size+' รายการ'+(tot?' · '+size(tot):''):'เลือกอย่างน้อย 1 รายการ'}</button><p class="sub" style="margin:8px 0 0">${mode==='zip'?'รวมเป็นไฟล์ .zip เดียว เครื่องไม่ต้องบีบอัด':'โหลดทีละไฟล์ เบราว์เซอร์อาจถามว่าให้โหลดหลายไฟล์ไหม'}</p></div>`;
+  main.querySelector('[data-all]').onclick=()=>{if(all)sel.clear();else rows.forEach((r,i)=>sel.add(i));draw()};
+  main.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;sel.has(i)?sel.delete(i):sel.add(i);draw()});
+  main.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;try{localStorage.setItem('wt_mode',mode)}catch(e){}draw()});
+  $('#dl').onclick=()=>download([...sel].flatMap(i=>rows[i].refs),(c?c.tag+' ':'')+KINDS[k].name);
+ };
+ draw();
+}
+function download(refs,label){
+ if(!refs.length)return;
+ if(mode==='zip'&&refs.length>1){
+  const f=document.createElement('form');f.method='POST';f.action='/api/zip';f.style.display='none';
+  const add=(n,v)=>{const i=document.createElement('input');i.name=n;i.value=v;f.appendChild(i)};
+  add('z','Brick '+label.replace(/[\/\\:*?"<>|]/g,' ')+'.zip');refs.forEach(r=>add('f',r));
+  document.body.appendChild(f);f.submit();f.remove();
+ }else{
+  refs.forEach((r,i)=>setTimeout(()=>{const a=document.createElement('a');a.href='/api/dl?r='+encodeURIComponent(r);a.download='';document.body.appendChild(a);a.click();a.remove()},i*800));
+ }
+ tell('กำลังดาวน์โหลด','ดูไฟล์ได้ที่ที่เก็บไฟล์ดาวน์โหลดของเบราว์เซอร์');
+}
+
+// ---------- routes ----------
+function go(h){location.hash=h}
+async function route(){
+ if(!info&&!(await loadInfo().catch(()=>null)))return;
+ const p=location.hash.slice(1).split('/').map(decodeURIComponent);
+ if(!p[0])return home();
+ if(p[0]!=='up'&&p[0]!=='down')return home();
+ if(!p[1])return menu(p[0]);
+ const k=p[1];if(!KINDS[k]||!KINDS[k][p[0]])return menu(p[0]);
+ if(KINDS[k].console&&!p[2])return consoles(p[0],k);
+ return p[0]==='up'?upPage(k,p[2]):downPage(k,p[2]);
+}
+let lastHash=location.hash, comingBack=false;
+window.addEventListener('hashchange',async()=>{
+ if(comingBack){comingBack=false;return}
+ if(busy){
+  const to=location.hash;comingBack=true;location.hash=lastHash; // stay until the answer
+  if(!(await ask('ยังส่งไม่เสร็จ','ถ้าออกจากหน้านี้ตอนนี้ ไฟล์ที่ยังส่งไม่ครบจะถูกลบ','ออก')))return;
+  queue.forEach(i=>{if(i.state==='wait')i.state='skip'});if(curX)curX.abort();
+  busy=0;comingBack=false;location.hash=to;return;
+ }
+ lastHash=location.hash;route();
+});
+route().catch(()=>{});
+</script>
+</body>
+</html>
