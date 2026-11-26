@@ -4,20 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brick OS · ส่งไฟล์</title>
 <style>
 :root{--bg:#000;--card:#1c1c1f;--card2:#2c2c30;--line:#38383a;--text:#fff;--text2:#b4b4ba;--off:#6e6e73;--focus:#f2f2f7;--onfocus:#0b0b0d;--primary:#4a9bff;--ok:#30d158;--warn:#ffd60a;--danger:#ff453a;--row:72px}
 @media (prefers-color-scheme: light){:root{--bg:#f2f2f7;--card:#fff;--card2:#e5e5ea;--line:#d1d1d6;--text:#0b0b0d;--text2:#55555c;--off:#8e8e93;--focus:#0b0b0d;--onfocus:#fff;--primary:#0a6cff;--ok:#1a8f3c;--warn:#a26b00;--danger:#d70015}}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI","Noto Sans Thai",sans-serif}
-body{min-height:100dvh;display:flex;flex-direction:column;max-width:720px;margin:0 auto;padding:0 16px env(safe-area-inset-bottom)}
-header{display:flex;align-items:center;gap:8px;min-height:56px;padding-top:env(safe-area-inset-top)}
-header h1{font-size:20px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI","Noto Sans Thai",sans-serif}
+body{height:100dvh;display:flex;flex-direction:column;max-width:720px;margin:0 auto;-webkit-user-select:none;user-select:none}
+header{flex:none;display:flex;align-items:center;gap:10px;min-height:60px;padding:env(safe-area-inset-top) 16px 0;border-bottom:1px solid var(--line)}
+header h1{font-size:21px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .free{font-size:13px;color:var(--text2);white-space:nowrap}
 .back{width:40px;height:40px;border-radius:20px;border:0;background:var(--card);color:var(--text);font-size:22px;line-height:1;cursor:pointer}
-main{flex:1;display:flex;flex-direction:column;padding-bottom:16px}
+main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;padding:14px 16px 16px}
+.tabs{flex:none;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);padding:6px 16px calc(6px + env(safe-area-inset-bottom))}
+.tabs[hidden]{display:none}
+.tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--off);font:inherit;font-size:13px;min-height:52px;cursor:pointer;border-radius:12px}
+.tabs button svg{width:26px;height:26px}
+.tabs button.sel{color:var(--text);font-weight:600}
+main>*{flex-shrink:0}
+.grp{color:var(--text2);font-size:14px;margin:18px 0 8px}
 .sub{color:var(--text2);font-size:14px;margin:0 0 12px}
-.home{flex:1;display:grid;grid-template-rows:1fr 1fr;gap:16px;min-height:calc(100dvh - 120px)}
+.home{flex:1;display:grid;grid-template-rows:1fr 1fr;gap:16px;min-height:320px}
 .big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border-radius:24px;background:var(--card);border:0;color:var(--text);padding:16px;cursor:pointer;font:inherit}
 .big svg{width:56px;height:56px}
 .big b{font-size:24px}
@@ -43,7 +54,7 @@ main{flex:1;display:flex;flex-direction:column;padding-bottom:16px}
 .ok,.row .t2.ok{color:var(--ok)}.bad,.row .t2.bad{color:var(--danger)}.warn,.row .t2.warn{color:var(--warn)}
 .note{border-radius:14px;padding:12px 14px;margin:0 0 12px;font-size:14px}
 .note.bad{background:color-mix(in srgb,var(--danger) 16%,transparent)}
-.foot{position:sticky;bottom:0;background:var(--bg);padding:12px 0 8px}
+.foot{position:sticky;bottom:-16px;background:var(--bg);padding:12px 0 16px;margin-bottom:-16px}
 .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-radius:12px;padding:4px;margin:0 0 10px}
 .seg button{border:0;border-radius:9px;min-height:40px;background:none;color:var(--text2);font:inherit;cursor:pointer}
 .seg button.sel{background:var(--focus);color:var(--onfocus);font-weight:600}
@@ -67,6 +78,7 @@ select{width:100%;min-height:44px;border-radius:10px;background:var(--card2);col
 <body>
 <header><button class="back" id="back" hidden aria-label="กลับ">‹</button><h1 id="title">Brick OS</h1><span class="free" id="free"></span></header>
 <main id="main"></main>
+<nav class="tabs" id="tabs" hidden><button data-go="up" id="tab-up"></button><button data-go="down" id="tab-down"></button></nav>
 <input type="file" id="pick" multiple hidden>
 <script>
 "use strict";
@@ -112,7 +124,7 @@ async function api(path,opt){
 function head(title,back){
  $('#title').textContent=title;
  $('#back').hidden=!back;
- $('#back').onclick=back?()=>history.back():null;
+ $('#back').onclick=back?()=>go(parentOf(location.hash.slice(1))):null;
  if(info)$('#free').textContent='ว่าง '+size(info.free);
 }
 
@@ -136,7 +148,7 @@ function tell(title,text){
 
 // ---------- PIN ----------
 function showPin(){
- head('ใส่รหัส',false);
+ head('ใส่รหัส',false);tabs('');
  main.innerHTML=`<p class="sub" style="text-align:center;margin-top:16px">ใส่รหัส 4 หลักที่ขึ้นบนจอเครื่อง</p><div class="pin" id="boxes">${'<span></span>'.repeat(4)}</div><p class="sub bad" id="pinerr" style="text-align:center;min-height:20px"></p><div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div>`;
  let v='';
  const draw=()=>{[...document.querySelectorAll('#boxes span')].forEach((s,i)=>{s.textContent=v[i]?'•':'';s.className=i===v.length?'cur':''})};
@@ -181,18 +193,20 @@ function rowHTML(o){
 }
 function home(){
  head('Brick OS',false);
- main.innerHTML=`<div class="home"><button class="big" onclick="go('up')">${svg('up','')}<b>อัปโหลดเข้าเครื่อง</b><span>เกม เซฟเกม ภาพปก เพลง วิดีโอ BIOS</span></button><button class="big" onclick="go('down')">${svg('down','')}<b>ดาวน์โหลดจากเครื่อง</b><span>เกม เซฟเกม ภาพปก เพลง วิดีโอ BIOS ภาพหน้าจอ</span></button></div>`;
+ main.innerHTML=`<div class="home"><button class="big" data-go="up">${svg('up','')}<b>อัปโหลดเข้าเครื่อง</b><span>เกม เซฟเกม ภาพปก เพลง วิดีโอ BIOS</span></button><button class="big" data-go="down">${svg('down','')}<b>ดาวน์โหลดจากเครื่อง</b><span>เกม เซฟเกม ภาพปก เพลง วิดีโอ BIOS ภาพหน้าจอ</span></button></div>`;
 }
 function menu(dir){
  head(dir==='up'?'อัปโหลดเข้าเครื่อง':'ดาวน์โหลดจากเครื่อง',true);
  const ks=Object.keys(KINDS).filter(k=>KINDS[k][dir]);
- main.innerHTML=`<p class="sub">${dir==='up'?'จะอัปโหลดอะไร':'จะดาวน์โหลดอะไร'}</p><div class="list">${ks.map(k=>rowHTML({lead:svg(k),t1:KINDS[k].name,t2:KINDS[k][dir],chev:1,attr:`onclick="go('${dir}/${k}')"`})).join('')}</div>`;
+ main.innerHTML=`<p class="sub">${dir==='up'?'จะอัปโหลดอะไร':'จะดาวน์โหลดอะไร'}</p><div class="list">${ks.map(k=>rowHTML({lead:svg(k),t1:KINDS[k].name,t2:KINDS[k][dir],chev:1,attr:`data-go="${dir}/${k}"`})).join('')}</div>`;
 }
 function consoles(dir,k){
  head(KINDS[k].name,true);
  let cs=info.groups;
  if(k==='saves')cs=cs.filter(c=>c.saves);
- main.innerHTML=`<p class="sub">${dir==='up'?'อัปโหลดเข้าเครื่องไหน':'ของเครื่องไหน'}</p><div class="list">${cs.map((c,i)=>rowHTML({t1:c.name,t2:c.games+' เกม · '+(k==='bios'?'Bios/'+c.tag:c.exts.split(' ').slice(0,6).join(' ')),chev:1,attr:`onclick="go('${dir}/${k}/'+encodeURIComponent(${JSON.stringify(c.c)}))"`})).join('')}</div>${k==='saves'?'<p class="sub" style="margin-top:12px">PSP ใช้เซฟของ PPSSPP เอง จึงไม่อยู่ในรายการนี้</p>':''}`;
+ const row=c=>rowHTML({t1:c.name,t2:c.games+' เกม · '+(k==='bios'?'Bios/'+c.tag:c.exts.split(' ').slice(0,6).join(' ')),chev:1,attr:`data-go="${esc(dir+'/'+k+'/'+encodeURIComponent(c.c))}"`});
+ const has=cs.filter(c=>c.games),none=cs.filter(c=>!c.games);
+ main.innerHTML=`<p class="sub">${dir==='up'?'อัปโหลดเข้าเครื่องไหน':'ของเครื่องไหน'}</p>${has.length?`<div class="list">${has.map(row).join('')}</div>`:''}${none.length?`<p class="grp">ยังไม่มีเกม</p><div class="list">${none.map(row).join('')}</div>`:''}${k==='saves'?'<p class="sub" style="margin-top:12px">PSP ใช้เซฟของ PPSSPP เอง จึงไม่อยู่ในรายการนี้</p>':''}`;
 }
 const findC=c=>info.groups.find(x=>x.c===c);
 function allowed(k,c){ // the types this destination takes
@@ -213,7 +227,7 @@ let queue=[];
 async function upPage(k,cid){
  const c=cid?findC(cid):null;
  if(KINDS[k].console&&!c){go('up/'+k);return}
- head(c?KINDS[k].name+' · '+c.name:KINDS[k].name,true);
+ head(c?KINDS[k].name+' '+c.name:KINDS[k].name,true);
  const types=allowed(k,c);
  let games=[];
  if(k==='saves'||k==='covers')games=await listAll('games',c);
@@ -365,7 +379,7 @@ let mode=localStorage.getItem('wt_mode')||'zip';
 async function downPage(k,cid){
  const c=cid?findC(cid):null;
  if(KINDS[k].console&&!c){go('down/'+k);return}
- head(c?KINDS[k].name+' · '+c.name:KINDS[k].name,true);
+ head(c?KINDS[k].name+' '+c.name:KINDS[k].name,true);
  main.innerHTML='<div class="empty">กำลังโหลด…</div>';
  const j=c?{items:await listAll(k,c)}:await api('/api/list?'+qs({k}));
  let rows=[]; // {t1,t2,refs:[],size,thumb}
@@ -411,10 +425,19 @@ function download(refs,label){
 }
 
 // ---------- routes ----------
-function go(h){location.hash=h}
+function go(h){if(location.hash.slice(1)===h)route();else location.hash=h}
+function parentOf(h){const p=h.split('/');p.pop();return p.join('/')}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b&&!e.target.closest('.modal'))go(b.dataset.go)});
+function tabs(where){
+ const t=$('#tabs');t.hidden=!where;
+ $('#tab-up').innerHTML=svg('up','')+'อัปโหลด';$('#tab-down').innerHTML=svg('down','')+'ดาวน์โหลด';
+ $('#tab-up').className=where==='up'?'sel':'';$('#tab-down').className=where==='down'?'sel':'';
+}
 async function route(){
  if(!info&&!(await loadInfo().catch(()=>null)))return;
  const p=location.hash.slice(1).split('/').map(decodeURIComponent);
+ main.scrollTop=0;
+ tabs(p[0]==='up'||p[0]==='down'?p[0]:'');
  if(!p[0])return home();
  if(p[0]!=='up'&&p[0]!=='down')return home();
  if(!p[1])return menu(p[0]);

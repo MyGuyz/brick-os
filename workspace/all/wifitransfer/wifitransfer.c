@@ -223,8 +223,11 @@ int main(int argc, char* argv[]) {
 		bool req = false;
 		UI_handleQuitRequest(screen, &req, &dirty, "Leave WiFi Transfer?", NULL);
 		PWR_update(&dirty, &show_setting, NULL, NULL);
-		if (UI_statusBarChanged())
+		static time_t last_min;
+		if (UI_statusBarChanged() || time(NULL) / 60 != last_min) { // the clock in the top bar
+			last_min = time(NULL) / 60;
 			dirty = true;
+		}
 		uint32_t now = SDL_GetTicks();
 		if (!last_net || now - last_net > 2000) { // WiFi can come and go
 			last_net = now;
