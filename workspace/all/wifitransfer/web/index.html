@@ -154,7 +154,27 @@ function showPin(){
 }
 
 // ---------- pages ----------
-async function loadInfo(){const j=await api('/api/info');if(j.consoles)info=j;return info}
+async function loadInfo(){const j=await api('/api/info');if(j.consoles){j.groups=groupsOf(j.consoles);info=j}return info}
+function groupsOf(cs){ // one row per console: its folders (one per emulator) are shown as one, like on the device
+ const by=new Map();
+ for(const c of cs){if(!by.has(c.name))by.set(c.name,[]);by.get(c.name).push(c)}
+ return [...by.entries()].map(([name,f])=>{
+  const main=f.reduce((a,b)=>b.games>a.games?b:a,f[0]); // new files go where the games already are
+  const exts=[...new Set([main,...f].flatMap(x=>x.exts.split(' ')))].join(' ');
+  return {c:name,name,tag:main.tag,main,folders:f,exts,zip:f.some(x=>x.zip),saves:f.some(x=>x.saves),games:f.reduce((a,x)=>a+x.games,0)};
+ });
+}
+async function listAll(k,g){ // the same list from every folder of the console
+ const out=[];
+ for(const f of g.folders){const j=await api('/api/list?'+qs({k,c:f.c}));(j.items||[]).forEach(x=>{x._c=f.c;out.push(x)})}
+ return out;
+}
+function folderFor(it){ // which folder of the console a file goes to
+ const g=it.c;if(!g||!g.folders)return g&&g.c;
+ if(it.game&&it.game._c)return it.game._c; // a save or cover goes with its game
+ if(it.k==='games'){const e=ext(it.name);const ok=f=>f.exts.split(' ').includes(e)||(f.zip&&(e==='zip'||e==='7z'));if(ok(g.main))return g.main.c;const o=g.folders.find(ok);if(o)return o.c}
+ return g.main.c;
+}
 
 function rowHTML(o){
  return `<button class="row${o.on?' on':''}" ${o.attr||''}>${o.lead||''}<span class="tx"><span class="t1">${esc(o.t1)}</span><span class="t2${o.c2?' '+o.c2:''}">${esc(o.t2||' ')}</span></span>${o.chev?svg('chev','chev'):''}</button>`;
@@ -170,11 +190,11 @@ function menu(dir){
 }
 function consoles(dir,k){
  head(KINDS[k].name,true);
- let cs=info.consoles;
+ let cs=info.groups;
  if(k==='saves')cs=cs.filter(c=>c.saves);
  main.innerHTML=`<p class="sub">${dir==='up'?'อัปโหลดเข้าเครื่องไหน':'ของเครื่องไหน'}</p><div class="list">${cs.map((c,i)=>rowHTML({t1:c.name,t2:c.games+' เกม · '+(k==='bios'?'Bios/'+c.tag:c.exts.split(' ').slice(0,6).join(' ')),chev:1,attr:`onclick="go('${dir}/${k}/'+encodeURIComponent(${JSON.stringify(c.c)}))"`})).join('')}</div>${k==='saves'?'<p class="sub" style="margin-top:12px">PSP ใช้เซฟของ PPSSPP เอง จึงไม่อยู่ในรายการนี้</p>':''}`;
 }
-const findC=c=>info.consoles.find(x=>x.c===c);
+const findC=c=>info.groups.find(x=>x.c===c);
 function allowed(k,c){ // the types this destination takes
  if(k==='games'){const x=c.exts.split(' ');return c.zip?x.concat(['zip','7z']).filter((v,i,a)=>a.indexOf(v)===i):x}
  if(k==='covers')return COVER_EXTS.split(' ');
@@ -196,12 +216,12 @@ async function upPage(k,cid){
  head(c?KINDS[k].name+' · '+c.name:KINDS[k].name,true);
  const types=allowed(k,c);
  let games=[];
- if(k==='saves'||k==='covers'){const j=await api('/api/list?k=games&c='+encodeURIComponent(cid));games=(j.items||[])}
+ if(k==='saves'||k==='covers')games=await listAll('games',c);
  const pickWord=k==='covers'?'เลือกรูป (หลายรูปได้)':k==='games'?'เลือกเกม (หลายไฟล์ได้)':'เลือกไฟล์ (หลายไฟล์ได้)';
  const hint=k==='covers'?'ชื่อรูปต้องตรงกับชื่อเกม เช่น '+(games[0]?base(games[0].n):'Crash Bandicoot')+'.png':k==='saves'?'ชื่อไฟล์เซฟต้องตรงกับชื่อเกม เช่น '+(games[0]?base(games[0].n):'Crash Bandicoot')+'.srm':'รับเฉพาะไฟล์ที่เครื่องเปิดได้';
  main.innerHTML=`<p class="sub">${esc(hint)}</p><div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div><button class="btn" id="pickb">${pickWord}</button><div class="gap"></div><div id="q"></div>${k==='covers'?'<div class="gap"></div><p class="sub">หรือเลือกทีละเกม</p><div class="list" id="glist"></div>':''}`;
  const pick=$('#pick');
- pick.accept=k==='saves'?'':types.filter(t=>/^[a-z0-9]+$/.test(t)).map(t=>'.'+t).join(',');
+ pick.accept=k==='covers'?'image/*':'';
  $('#pickb').onclick=()=>{pick.value='';pick.onchange=()=>prepare(k,c,[...pick.files],games);pick.click()};
  if(k==='covers')drawCoverList(c,games);
  queue=[];drawQueue();
@@ -217,7 +237,7 @@ function drawCoverList(c,games){
    if(a==='del'){if(await ask('ลบปก?','ลบปกของ '+base(x.n)+' ออกจากเครื่อง\nลบแล้วเอาคืนไม่ได้','ลบ')){await api('/api/delcover?r='+encodeURIComponent(x.r),{method:'POST'});x.cover=false;drawCoverList(c,games)}return}
    if(a!=='change')return;
   }
-  const pick=$('#pick');pick.value='';pick.accept='.jpg,.jpeg,.png,.webp';
+  const pick=$('#pick');pick.value='';pick.accept='image/*';
   pick.onchange=()=>{const f=pick.files[0];if(f)prepare('covers',c,[f],games,x)};pick.click();
  });
 }
@@ -247,7 +267,7 @@ async function cueNeeds(file){
 async function prepare(k,c,files,games,forGame){
  const names=new Set(files.map(f=>f.name.toLowerCase()));
  let onDevice=new Set();
- if(k==='games'){const j=await api('/api/list?k=games&c='+encodeURIComponent(c.c));(j.items||[]).forEach(x=>onDevice.add(x.n.toLowerCase()))}
+ if(k==='games')(await listAll('games',c)).forEach(x=>onDevice.add(x.n.toLowerCase()));
  for(const f of files){
   const it={f,name:f.name,k,c,state:'wait',msg:'',game:null};
   if(!typeOk(k,c,f.name)){it.state='bad';it.msg=k==='covers'?'รับแค่ jpg png webp':(whereName(k,c)+' เปิดไฟล์ .'+(ext(f.name)||'?')+' ไม่ได้')}
@@ -277,8 +297,7 @@ function drawQueue(){
 }
 async function pickGameFor(it){
  if(it.state!=='nogame'||busy)return;
- const j=await api('/api/list?k=games&c='+encodeURIComponent(it.c.c));
- const gs=(j.items||[]).filter(x=>!x.part);
+ const gs=(await listAll('games',it.c)).filter(x=>!x.part);
  if(!gs.length){tell('ยังไม่มีเกม','เครื่องนี้ยังไม่มีเกมให้เลือก');return}
  const v=await ask('เลือกเกมเอง',it.name+' จะเป็น'+(it.k==='covers'?'ปก':'เซฟ')+'ของเกมไหน','เลือก',`<select>${gs.map((g,i)=>`<option value="${i}">${esc(base(g.n))}</option>`).join('')}</select>`);
  if(v===false)return;
@@ -312,7 +331,7 @@ async function run(){
  const todo=queue.filter(i=>i.state==='wait');
  const repl=[];
  for(const it of todo){
-  const j=await api('/api/up?'+qs({k:it.k,c:it.c&&it.c.c,n:it.k==='covers'?'cover.png':it.name,g:it.game&&it.game.n,q:1}),{method:'PUT',body:''});
+  const j=await api('/api/up?'+qs({k:it.k,c:folderFor(it),n:it.k==='covers'?'cover.png':it.name,g:it.game&&it.game.n,q:1}),{method:'PUT',body:''});
   if(j.exists)repl.push(it);
   else if(!j.ok){it.state='bad';it.msg=why(j)}
  }
@@ -329,7 +348,7 @@ async function run(){
   it.state='send';it.p=0;drawQueue();
   let body=it.f;
   if(it.k==='covers'){try{body=await toPng(it.f)}catch(e){it.state='bad';it.msg='รูปนี้เปิดไม่ได้';drawQueue();continue}}
-  const j=await put('/api/up?'+qs({k:it.k,c:it.c&&it.c.c,n:it.k==='covers'?'cover.png':it.name,g:it.game&&it.game.n,x:it.replace?1:0}),body,p=>{it.p=p;drawQueue()});
+  const j=await put('/api/up?'+qs({k:it.k,c:folderFor(it),n:it.k==='covers'?'cover.png':it.name,g:it.game&&it.game.n,x:it.replace?1:0}),body,p=>{it.p=p;drawQueue()});
   if(j.ok){it.state='done';if(it.k==='covers'&&it.game){it.game.cover=true;it.game.ct=Date.now()}}
   else if(j._status===409){it.state='skip'}
   else{it.state='fail';it.msg=why(j)}
@@ -337,7 +356,7 @@ async function run(){
  }
  busy--;running=false;
  loadInfo().then(()=>{if(info)$('#free').textContent='ว่าง '+size(info.free)});
- const g=$('#glist');if(g&&queue[0]&&queue[0].k==='covers'){const j=await api('/api/list?k=games&c='+encodeURIComponent(queue[0].c.c));drawCoverList(queue[0].c,j.items||[])}
+ const g=$('#glist');if(g&&queue[0]&&queue[0].k==='covers'){drawCoverList(queue[0].c,await listAll('games',queue[0].c))}
 }
 window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue='ยังส่งไม่เสร็จ ถ้าออกตอนนี้ ไฟล์ที่ยังไม่ครบจะถูกลบ'}});
 
@@ -348,7 +367,7 @@ async function downPage(k,cid){
  if(KINDS[k].console&&!c){go('down/'+k);return}
  head(c?KINDS[k].name+' · '+c.name:KINDS[k].name,true);
  main.innerHTML='<div class="empty">กำลังโหลด…</div>';
- const j=await api('/api/list?'+qs({k,c:c&&c.c}));
+ const j=c?{items:await listAll(k,c)}:await api('/api/list?'+qs({k}));
  let rows=[]; // {t1,t2,refs:[],size,thumb}
  if(k==='saves'){
   const by={};

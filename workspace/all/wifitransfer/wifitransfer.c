@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
 			if (wt_server_moving())
 				quit = BOS_askLeave(screen, I18N_text("Still sending. Files not finished will be deleted. Leave?"));
 			else
-				quit = true;
+				quit = BOS_askLeave(screen, I18N_text("Close WiFi Transfer? The phone can't send files until you open it again."));
 			dirty = true;
 		}
 		if (dirty) {

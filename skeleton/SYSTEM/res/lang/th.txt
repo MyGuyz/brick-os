@@ -973,7 +973,7 @@ Music settings	ตั้งค่าเพลง
 Play all	เล่นทั้งหมด
 %d songs · %d folders	%d เพลง · %d โฟลเดอร์
 No music yet	ยังไม่มีเพลง
-Put music in the Music folder of the SD card, or send it with WiFi Transfer	ใส่ไฟล์เพลงไว้ในโฟลเดอร์ Music ของการ์ด SD หรือส่งผ่าน WiFi ด้วยแอป ส่งไฟล์ผ่าน WiFi
+Put music in the Music folder of the SD card, or send it with WiFi Transfer	ใส่ไฟล์เพลงไว้ในโฟลเดอร์ Music ของการ์ด SD หรือส่งจากมือถือด้วยแอป ส่งไฟล์
 Pause	หยุดชั่วคราว
 Shuffle	สุ่ม
 Repeat	เล่นซ้ำ
@@ -1063,7 +1063,7 @@ Watched to %d:%02d	ดูถึง %d:%02d
 Watched to %d:%02d · %s	ดูถึง %d:%02d · %s
 Watch	ดู
 No videos yet	ยังไม่มีวิดีโอ
-Put videos in the Videos folder of the SD card, or send them with WiFi Transfer	ใส่ไฟล์วิดีโอไว้ในโฟลเดอร์ Videos ของการ์ด SD หรือส่งผ่าน WiFi ด้วยแอป ส่งไฟล์ผ่าน WiFi
+Put videos in the Videos folder of the SD card, or send them with WiFi Transfer	ใส่ไฟล์วิดีโอไว้ในโฟลเดอร์ Videos ของการ์ด SD หรือส่งจากมือถือด้วยแอป ส่งไฟล์
 Add channels	เพิ่มช่อง
 %d channels · from iptv-org · some may not play	%d ช่อง · จาก iptv-org · บางช่องอาจดูไม่ได้
 Pick a country to see its channels. They come from iptv-org; some may be offline or only in their country.	เลือกประเทศเพื่อดูช่อง รายชื่อมาจาก iptv-org บางช่องอาจปิดอยู่หรือดูได้เฉพาะในประเทศนั้น
@@ -1335,4 +1335,7 @@ Connect to WiFi in Settings > Network. This page starts by itself once it is con
 Could not start	เปิดไม่ได้
 Another app is using port 8080. Close it and open this again.	มีแอปอื่นใช้พอร์ต 8080 อยู่ ปิดแอปนั้นแล้วเปิดหน้านี้ใหม่
 Still sending. Files not finished will be deleted. Leave?	ยังส่งไม่เสร็จ ไฟล์ที่ยังไม่ครบจะถูกลบ ออกเลยไหม?
-Leave WiFi Transfer?	ออกจาก ส่งไฟล์ ไหม?
+Leave WiFi Transfer?	ปิดการส่งไฟล์ไหม?
+Close WiFi Transfer? The phone can't send files until you open it again.	ปิดการส่งไฟล์ไหม? มือถือจะส่งไฟล์ไม่ได้จนกว่าจะเปิดหน้านี้อีกครั้ง
+Restore	คืนค่า
+Refresh	รีเฟรช

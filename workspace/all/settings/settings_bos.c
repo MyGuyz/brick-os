@@ -844,6 +844,21 @@ static void rightColumn(SDL_Surface* s, SettingsPage* page, SettingItem* cat, bo
 
 // ---- ธีมสี › ธีมสำเร็จรูป: six mini screens (128×92) with their names, 3 a row. The D-pad moves the ring
 // (it->cursor), A uses the card; the card in use has the check, none while กำหนดเอง is on ----
+// A on a row that acts at once says what it does ("เปิด" is for rows that open a page)
+static const char* actionWord(const char* name) {
+	static const char* map[][2] = {
+		{"Reset to defaults", "Reset"}, {"Connect", "Connect"}, {"Disconnect", "Disconnect"},
+		{"Forget", "Forget"}, {"Pair", "Pair"}, {"Unpair", "Unpair"}, {"Log out", "Log out"},
+		{"Restore stock files", "Restore"}, {"Refresh emulator/roms list", "Refresh"},
+		{"Clean dot files", "Delete"},
+	};
+	if (name)
+		for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
+			if (!strcmp(name, map[i][0]))
+				return map[i][1];
+	return NULL;
+}
+
 void SettingsBos_themeCards(SDL_Surface* s, SettingItem* it, int x, int y, int w, int h, int hot) {
 	(void)h;
 	int cur = CFG_getTheme(THEME_CUSTOM) ? -1 : CFG_getTheme(THEME_PRESET);
@@ -1450,8 +1465,10 @@ void SettingsBos_render(SDL_Surface* s, SettingsPage** stack, int depth) {
 			r[nr++] = (BosHint){"A", I18N_text("Set")};
 		else if (it->keycaps)
 			; // read only (ปุ่มสลับเกม)
-		else if (it->custom_draw)
-			r[nr++] = (BosHint){"A", I18N_text("Use this theme")}; // the theme cards
+		else if (it->custom_draw == SettingsBos_themeCards)
+			r[nr++] = (BosHint){"A", I18N_text("Use this theme")};
+		else if (it->type == ITEM_BUTTON && actionWord(it->name))
+			r[nr++] = (BosHint){"A", I18N_text(actionWord(it->name))}; // a row that does something, not a page
 		else if (!cyc && it->type != ITEM_STATIC)
 			r[nr++] = (BosHint){"A", I18N_text("Open")};
 		else if (cyc && (it->a_cycles || toggleState(it) >= 0))
