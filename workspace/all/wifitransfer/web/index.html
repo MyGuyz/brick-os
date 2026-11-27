@@ -19,13 +19,15 @@ header{flex:none;display:flex;align-items:center;gap:10px;min-height:60px;paddin
 header h1{font-size:21px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .free{font-size:13px;color:var(--text2);white-space:nowrap}
 .back{width:40px;height:40px;border-radius:20px;border:0;background:var(--card);color:var(--text);font-size:22px;line-height:1;cursor:pointer}
-main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;padding:14px 16px 16px}
+main{flex:1;min-height:0;position:relative}
+.pane{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;padding:14px 16px 16px}
+.pane[hidden]{display:none}
 .tabs{flex:none;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);padding:6px 16px calc(6px + env(safe-area-inset-bottom))}
 .tabs[hidden]{display:none}
 .tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--off);font:inherit;font-size:13px;min-height:52px;cursor:pointer;border-radius:12px}
 .tabs button svg{width:26px;height:26px}
 .tabs button.sel{color:var(--text);font-weight:600}
-main>*{flex-shrink:0}
+.pane>*{flex-shrink:0}
 .grp{color:var(--text2);font-size:14px;margin:18px 0 8px}
 .sub{color:var(--text2);font-size:14px;margin:0 0 12px}
 .home{flex:1;display:grid;grid-template-rows:1fr 1fr;gap:16px;min-height:320px}
@@ -77,13 +79,14 @@ select{width:100%;min-height:44px;border-radius:10px;background:var(--card2);col
 </head>
 <body>
 <header><button class="back" id="back" hidden aria-label="กลับ">‹</button><h1 id="title">Brick OS</h1><span class="free" id="free"></span></header>
-<main id="main"></main>
-<nav class="tabs" id="tabs" hidden><button data-go="up" id="tab-up"></button><button data-go="down" id="tab-down"></button></nav>
+<main id="main"><div class="pane" id="p-home"></div><div class="pane" id="p-up" hidden></div><div class="pane" id="p-down" hidden></div></main>
+<nav class="tabs" id="tabs" hidden><button data-tab="up" id="tab-up"></button><button data-tab="down" id="tab-down"></button></nav>
 <input type="file" id="pick" multiple hidden>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
-const main=$('#main');
+let main=$('#p-home'); // the pane on screen
+function show(t){for(const x of ['home','up','down'])$('#p-'+x).hidden=x!==t;main=$('#p-'+t)}
 const ICON={
  up:'<path d="M12 16V4m0 0l-5 5m5-5l5 5M5 20h14"/>',
  down:'<path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14"/>',
@@ -122,6 +125,7 @@ async function api(path,opt){
  j._status=r.status;return j;
 }
 function head(title,back){
+ main._head=[title,back];
  $('#title').textContent=title;
  $('#back').hidden=!back;
  $('#back').onclick=back?()=>go(parentOf(location.hash.slice(1))):null;
@@ -148,6 +152,7 @@ function tell(title,text){
 
 // ---------- PIN ----------
 function showPin(){
+ document.querySelectorAll('.pane').forEach(x=>x._h=null);show('home');
  head('ใส่รหัส',false);tabs('');
  main.innerHTML=`<p class="sub" style="text-align:center;margin-top:16px">ใส่รหัส 4 หลักที่ขึ้นบนจอเครื่อง</p><div class="pin" id="boxes">${'<span></span>'.repeat(4)}</div><p class="sub bad" id="pinerr" style="text-align:center;min-height:20px"></p><div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('')}</div>`;
  let v='';
@@ -225,6 +230,7 @@ function whereName(k,c){return c?c.name:KINDS[k].name}
 // ---------- upload ----------
 let queue=[];
 async function upPage(k,cid){
+ const pane=main;
  const c=cid?findC(cid):null;
  if(KINDS[k].console&&!c){go('up/'+k);return}
  head(c?KINDS[k].name+' '+c.name:KINDS[k].name,true);
@@ -233,12 +239,19 @@ async function upPage(k,cid){
  if(k==='saves'||k==='covers')games=await listAll('games',c);
  const pickWord=k==='covers'?'เลือกรูป (หลายรูปได้)':k==='games'?'เลือกเกม (หลายไฟล์ได้)':'เลือกไฟล์ (หลายไฟล์ได้)';
  const hint=k==='covers'?'ชื่อรูปต้องตรงกับชื่อเกม เช่น '+(games[0]?base(games[0].n):'Crash Bandicoot')+'.png':k==='saves'?'ชื่อไฟล์เซฟต้องตรงกับชื่อเกม เช่น '+(games[0]?base(games[0].n):'Crash Bandicoot')+'.srm':'รับเฉพาะไฟล์ที่เครื่องเปิดได้';
- main.innerHTML=`<p class="sub">${esc(hint)}</p><div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div><button class="btn" id="pickb">${pickWord}</button><div class="gap"></div><div id="q"></div>${k==='covers'?'<div class="gap"></div><p class="sub">หรือเลือกทีละเกม</p><div class="list" id="glist"></div>':''}`;
+ pane.innerHTML=`<p class="sub">${esc(hint)}</p><div class="chips">${types.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div><button class="btn" id="pickb">${pickWord}</button><div class="gap"></div><div id="q"></div>${k!=='covers'?'<p class="grp" id="haveh">ในเครื่องตอนนี้</p><div id="have"><div class="empty">กำลังโหลด…</div></div>':''}${k==='covers'?'<div class="gap"></div><p class="sub">หรือเลือกทีละเกม</p><div class="list" id="glist"></div>':''}`;
  const pick=$('#pick');
  pick.accept=k==='covers'?'image/*':'';
  $('#pickb').onclick=()=>{pick.value='';pick.onchange=()=>prepare(k,c,[...pick.files],games);pick.click()};
  if(k==='covers')drawCoverList(c,games);
  queue=[];drawQueue();
+ if(k!=='covers')drawHave(k,c);
+}
+async function drawHave(k,c){
+ const rows=rowsOf(k,(await itemsOf(k,c)).filter(x=>!x.part));
+ const h=$('#have');if(!h)return;
+ $('#haveh').textContent='ในเครื่องตอนนี้ · '+rows.length+' รายการ';
+ h.innerHTML=rows.length?`<div class="list">${rows.map(r=>rowHTML({lead:r.thumb?`<img class="thumb" loading="lazy" src="${r.thumb}" alt="">`:svg(k),t1:r.t1,t2:r.t2,attr:'tabindex="-1"'})).join('')}</div>`:`<div class="empty">ยังไม่มี${KINDS[k].name}${c?'ของ '+esc(c.name):''}ในเครื่อง</div>`;
 }
 function drawCoverList(c,games){
  const g=$('#glist');if(!g)return;
@@ -368,24 +381,20 @@ async function run(){
   else{it.state='fail';it.msg=why(j)}
   drawQueue();
  }
- busy--;running=false;
+ busy--;running=false;ver++;
+ if(queue[0]&&queue[0].k!=='covers')drawHave(queue[0].k,queue[0].c);
  loadInfo().then(()=>{if(info)$('#free').textContent='ว่าง '+size(info.free)});
  const g=$('#glist');if(g&&queue[0]&&queue[0].k==='covers'){drawCoverList(queue[0].c,await listAll('games',queue[0].c))}
 }
 window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue='ยังส่งไม่เสร็จ ถ้าออกตอนนี้ ไฟล์ที่ยังไม่ครบจะถูกลบ'}});
 
 // ---------- download ----------
-let mode=localStorage.getItem('wt_mode')||'zip';
-async function downPage(k,cid){
- const c=cid?findC(cid):null;
- if(KINDS[k].console&&!c){go('down/'+k);return}
- head(c?KINDS[k].name+' '+c.name:KINDS[k].name,true);
- main.innerHTML='<div class="empty">กำลังโหลด…</div>';
- const j=c?{items:await listAll(k,c)}:await api('/api/list?'+qs({k}));
- let rows=[]; // {t1,t2,refs:[],size,thumb}
+async function itemsOf(k,c){return c?await listAll(k,c):((await api('/api/list?'+qs({k}))).items||[])}
+function rowsOf(k,items){ // {t1,t2,refs:[],size,thumb}
+ let rows=[];
  if(k==='saves'){
   const by={};
-  for(const s of j.items||[]){
+  for(const s of items){
    const b=s.n.replace(/\.(state\.auto|state\.\d|state\d?|st\d|srm|sav|dsv|rtc)$/i,'');
    const key=norm(b);(by[key]=by[key]||{name:b,saves:0,states:0,refs:[],size:0});
    const st=/\.(state|st\d)/i.test(s.n)&&!/\.(srm|sav|dsv|rtc)$/i.test(s.n);
@@ -393,20 +402,31 @@ async function downPage(k,cid){
   }
   rows=Object.values(by).sort((a,b)=>a.name.localeCompare(b.name)).map(g=>({t1:g.name,t2:[g.saves?'เซฟ':'',g.states?'สเตต '+g.states+' ไฟล์':''].filter(Boolean).join(' + '),refs:g.refs,size:g.size}));
  }else if(k==='covers'){
-  rows=(j.items||[]).filter(x=>x.cover&&!x.part).map(x=>({t1:base(x.n)+'.png',t2:'ปกของ '+base(x.n),refs:[x.r],cover:1,size:0,thumb:`/api/cover?r=${encodeURIComponent(x.r)}&t=${x.ct||0}`}));
+  rows=(items).filter(x=>x.cover&&!x.part).map(x=>({t1:base(x.n)+'.png',t2:'ปกของ '+base(x.n),refs:[x.r],cover:1,size:0,thumb:`/api/cover?r=${encodeURIComponent(x.r)}&t=${x.ct||0}`}));
  }else{
-  rows=(j.items||[]).map(x=>({t1:x.n,t2:size(x.s)+(x.r.includes('/Recordings/')?' · คลิปที่อัดไว้':''),refs:[x.r],size:x.s}));
+  rows=(items).map(x=>({t1:x.n,t2:size(x.s)+(x.r.includes('/Recordings/')?' · คลิปที่อัดไว้':''),refs:[x.r],size:x.s}));
  }
- if(!rows.length){main.innerHTML=`<div class="empty">ยังไม่มี${KINDS[k].name}${c?'ของ '+esc(c.name):''}ในเครื่อง</div>`;return}
+ return rows;
+}
+let mode=localStorage.getItem('wt_mode')||'zip';
+async function downPage(k,cid){
+ const pane=main;
+ const c=cid?findC(cid):null;
+ if(KINDS[k].console&&!c){go('down/'+k);return}
+ head(c?KINDS[k].name+' '+c.name:KINDS[k].name,true);
+ pane.innerHTML='<div class="empty">กำลังโหลด…</div>';
+ const items=await itemsOf(k,c);
+ const rows=rowsOf(k,items);
+ if(!rows.length){pane.innerHTML=`<div class="empty">ยังไม่มี${KINDS[k].name}${c?'ของ '+esc(c.name):''}ในเครื่อง</div>`;return}
  const sel=new Set();
  const draw=()=>{
   const all=sel.size===rows.length;
   const tot=[...sel].reduce((a,i)=>a+rows[i].size,0);
-  main.innerHTML=`<p class="sub">เลือกได้หลายอัน</p><div class="list">${rowHTML({on:all,lead:`<span class="box">${all?svg('check',''):''}</span>`,t1:'เลือกทั้งหมด',t2:rows.length+' รายการ'+(rows[0].size?' · '+size(rows.reduce((a,r)=>a+r.size,0)):''),attr:'data-all="1"'})}${rows.map((r,i)=>rowHTML({on:sel.has(i),lead:`<span class="box">${sel.has(i)?svg('check',''):''}</span>`+(r.thumb?`<img class="thumb" loading="lazy" src="${r.thumb}" alt="">`:''),t1:r.t1,t2:r.t2,attr:`data-i="${i}"`})).join('')}</div>
+  pane.innerHTML=`<p class="sub">เลือกได้หลายอัน</p><div class="list">${rowHTML({on:all,lead:`<span class="box">${all?svg('check',''):''}</span>`,t1:'เลือกทั้งหมด',t2:rows.length+' รายการ'+(rows[0].size?' · '+size(rows.reduce((a,r)=>a+r.size,0)):''),attr:'data-all="1"'})}${rows.map((r,i)=>rowHTML({on:sel.has(i),lead:`<span class="box">${sel.has(i)?svg('check',''):''}</span>`+(r.thumb?`<img class="thumb" loading="lazy" src="${r.thumb}" alt="">`:''),t1:r.t1,t2:r.t2,attr:`data-i="${i}"`})).join('')}</div>
   <div class="foot"><div class="seg"><button data-m="zip" class="${mode==='zip'?'sel':''}">zip ไฟล์เดียว</button><button data-m="files" class="${mode==='files'?'sel':''}">ไฟล์แยก</button></div><button class="btn" id="dl" ${sel.size?'':'disabled'}>${sel.size?'ดาวน์โหลด '+sel.size+' รายการ'+(tot?' · '+size(tot):''):'เลือกอย่างน้อย 1 รายการ'}</button><p class="sub" style="margin:8px 0 0">${mode==='zip'?'รวมเป็นไฟล์ .zip เดียว เครื่องไม่ต้องบีบอัด':'โหลดทีละไฟล์ เบราว์เซอร์อาจถามว่าให้โหลดหลายไฟล์ไหม'}</p></div>`;
-  main.querySelector('[data-all]').onclick=()=>{if(all)sel.clear();else rows.forEach((r,i)=>sel.add(i));draw()};
-  main.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;sel.has(i)?sel.delete(i):sel.add(i);draw()});
-  main.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;try{localStorage.setItem('wt_mode',mode)}catch(e){}draw()});
+  pane.querySelector('[data-all]').onclick=()=>{if(all)sel.clear();else rows.forEach((r,i)=>sel.add(i));draw()};
+  pane.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;sel.has(i)?sel.delete(i):sel.add(i);draw()});
+  pane.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;try{localStorage.setItem('wt_mode',mode)}catch(e){}draw()});
   $('#dl').onclick=()=>download([...sel].flatMap(i=>rows[i].refs),(c?c.tag+' ':'')+KINDS[k].name);
  };
  draw();
@@ -427,7 +447,15 @@ function download(refs,label){
 // ---------- routes ----------
 function go(h){if(location.hash.slice(1)===h)route();else location.hash=h}
 function parentOf(h){const p=h.split('/');p.pop();return p.join('/')}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b&&!e.target.closest('.modal'))go(b.dataset.go)});
+document.addEventListener('click',e=>{if(e.target.closest('.modal'))return;const b=e.target.closest('[data-go]');if(b)go(b.dataset.go);const t=e.target.closest('[data-tab]');if(t)go(tabTo(t.dataset.tab))});
+let ver=0;const lastAt={};
+function tabTo(t){
+ const h=location.hash.slice(1),p=h.split('/');
+ if(p[0]===t){$('#p-'+t).scrollTo({top:0,behavior:'smooth'});return t==='up'&&busy?h:t} // the tab you are on: back to its start
+ if(lastAt[t])return lastAt[t];
+ const k=p[1];if(k&&KINDS[k]&&KINDS[k][t])return [t,...p.slice(1)].join('/');
+ return t;
+}
 function tabs(where){
  const t=$('#tabs');t.hidden=!where;
  $('#tab-up').innerHTML=svg('up','')+'อัปโหลด';$('#tab-down').innerHTML=svg('down','')+'ดาวน์โหลด';
@@ -435,9 +463,17 @@ function tabs(where){
 }
 async function route(){
  if(!info&&!(await loadInfo().catch(()=>null)))return;
- const p=location.hash.slice(1).split('/').map(decodeURIComponent);
- main.scrollTop=0;
- tabs(p[0]==='up'||p[0]==='down'?p[0]:'');
+ const h=location.hash.slice(1),p=h.split('/').map(decodeURIComponent);
+ const t=p[0]==='up'||p[0]==='down'?p[0]:'home';
+ show(t);tabs(t==='home'?'':t);
+ if(t!=='home')lastAt[t]=h;
+ if(main._h===h&&(t!=='down'||main._v===ver)){head(...main._head);return} // as you left it
+ const keep=main._h===h?main.scrollTop:0;
+ main._h=h;main._v=ver;main.scrollTop=0;
+ await page(p);
+ if(keep)main.scrollTop=keep;
+}
+async function page(p){
  if(!p[0])return home();
  if(p[0]!=='up'&&p[0]!=='down')return home();
  if(!p[1])return menu(p[0]);
@@ -448,7 +484,8 @@ async function route(){
 let lastHash=location.hash, comingBack=false;
 window.addEventListener('hashchange',async()=>{
  if(comingBack){comingBack=false;return}
- if(busy){
+ const up=$('#p-up')._h,nh=location.hash.slice(1);
+ if(busy&&nh.split('/')[0]==='up'&&nh!==up){
   const to=location.hash;comingBack=true;location.hash=lastHash; // stay until the answer
   if(!(await ask('ยังส่งไม่เสร็จ','ถ้าออกจากหน้านี้ตอนนี้ ไฟล์ที่ยังส่งไม่ครบจะถูกลบ','ออก')))return;
   queue.forEach(i=>{if(i.state==='wait')i.state='skip'});if(curX)curX.abort();
